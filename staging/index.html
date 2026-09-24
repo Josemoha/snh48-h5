@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<!-- ============================================================================
+  《塞纳河打工人生》 H5 网页版
+  ----------------------------------------------------------------------------
+  粉丝同人作品，与现实无关。作者ID：南柯十七号
+  ----------------------------------------------------------------------------
+  项目结构（给后续维护者/AI 会话）：
+    index.html            入口页面，包含全部屏幕的 DOM 骨架
+    css/style.css         全部样式（移动端优先的 H5 竖屏布局）
+    js/compat.js          兼容性预检（纯 ES5，第一个加载；老内核浏览器给出提示）
+    js/data_members.js    2016 年 1 月在籍名单（116 人，来源 snh48wiki.top）
+    js/data_members_2026.js  2026 年 1 月名单（本部 74 人 + 四分团简卡 159 人）
+    js/data_story.js      2016 剧情数据：序章、月度事件、随机事件池、结局
+    js/data_story_2026.js 2026 剧情数据（含理念阵营映射 camp26Map）
+    js/engine.js          游戏引擎：状态、回合结算、主线判定、存档（localStorage）
+    js/ui.js              界面渲染与交互（屏幕切换、VN 播放器、点将窗、弹窗）
+    js/main.js            启动入口
+    docs/STORY.md         剧情总结与伏笔总表（改剧情先看）
+    docs/DESIGN.md        设计文档（数值口径与机制设计）
+    docs/DEPLOY.md        部署/分发指引
+  ----------------------------------------------------------------------------
+  脚本加载顺序固定为：compat → data_members → data_members_2026 → data_story
+  → data_story_2026 → engine → ui → main
+  全局命名空间：DATA / DATA2026 / STORY / Game / UI
+============================================================================ -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="description" content="《塞纳河打工人生》——SNH48 制作总监模拟 · 粉丝同人游戏">
+  <title>塞纳河打工人生 · 粉丝同人作品</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<!-- 兼容性提示层（内联样式：即使 style.css 加载失败也必须能显示） -->
+<div id="compat-warn" style="display:none; position:fixed; left:0; top:0; width:100%; height:100%; z-index:9999; background:#0e101c; color:#eef1fa; padding:48px 24px; text-align:center; font-family:'Microsoft YaHei',sans-serif; box-sizing:border-box;">
+  <div id="compat-title" style="font-size:20px; font-weight:bold; margin-bottom:16px;"></div>
+  <div id="compat-detail" style="font-size:14px; line-height:2; color:#9aa3c4;"></div>
+</div>
+<!-- CSS 加载探针（compat.js 读取其计算样式判断 style.css 是否生效） -->
+<div id="css-probe"></div>
+<div id="app">
+
+  <!-- ======================== 屏幕一：标题页 ======================== -->
+  <section id="screen-title" class="screen">
+    <div class="title-wrap">
+      <div class="title-deco" aria-hidden="true"></div>
+      <h1 class="game-title">塞纳河<span class="title-accent">打工人生</span></h1>
+      <p class="game-subtitle">SNH48 · 制作总监模拟</p>
+      <div class="title-actions">
+        <button id="btn-continue" class="save-card hidden">
+          <span class="sc-badge">存档</span>
+          <span class="sc-info"><b id="sc-line1">读取存档 · 继续经营</b><i id="sc-line2"></i></span>
+          <span class="sc-arrow">▶</span>
+        </button>
+        <button id="btn-new" class="btn btn-primary">开始新的打工生涯</button>
+        <button id="btn-import-title" class="btn btn-ghost btn-small hidden">从存档码导入进度</button>
+        <button id="btn-file-title" class="btn btn-ghost btn-small">从文件恢复进度</button>
+      </div>
+      <!-- 存档文件选择器（隐藏，标题页/系统页共用） -->
+      <input id="save-file-input" type="file" accept=".sg48save,.json,application/json" style="display:none">
+      <div class="title-disclaimer">
+        <p class="fan-tag">粉丝同人作品 · 与现实无关</p>
+        <p class="disclaimer-detail">本游戏为爱好者自制的同人模拟游戏，剧情、数值与人物言行均为虚构演绎，<br>不代表任何真实人物、团体与公司的立场。</p>
+        <p class="author-line">作者ID：<span class="author-name">南柯十七号</span></p>
+      </div>
+      <p class="version-line">H5 v0.8.0 · 双年代线均已实装 · 2016「开辟分团」 × 2026「革新征程」</p>
+    </div>
+  </section>
+
+  <!-- ======================== 屏幕二：开局设定 ======================== -->
+  <section id="screen-start" class="screen hidden">
+    <div class="start-wrap">
+      <h2 class="screen-title">入职登记表</h2>
+      <p class="screen-hint">丝芭传媒人事部 · 请填写您的姓名并选择入职年代</p>
+
+      <div class="form-block">
+        <label class="form-label" for="input-name">你的名字（将作为制作总监署名出现在剧情中）</label>
+        <input id="input-name" class="text-input" type="text" maxlength="12" placeholder="例如：南柯" autocomplete="off">
+      </div>
+
+      <div class="era-cards">
+        <!-- 2016 开局卡（已实装） -->
+        <div id="era-card-2016" class="era-card era-2016" role="button" tabindex="0">
+          <div class="era-year">2016</div>
+          <div class="era-name">开辟分团</div>
+          <p class="era-desc">创业初成，董事会决心把「塞纳河」的支流引向全国。<br>与AKB48方携手筹办分团，操盘总选举与金曲大赏，<br>替叶盛扛起与48个女孩的日常。</p>
+          <div class="era-status era-open">● 已实装 · 点击选择</div>
+        </div>
+        <!-- 2026 开局卡（v0.4 已实装） -->
+        <div id="era-card-2026" class="era-card era-2026" role="button" tabindex="0">
+          <div class="era-year">2026</div>
+          <div class="era-name">革新征程</div>
+          <p class="era-desc">分家、选秀冲击、创始人离世、合约纠纷……<br>大股东陶莺手握末位淘汰与CGT48重建的答卷，<br>而这条河能否重燃，取决于新来的你。</p>
+          <div class="era-status era-open">● 已实装 · 点击选择</div>
+        </div>
+      </div>
+
+      <button id="btn-start-game" class="btn btn-primary btn-big" disabled>签约入职 →</button>
+      <button id="btn-back-title" class="btn btn-ghost btn-small">← 返回标题</button>
+    </div>
+  </section>
+
+  <!-- ======================== 屏幕三：视觉小说（序章 / 大事件共用） ======================== -->
+  <section id="screen-vn" class="screen hidden">
+    <div class="vn-stage">
+      <div id="vn-scene-label" class="vn-scene-label"></div>
+      <div id="vn-body" class="vn-body">
+        <!-- 对话内容动态渲染 -->
+      </div>
+      <div id="vn-footer" class="vn-footer">
+        <div id="vn-hint" class="vn-hint">点击画面继续 ▼</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================== 屏幕四：经营主界面 ======================== -->
+  <section id="screen-game" class="screen hidden">
+    <!-- 顶部：日期与行动点 -->
+    <header class="hud-top">
+      <div id="hud-date" class="hud-date">2016年1月</div>
+      <div id="hud-ap" class="hud-ap"></div>
+    </header>
+    <!-- 资源栏 -->
+    <div id="hud-res" class="hud-res"></div>
+    <!-- 标签页 -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="board">看板</button>
+      <button class="tab" data-tab="members">成员</button>
+      <button class="tab" data-tab="log">日志</button>
+      <button class="tab" data-tab="sys">系统</button>
+    </nav>
+    <!-- 看板页：主线进度 + 本月行动 -->
+    <div id="tab-board" class="tab-page">
+      <div id="quest-cards"></div>
+      <h3 class="section-label">本月行动 <span id="ap-note" class="ap-note"></span></h3>
+      <div id="action-grid" class="action-grid"></div>
+    </div>
+    <!-- 成员页 -->
+    <div id="tab-members" class="tab-page hidden">
+      <div id="team-filter" class="team-filter"></div>
+      <div id="member-list" class="member-list"></div>
+    </div>
+    <!-- 日志页 -->
+    <div id="tab-log" class="tab-page hidden">
+      <div id="log-list" class="log-list"></div>
+    </div>
+    <!-- 系统页 -->
+    <div id="tab-sys" class="tab-page hidden">
+      <div class="sys-block">
+        <p class="sys-note">游戏每月结束会自动保存到本机浏览器（localStorage）。<br>换浏览器或清除缓存会丢失进度。</p>
+        <button id="btn-save" class="btn btn-ghost">手动保存一次</button>
+        <button id="btn-load" class="btn btn-ghost">读取存档</button>
+        <button id="btn-export-file" class="btn btn-ghost">保存进度到文件（防丢档）</button>
+        <button id="btn-import-file" class="btn btn-ghost">从文件恢复进度</button>
+        <button id="btn-export-code" class="btn btn-ghost">导出存档码</button>
+        <button id="btn-import-code" class="btn btn-ghost">导入存档码</button>
+        <button id="btn-to-title" class="btn btn-danger-ghost">放弃任期，回到标题</button>
+      </div>
+      <div class="sys-block sys-about">
+        <p class="fan-tag">粉丝同人作品 · 与现实无关</p>
+        <p class="disclaimer-detail">人物言行均为虚构，名单考据参考 snh48wiki.top（同人考据用）。</p>
+        <p class="author-line">作者ID：<span class="author-name">南柯十七号</span></p>
+      </div>
+    </div>
+    <!-- 月末结算浮层（在 modal-root 中渲染） -->
+  </section>
+
+  <!-- ======================== 屏幕五：结局 ======================== -->
+  <section id="screen-ending" class="screen hidden">
+    <div class="ending-wrap">
+      <div id="ending-rank" class="ending-rank"></div>
+      <h2 id="ending-title" class="ending-title"></h2>
+      <div id="ending-text" class="ending-text"></div>
+      <div id="ending-stats" class="ending-stats"></div>
+      <div class="ending-actions">
+        <button id="btn-ending-restart" class="btn btn-primary">再打一次工</button>
+        <button id="btn-ending-title" class="btn btn-ghost">回到标题</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 通用弹窗容器（月末结算、事件选择、成员选择等） -->
+  <div id="modal-root" class="modal-root hidden"></div>
+  <!-- 轻提示 -->
+  <div id="toast" class="toast hidden"></div>
+</div>
+
+<!-- 脚本：顺序固定，勿调整。compat.js 必须最前（纯 ES5 预检，老内核浏览器给出提示） -->
+<script src="js/compat.js"></script>
+<script src="js/data_members.js"></script>
+<script src="js/data_members_2026.js"></script>
+<script src="js/data_story.js"></script>
+<script src="js/data_story_2026.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
