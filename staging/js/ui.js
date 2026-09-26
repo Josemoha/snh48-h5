@@ -177,10 +177,16 @@ const UI = {
           b.onclick = (e) => {
             e.stopPropagation();
             /* 特殊交互：pickMode="sii5" → Team SII 五人选将窗（宫泽佐江毕业公演）
+                          pickMode="sii5m" → Team SII 五人选将窗（玛莉亚东京毕业公演）
                           pickMode="pioneer6" → 开拓者六人点将窗（2017 移籍名单） */
             if (ch.pickMode === "sii5") {
               this.closeModal();
               this.showSIIInvitePicker(finish);
+              return;
+            }
+            if (ch.pickMode === "sii5m") {
+              this.closeModal();
+              this.showMariaInvitePicker(finish);
               return;
             }
             if (ch.pickMode === "pioneer6") {
@@ -305,7 +311,7 @@ const UI = {
       if (!raw) raw = localStorage.getItem(Game.BACKUP_KEY);   // 主档缺失 → 备份
       if (raw) info = JSON.parse(raw);
     } catch (e) { info = null; }
-    const eraName = info && info.era === "2026" ? "革新征程" : "开辟分团";
+    const eraName = info && info.era === "2026" ? "革新征程" : info && info.era === "2017" ? "本部新章" : "开辟分团";
     const ok = !!info && Game.hasSave();
     cont.classList.toggle("hidden", !ok);
     if (ok) {
@@ -402,9 +408,12 @@ const UI = {
 
   showPrologue() {
     this.showScreen("screen-vn");
-    /* 按 era 取对应序章（2016 任职会议 / 2026 临危受命） */
-    const pro = Game.st.era === "2026" ? STORY.prologue26 : STORY.prologue;
-    const pages = pro.pages.map(p => ({ ...p, t: Game.fmt(p.t), s: p.s ? Game.fmt(p.s) : p.s }));
+    /* 按 era 取对应序章（2016 任职会议 / 2017 本部新章 / 2026 临危受命） */
+    const pro = Game.st.era === "2026" ? STORY.prologue26
+      : Game.st.era === "2017" ? STORY.prologue17
+      : STORY.prologue;
+    const rawPages = typeof pro.pages === "function" ? pro.pages(Game.st) : pro.pages;   // 序章页面支持按状态定制（2017 分团线交接）
+    const pages = rawPages.map(p => ({ ...p, t: Game.fmt(p.t), s: p.s ? Game.fmt(p.s) : p.s }));
     const label = this.$("vn-scene-label");
     label.textContent = pro.sceneLabel;
     const body = this.$("vn-body");
@@ -599,6 +608,7 @@ const UI = {
       { label: "叶盛负担", val: st.burden, cls: "v-burden", warn: st.burden >= 80 },
       { label: "训练度", val: st.train, cls: "v-train", warn: false },
     ];
+    if (st.era === "2017") chips.push({ label: "平均实力", val: Game.avgPwr(st), cls: "v-train", warn: false });
     this.$("hud-res").innerHTML = chips.map(c =>
       '<div class="res-chip"><div class="res-label">' + c.label + '</div><div class="res-value ' + c.cls + (c.warn ? " warn" : "") + '">' + c.val + "</div></div>"
     ).join("");
@@ -664,6 +674,73 @@ const UI = {
         st.cgt.open ? "✔ 重启首演已于 " + st.cgt.openMonth + " 月落幕" : st.cgt.stage >= 4 ? "重建就绪，本月末重启首演！" : "目标：年内让成都的剧场重新亮灯"));
       box.appendChild(mkCard("主线④ · CGT48 重建",
         st.cgt.open ? "✔ 已重启" : st.cgt.stage >= 4 ? "待首演" : "目标：重启首演", st.cgt.open ? "q-done" : "q-open", b4));
+      this.renderActions();
+      return;
+    }
+
+    /* ============ 2017 线（本部新章）：六条主线看板 ============ */
+    if (st.era === "2017") {
+      const mkCard = (name, tag, tagCls, body) => {
+        const c = this.el("div", "quest-card");
+        const head = this.el("div", "quest-head", this.el("span", "quest-name", name));
+        head.appendChild(this.el("span", "quest-tag " + tagCls, tag));
+        c.appendChild(head);
+        if (body) c.appendChild(body);
+        return c;
+      };
+      /* 主线① 双团开设 */
+      const b17 = st.branch17;
+      const dots17 = this.el("div", "quest-progress");
+      for (let i = 1; i <= 4; i++) dots17.appendChild(this.el("div", "p-dot" + (b17.ckg >= i ? " on" : "")));
+      const b1 = this.el("div", "");
+      b1.appendChild(this.el("div", "quest-detail",
+        "SHY48（沈阳）：" + (b17.shyOpen ? "✔ " + b17.shyOpenMonth + " 月开业首演" : b17.shy >= 1 ? "筹备就绪，月末开业" : "剧场筹备中（目标：1月首演）")));
+      b1.appendChild(dots17);
+      b1.appendChild(this.el("div", "quest-detail",
+        "CKG48（重庆）：" + (b17.ckgOpen ? "✔ " + b17.ckgOpenMonth + " 月开业首演" : "筹备阶段 " + b17.ckg + "/3（目标：10月末首演）")));
+      box.appendChild(mkCard("主线① · 双团开设",
+        b17.shyOpen && b17.ckgOpen ? "✔ 四城灯已亮" : "进行中", b17.shyOpen && b17.ckgOpen ? "q-done" : "q-open", b1));
+      /* 主线② 年度活动 */
+      const b2 = this.el("div", "quest-desc",
+        (st.geDone ? "总决选 ✔（第一名：" + st.geResult.top1 + "）" : "总决选 7月 · 筹备度 " + st.gePlan + "/100")
+        + "　|　" +
+        (st.rtDone ? "金曲大赏 ✔（" + st.rtScore + "/100）" : "金曲大赏 12月 · 筹备度 " + st.rtPlan + "/100"));
+      box.appendChild(mkCard("主线② · 年度大活动",
+        st.geDone && st.rtDone ? "✔ 已了结" : "进行中", st.geDone && st.rtDone ? "q-done" : "q-open", b2));
+      /* 主线③ 成员实力 */
+      const growth = Game.avgPwr(st) - (st.pwrBase || 0);
+      const bar3 = this.el("div", "mc-bar pop"); bar3.innerHTML = "<i style=\"width:" + Game.avgPwr(st) + "%\"></i>";
+      const b3 = this.el("div", "");
+      b3.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", "全团平均实力"), this.el("span", "", Game.avgPwr(st) + "（较年初 " + (growth >= 0 ? "+" : "") + growth + "）")]));
+      b3.appendChild(bar3);
+      box.appendChild(mkCard("主线③ · 提升成员实力",
+        growth >= 5 ? "✔ 淬炼有成" : "进行中", growth >= 5 ? "q-done" : "q-open", b3));
+      /* 主线④ 分担叶盛（分团线：专注对应分团事务） */
+      const dutyPost = Game.branchDutyPost(st);
+      const bar4 = this.el("div", "mc-bar bond"); bar4.innerHTML = "<i style=\"width:" + (100 - st.burden) + "%\"></i>";
+      const b4 = this.el("div", "");
+      b4.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", dutyPost ? dutyPost + "的事务压力" : "叶盛的负担"), this.el("span", "", st.burden + "/100")]));
+      b4.appendChild(bar4);
+      box.appendChild(mkCard(dutyPost ? "主线④ · 专注" + dutyPost + "事务" : "主线④ · 分担叶盛",
+        st.burden <= 30 ? "✔ 负担已减至低位" : st.burden >= 80 ? "⚠ 负担过重" : "进行中",
+        st.burden <= 30 ? "q-done" : "", b4));
+      /* 主线⑤ 团体影响力 */
+      const marks = [
+        st.flags.tvCny ? "卫视春晚×" + st.flags.tvCny : null,
+        st.flags.s7 ? "7SENSES" : null,
+        st.flags.aji ? "阿吉资源线" : null,
+        st.heat >= 80 ? "热度长红" : null,
+      ].filter(Boolean);
+      const b5 = this.el("div", "quest-detail", "当前热度 " + st.heat + " / 100" + (marks.length ? "　|　里程碑：" + marks.join(" · ") : "　|　提示：会后找工作人员阿吉谈谈"));
+      box.appendChild(mkCard("主线⑤ · 提高团体影响力",
+        st.heat >= 80 ? "✔ 影响力出圈" : "进行中", st.heat >= 80 ? "q-done" : "q-open", b5));
+      /* 主线⑥ 原创公演（复刻模式：四套新复刻公演） */
+      const rep17 = Game.isReplicate(st);
+      const b6 = this.el("div", "quest-detail",
+        ["SII", "NII", "HII", "X"].map(t => (st.orig[t] ? "✔ " : "○ ") + t).join("　")
+        + "　|　已完成 " + Game.origCount(st) + "/4 套（" + (rep17 ? "山本学：让它们像自己的舞台一样立起来" : "王子杰：自己的歌，才是根") + "）");
+      box.appendChild(mkCard(rep17 ? "主线⑥ · 四套新复刻公演" : "主线⑥ · 四队原创公演",
+        Game.origCount(st) >= 4 ? "✔ 全部首演" : "进行中", Game.origCount(st) >= 4 ? "q-done" : "q-open", b6));
       this.renderActions();
       return;
     }
@@ -751,6 +828,7 @@ const UI = {
 
   onAction(id) {
     if (id === "visit") { this.showMemberPicker(); return; }
+    if (id === "coach") { this.showCoachPicker(); return; }   // 2017：先选特训对象
     const res = Game.doAction(id);
     if (!res) return;
     this.renderGame();
@@ -761,6 +839,8 @@ const UI = {
       if (res.vn) this.playScene(res.vn, openPicker); else openPicker();
       return;
     }
+    /* 原创公演（2017）：先弹队伍选择窗，选队后播放制作场景 */
+    if (res.tone === "origPick") { this.showOrigPicker(); return; }
     /* 行动附带剧情场景：先播放场景，结束后再弹结算/选址 */
     if (res.vn) {
       this.playScene(res.vn, () => {
@@ -838,6 +918,25 @@ const UI = {
       cardInfo: m => m.team + " · 羁绊" + m.bond + " 人气" + m.pop,
       onConfirm: ids => {
         const res = Game.miyazawaInvite(ids);
+        this.renderGame();
+        this.toast(res.text);
+        if (onDone) onDone();
+      },
+    });
+  },
+
+  /* Team SII 五人选将窗（复刻模式：铃木玛莉亚东京毕业公演赴日名单）。
+     生效逻辑在 engine.mariaInvite。 */
+  showMariaInvitePicker(onDone) {
+    this.showMultiPick({
+      title: "铃木玛莉亚毕业公演 · 赴日名单",
+      sub: "东京的毕业公演——仅限 Team SII 在籍成员，被选中者羄绊+10 人气+3",
+      pool: Game.st.members.filter(m => m.status === "active" && m.team === "SII"),
+      count: 5,
+      confirmLabel: "名单敲定，出发东京 →",
+      cardInfo: m => m.team + " · 羄绊" + m.bond + " 人气" + m.pop,
+      onConfirm: ids => {
+        const res = Game.mariaInvite(ids);
         this.renderGame();
         this.toast(res.text);
         if (onDone) onDone();
@@ -1027,6 +1126,57 @@ const UI = {
     });
   },
 
+  /* 2017 线：安排成员特训的成员选择窗（按实力升序：优先补短板，也可反着点） */
+  showCoachPicker() {
+    const c = this.card("安排成员特训", "选择一名成员进行一对一特训（实力+6 羁绊+4 资金-20万）");
+    const grid = this.el("div", "pick-grid");
+    for (const m of Game.activeMembers(Game.st).slice().sort((a, b) => (a.pwr || 0) - (b.pwr || 0))) {
+      const b = this.el("button", "pick-btn", "");
+      b.innerHTML = m.name + '<span class="pb-team">' + m.team + " · 实力" + (m.pwr || 0) + " · 羁绊" + m.bond + "</span>";
+      b.onclick = () => {
+        this.closeModal();
+        const res = Game.doAction("coach", { memberId: m.id });
+        if (!res) return;
+        this.renderGame();
+        this.toast(res.text);
+      };
+      grid.appendChild(b);
+    }
+    c.appendChild(grid);
+    const cancel = this.el("button", "btn btn-ghost modal-close", "先不练了（不消耗行动）");
+    cancel.onclick = () => this.closeModal();
+    c.appendChild(cancel);
+    this.modal(c);
+  },
+
+  /* 2017 线：公演制作的队伍选择窗（选队后播放制作/排练场景，选项内落地数值）；复刻模式文案随 jpMode 切换 */
+  showOrigPicker() {
+    const st = Game.st;
+    const rep = Game.isReplicate(st);
+    const TEAMS = ["SII", "NII", "HII", "X"].filter(t => !st.orig[t]);
+    const c = this.card(rep ? "复刻公演排练 · 选择队伍" : "原创公演制作 · 选择队伍", rep
+      ? "排练日方授权的四套新复刻公演（主线⑥）；每套排练成本 40万"
+      : "为本部四队各制作一套原创公演（主线⑥）；每套耗资 "
+        + (st.decisions.akbSplit === "original" || st.flags.originalSongsStarted ? "60万（源头计划曲库支援）" : "80万"));
+    const grid = this.el("div", "pick-grid");
+    for (const t of TEAMS) {
+      const members = st.members.filter(m => m.status === "active" && m.team === t && m.pwr != null);
+      const avg = members.length ? Math.round(members.reduce((s, m) => s + m.pwr, 0) / members.length) : 0;
+      const b = this.el("button", "pick-btn", "");
+      b.innerHTML = "Team " + t + '<span class="pb-team">队内平均实力 ' + avg + (st.orig[t] ? " · ✔ 已完成" : "") + "</span>";
+      b.onclick = () => {
+        this.closeModal();
+        this.playScene(STORY.scenes17.orig(t), () => this.renderGame());
+      };
+      grid.appendChild(b);
+    }
+    c.appendChild(grid);
+    const cancel = this.el("button", "btn btn-ghost modal-close", "再考虑一下（不消耗行动）");
+    cancel.onclick = () => this.closeModal();
+    c.appendChild(cancel);
+    this.modal(c);
+  },
+
   showMemberPicker() {
     const c = this.card("走访成员", "选择一位成员谈心（羁绊+12 士气+3 叶盛负担-8）");
     const grid = this.el("div", "pick-grid");
@@ -1068,7 +1218,7 @@ const UI = {
     const st = Game.st;
     const filter = this.$("team-filter");
     filter.innerHTML = "";
-    /* 标签页按 era 组装：2016 = 五队 + 分团两页；2026 = 本部队 + 三分团 */
+    /* 标签页按 era 组装：2016 = 五队 + 分团两页；2017 = 五队+预备生+四分团；2026 = 本部队 + 三分团 */
     let teams;
     if (st.era === "2026") {
       teams = [["all", "全部"]];
@@ -1076,6 +1226,9 @@ const UI = {
       teams.push(["HALL", "荣誉殿堂"]);
       for (const b of DATA2026.branches) teams.push([b.id, b.id]);
       teams.push(["rest", "暂休"], ["left", "已离团"]);
+    } else if (st.era === "2017") {
+      teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"], ["PREP", "预备生"],
+               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["left", "已离团"]];
     } else {
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"],
                ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["rest", "暂休"], ["left", "已离团"]];
@@ -1088,7 +1241,7 @@ const UI = {
     const list = this.$("member-list");
     list.innerHTML = "";
     let members = st.members.slice();
-    const isBranchTab = ["BEJ48", "GNZ48", "CKG48", "CGT48"].includes(this._memberFilter);
+    const isBranchTab = ["BEJ48", "GNZ48", "CKG48", "SHY48", "CGT48"].includes(this._memberFilter);
     if (this._memberFilter === "all") members = members.filter(m => m.status === "active");
     else if (isBranchTab)
       members = members.filter(m => m.status === "branch" && m.branchTeam === this._memberFilter);
@@ -1122,6 +1275,12 @@ const UI = {
       const popBar = this.el("div", "mc-bar pop"); popBar.innerHTML = "<i style=\"width:" + m.pop + "%\"></i>";
       card.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", "人气"), this.el("span", "", m.pop)]));
       card.appendChild(popBar);
+      /* 实力条（2017 线：成员卡新增实力计数） */
+      if (m.pwr != null) {
+        const pwrBar = this.el("div", "mc-bar pop"); pwrBar.innerHTML = "<i style=\"width:" + m.pwr + "%;background:#6fd7ff\"></i>";
+        card.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", "实力"), this.el("span", "", m.pwr)]));
+        card.appendChild(pwrBar);
+      }
       if (m.status === "active") {
         const bondBar = this.el("div", "mc-bar bond"); bondBar.innerHTML = "<i style=\"width:" + m.bond + "%\"></i>";
         card.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", "羁绊"), this.el("span", "", m.bond)]));
@@ -1222,7 +1381,7 @@ const UI = {
 
   showEnding(grade) {
     const st = Game.st;
-    const endingsSrc = st.era === "2026" ? STORY.endings26 : STORY.endings;
+    const endingsSrc = st.era === "2026" ? STORY.endings26 : st.era === "2017" ? STORY.endings17 : STORY.endings;
     const ending = endingsSrc[grade] || endingsSrc.C;
     Game.clearSave();
     this.$("ending-rank").textContent = ending.rank;
@@ -1233,6 +1392,8 @@ const UI = {
     stats.innerHTML = "";
     const styleNames = st.era === "2026"
       ? { steady: "守成派", content: "内容派", people: "人事派" }
+      : st.era === "2017"
+      ? { stable: "稳进派", content17: "淬炼派", hype: "造势派" }
       : { pragmatic: "实干派", communicator: "沟通派", visionary: "造势派" };
     const rows = st.era === "2026" ? [
       ["年度总分", grade === "S" ? "★★★★★" : grade === "A" ? "★★★★" : grade === "B" ? "★★★" : "★★"],
@@ -1242,6 +1403,17 @@ const UI = {
       ["末位淘汰", "执行 " + st.elim.executed + " · 调往CGT " + st.elim.transferred + " · 缓刑 " + st.elim.defied],
       ["总选举第一名", st.geResult ? st.geResult.top1 : "—"],
       ["金曲大赏", st.rtCancelled ? "✘ 已取消" : st.rtDone ? st.rtScore + " / 100" : "—"],
+      ["年末资金", st.money + " 万"],
+      ["年末热度 / 士气", st.heat + " / " + st.morale],
+      ["管理风格", styleNames[st.startStyle] || "—"],
+    ] : st.era === "2017" ? [
+      ["年度总分", grade === "S" ? "★★★★★" : grade === "A" ? "★★★★" : grade === "B" ? "★★★" : "★★"],
+      ["双团开设", (st.branch17.shyOpen ? "✔ SHY48 " + st.branch17.shyOpenMonth + " 月开业" : "SHY48 未开业")
+        + "　|　" + (st.branch17.ckgOpen ? "✔ CKG48 " + st.branch17.ckgOpenMonth + " 月开业" : "CKG48 未开业")],
+      ["总决选第一名", st.geResult ? st.geResult.top1 : "—"],
+      ["金曲大赏评价", st.rtDone ? st.rtScore + " / 100" : "—"],
+      ["原创公演", Game.origCount(st) + " / 4 套"],
+      ["全团平均实力", Game.avgPwr(st) + "（年初 " + (st.pwrBase || 0) + "）"],
       ["年末资金", st.money + " 万"],
       ["年末热度 / 士气", st.heat + " / " + st.morale],
       ["管理风格", styleNames[st.startStyle] || "—"],
@@ -1263,5 +1435,16 @@ const UI = {
     this.showScreen("screen-ending");
     this.$("btn-ending-restart").onclick = () => this.showStart();
     this.$("btn-ending-title").onclick = () => this.showTitle();
+    /* 【2017「本部新章」线入口】2016 线结局界面追加「进入下一年」：
+       继承 2016 年末成员卡与经营状态，开启本部原创路线（破产结局除外）。 */
+    if (st.era === "2016" && grade !== "bankrupt") {
+      const btnNext = this.el("button", "btn btn-primary", "进入下一年 →");
+      btnNext.id = "btn-ending-next";
+      btnNext.onclick = () => {
+        Game.carryTo2017();
+        this.showPrologue();
+      };
+      this.$("btn-ending-restart").parentElement.insertBefore(btnNext, this.$("btn-ending-title"));
+    }
   },
 };

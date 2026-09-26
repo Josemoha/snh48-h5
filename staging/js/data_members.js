@@ -214,6 +214,7 @@ const DATA = {
     { month: 3, name: "孟玥",     team: "NII", date: "2016-03-02", type: "毕业",     story: true },
     { month: 3, name: "刘诗蕾",   team: "NII", date: "2016-03",    type: "离团",     story: false },
     { month: 3, name: "宫泽佐江", team: "SII", date: "2016-03-16", type: "活动结束", story: true, note: "返回日本专注于 SKE48 的工作" },
+    { month: 3, name: "唐安琪",   team: "NII", date: "2016-03",    type: "暂休",     story: false, note: "3月末意外烧伤，专心治疗休养（纯叙事事件 m3_tanqi_rest；2017线 m3_17_tanqi 回收）" },
     { month: 5, name: "程文路",   team: "XII", date: "2016-05",    type: "离团",     story: false },
     { month: 6, name: "铃木玛莉亚", team: "SII", date: "2016-06-10", type: "撤销兼任", story: true, note: "AKB48 方面结束兼任，回归 AKB48" },
     { month: 7, name: "申月姣",   team: "SII", date: "2016-07-01", type: "退团",     story: false },
@@ -234,6 +235,224 @@ const DATA = {
   branchMovers: {
     BEJ: ["陈美君", "段艺璇", "冯雪莹", "胡晓慧", "宋思娴", "田姝丽", "熊素君", "徐佳丽", "张菡筱"],
     GNZ: ["陈珂", "陈雨琪", "杜雨微", "高源婧", "李沁洁", "林嘉佩", "刘梦雅", "刘筱筱", "阳青颖", "曾艾佳", "张凯祺", "谢蕾蕾"],
+  },
+
+  /* ---------------- 2017年1月分团在册名册（2017「本部新章」线考据补充） ----------------
+     考据来源：tmp/research/careers3.json（snh48wiki 成员生涯快照），逐人核对其
+     2017-01-01 时点所属队伍；其中六期生 9+17+5+16=47 人，恰与「2016年4·20 划入
+     分团的六期生·分团方向 47 人」完全对应（交叉验证通过）。
+     · BEJ48：Team B（队长 段艺璇 / 副队长 刘姝贤，2016-09-15 任命）+
+              Team E（队长 李想 / 副队长 刘胜男，2016-09-15 任命）；
+              五期生宋思娴/徐佳丽为 2016 官宣移籍成员（生涯快照缺考据，按移籍事实补录）。
+     · GNZ48：Team G（队长 曾艾佳 / 副队长 高源婧，2016-10-01 任命）+
+              Team NIII（队长 刘力菲 / 副队长 刘倩倩，2016-10-02 任命）。
+     · GNZ48 Team Z（2016年10月结成·广州本地招募）生涯快照缺失，不逐人建卡。
+     carryTo2017 按本表补建缺失的分团成员卡；已在籍的移籍成员卡（含人气/羁绊）保留不动。 */
+   branchRoster2017: {
+     BEJ48: [
+       { name: "陈美君", branchLabel: "Team B", gen: "五期生" },
+       { name: "段艺璇", branchLabel: "Team B", gen: "五期生", captain: true },
+       { name: "冯雪莹", branchLabel: "Team B", gen: "五期生" },
+       { name: "胡晓慧", branchLabel: "Team B", gen: "五期生" },
+       { name: "宋思娴", branchLabel: "Team B", gen: "五期生" },
+       { name: "田姝丽", branchLabel: "Team B", gen: "五期生" },
+       { name: "熊素君", branchLabel: "Team B", gen: "五期生" },
+       { name: "徐佳丽", branchLabel: "Team B", gen: "五期生" },
+       { name: "张菡筱", branchLabel: "Team B", gen: "五期生" },
+       { name: "闫明筠", branchLabel: "Team B", gen: "四期生" },
+       { name: "胡博文", branchLabel: "Team B", gen: "六期生" },
+       { name: "林溪荷", branchLabel: "Team B", gen: "六期生" },
+       { name: "刘姝贤", branchLabel: "Team B", gen: "六期生", vice: true },
+       { name: "牛聪聪", branchLabel: "Team B", gen: "六期生" },
+       { name: "青钰雯", branchLabel: "Team B", gen: "六期生" },
+       { name: "孙姗",   branchLabel: "Team B", gen: "六期生" },
+       { name: "文妍",   branchLabel: "Team B", gen: "六期生" },
+       { name: "夏越",   branchLabel: "Team B", gen: "六期生" },
+       { name: "张梦慧", branchLabel: "Team B", gen: "六期生" },
+       { name: "毕梦媛", branchLabel: "Team E", gen: "六期生" },
+       { name: "陈姣荷", branchLabel: "Team E", gen: "六期生" },
+       { name: "陈倩楠", branchLabel: "Team E", gen: "六期生" },
+       { name: "冯思佳", branchLabel: "Team E", gen: "六期生" },
+       { name: "李诗彦", branchLabel: "Team E", gen: "六期生" },
+       { name: "李想",   branchLabel: "Team E", gen: "六期生", captain: true },
+       { name: "李媛媛", branchLabel: "Team E", gen: "六期生" },
+       { name: "李梓",   branchLabel: "Team E", gen: "六期生" },
+       { name: "林堃",   branchLabel: "Team E", gen: "六期生" },
+       { name: "刘胜男", branchLabel: "Team E", gen: "六期生", vice: true },
+       { name: "罗雪丽", branchLabel: "Team E", gen: "六期生" },
+       { name: "马玉灵", branchLabel: "Team E", gen: "六期生" },
+       { name: "苏杉杉", branchLabel: "Team E", gen: "六期生" },
+       { name: "顼凘炀", branchLabel: "Team E", gen: "六期生" },
+       { name: "易妍倩", branchLabel: "Team E", gen: "六期生" },
+       { name: "张笑盈", branchLabel: "Team E", gen: "六期生" },
+       { name: "郑一凡", branchLabel: "Team E", gen: "六期生" },
+       /* 以下为分团自主招募一期生（2016-10-01/10-29 公布，考据：branch_gen_timeline.txt），
+          2017.1 时点为预备生，未升格（具体升格档案后续按需调研） */
+       { name: "陈逸菲", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "吴月黎", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "大李娜", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "杨一帆", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "陈雅钰", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "房蕾",   branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "葛司琪", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "黄恩茹", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "李泓瑶", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "刘闲",   branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "任心怡", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "任玥霖", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "单习文", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "石羽莎", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "孙语姗", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "王雨烜", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "叶苗苗", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "杨晔",   branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "张怀瑾", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "张韩紫陌", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "许婉玉", branchLabel: "预备生", gen: "BEJ48一期生" },
+     ],
+     GNZ48: [
+       { name: "陈珂",   branchLabel: "Team G", gen: "五期生" },
+       { name: "陈雨琪", branchLabel: "Team G", gen: "五期生" },
+       { name: "杜雨微", branchLabel: "Team G", gen: "五期生" },
+       { name: "高源婧", branchLabel: "Team G", gen: "五期生", vice: true },
+       { name: "李沁洁", branchLabel: "Team G", gen: "五期生" },
+       { name: "林嘉佩", branchLabel: "Team G", gen: "五期生" },
+       { name: "刘梦雅", branchLabel: "Team G", gen: "五期生" },
+       { name: "刘筱筱", branchLabel: "Team G", gen: "五期生" },
+       { name: "谢蕾蕾", branchLabel: "Team G", gen: "五期生" },
+       { name: "阳青颖", branchLabel: "Team G", gen: "五期生" },
+       { name: "曾艾佳", branchLabel: "Team G", gen: "五期生", captain: true },
+       { name: "张凯祺", branchLabel: "Team G", gen: "五期生" },
+       { name: "胡怡莹", branchLabel: "Team G", gen: "六期生" },
+       { name: "罗寒月", branchLabel: "Team G", gen: "六期生" },
+       { name: "王馨悦", branchLabel: "Team G", gen: "六期生" },
+       { name: "张琼予", branchLabel: "Team G", gen: "六期生" },
+       { name: "周倩玉", branchLabel: "Team G", gen: "六期生" },
+       { name: "陈慧婧", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "陈楠茜", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "陈欣妤", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "冯嘉希", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "洪静雯", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "刘力菲", branchLabel: "Team NIII", gen: "六期生", captain: true },
+       { name: "刘倩倩", branchLabel: "Team NIII", gen: "六期生", vice: true },
+       { name: "卢静",   branchLabel: "Team NIII", gen: "六期生" },
+       { name: "孙馨",   branchLabel: "Team NIII", gen: "六期生" },
+       { name: "唐莉佳", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "冼燊楠", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "肖文铃", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "熊心瑶", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "郑丹妮", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "左嘉欣", branchLabel: "Team NIII", gen: "六期生" },
+       { name: "左婧媛", branchLabel: "Team NIII", gen: "六期生" },
+       /* 以下为分团自主招募一期生（2016-10-01/02/23 公布，考据：branch_gen_timeline.txt），
+          2017.1 时点为预备生，未升格（具体升格档案后续按需调研） */
+       { name: "黄黎蓉", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "向芸",   branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "戴欣侁", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "李伊虹", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "陈桂君", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "陈梓荧", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "代玲",   branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "杜秋霖", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "刘嘉怡", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "龙亦瑞", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "农燕萍", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "王翠菲", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "王烱义", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "王偲越", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "王盈",   branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "王秭歆", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "杨可璐", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "杨媛媛", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "于珊珊", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "张心雨", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "赵欣雨", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "赵翊民", branchLabel: "预备生", gen: "GNZ48一期生" },
+     ],
+   },
+
+  /* ---------------- SHY48 / CKG48 成立名单（2017「本部新章」线，开业时建卡） ----------------
+     考据：branch_gen_timeline.txt（snh48wiki.top 各期生公布时间线）——
+     · SHY48 一期生：2017-01-07 公布首批 18 人（次批 02-19 公布 16 人，不建卡）；
+     · CKG48 一期生：2017-10-27 公布 33 人（与游戏内「首批三十三人集训」锚点一致）；
+       其中孟玥与 2016 年已毕业的 SNH48 NII 孟玥重名，为避免成员卡重名不重复建卡。
+     engine.deployPioneers 在对应分团开业时按本表建卡（branchLabel 预备生）。 */
+   branchFoundingRoster: {
+     SHY48: [
+       "陈婧文", "冯译莹", "付紫琪", "关思雨", "韩家乐", "赖梓惜", "李慧", "刘娇", "刘娜",
+       "卢天惠", "南琻璞", "秦玺", "孙敏", "王诗蒙", "徐静妍", "杨允涵", "赵佳蕊", "朱燕",
+     ].map(n => ({ name: n, branchLabel: "预备生", gen: "SHY48一期生" })),
+     CKG48: [
+       "柏欣妤", "李恩锐", "李姗姗", "李泽亚", "雷宇霄", "毛译晗", "谯玉珍", "冉蔚", "田倩兰",
+       "陶菀瑞", "伍寒琪", "王梦竹", "王娱博", "曾佳", "周源", "左欣", "艾芷亦", "邓倩",
+       "樊曦月", "郝婧怡", "韩林芹", "黄琬璎", "林舒晴", "李瑜璇", "石勤", "田祯臻", "吴晶晶",
+       "吴学雨", "夏文倩", "章宇阳", "郑阳莹", "赵泽慧",
+     ].map(n => ({ name: n, branchLabel: "预备生", gen: "CKG48一期生" })),
+   },
+
+  /* ---------------- 2017 年内新加入（2017「本部新章」线用） ----------------
+     史实：八期生 2017 年分批入团（4/28 首批 5 人，此后 5、6、9 月陆续追加，全年 12 人）。
+     游戏内：team 暂挂 PREP（预备生），gen「八期生」，pop 由引擎按新人生成。
+     【考据注】贺苏堃同为八期生（2017.09.06 公布），出于对逝者的尊重，
+     游戏内不建卡、不涉及任何相关事件。
+     【考据来源】snh48wiki.top 期生时间线快照（tmp/research/timeline.txt）。 */
+  joining2017: [
+    { month: 4, name: "郭倩芸", team: "PREP", gen: "八期生", join: "2017-04-28" },
+    { month: 4, name: "文文",   team: "PREP", gen: "八期生", join: "2017-04-28" },
+    { month: 4, name: "赵梦婷", team: "PREP", gen: "八期生", join: "2017-04-28" },
+    { month: 4, name: "陶波尔", team: "PREP", gen: "八期生", join: "2017-04-28" },
+    { month: 4, name: "孙亚萍", team: "PREP", gen: "八期生", join: "2017-04-28" },
+    { month: 5, name: "金莹玥", team: "PREP", gen: "八期生", join: "2017-05-28" },
+    { month: 6, name: "林歆源", team: "PREP", gen: "八期生", join: "2017-06-07" },
+    { month: 9, name: "许嘉怡", team: "PREP", gen: "八期生", join: "2017-09-06" },
+    { month: 9, name: "姜涵",   team: "PREP", gen: "八期生", join: "2017-09-08" },
+    { month: 9, name: "王奕",   team: "PREP", gen: "八期生", join: "2017-09-08" },
+    { month: 9, name: "熊沁娴", team: "PREP", gen: "八期生", join: "2017-09-08" },
+    { month: 9, name: "葛佳慧", team: "PREP", gen: "八期生", join: "2017-09-10" },
+  ],
+
+  /* ---------------- 2017 年内离团 / 移籍 / 兼任变动（2017「本部新章」线用） ----------------
+     【重要】本表在「2016 年末游戏内成员卡实际状态」的基础上生效：
+     2016 年已因玩家决策离团/暂休的成员（引擎会自动跳过），不再重复处理。
+     六期生·分团方向 47 人已随 2016 年 4·20 划入 BEJ48/GNZ48（分团简卡），
+     其后续变动随分团名册处理，不逐人建卡。
+     史实锚点（snh48wiki.top 离团时间线/成员履历快照 tmp/research/leave2.json、careers3.json）：
+     · 2017-01/02 SHY48 一期生两批公布（18+16 人）、1·12 沈阳星梦剧院首演；
+     · 2017-04-07 7SENSES 小分队成立（孔肖吟/张语格/戴萌/许佳琪/许杨玉琢/赵粤/陈琳）；
+     · 2017-07-29 「我心翱翔」第四届总决选（鞠婧祎连霸）；
+     · 2017-10-27 CKG48 一期生 33 人公布、重庆星梦剧院首演；刘炅然兼任 CKG48 Team K、
+       王露皎移籍 CKG48 Team K。
+     【v0.9.1】原 2017-12 鞠婧祎「明星殿堂」装载条目已移除：荣誉殿堂规则由 7 月总选/8 月事件驱动，
+     未连霸则鞠婧祎保持在籍（不再有 12 月明星殿堂变动）。 */
+  leaving2017: [
+    { month: 3, name: "唐安琪", team: "NII", date: "2017-03",    type: "离团",     story: false, note: "康复后协商解约（选项式事件 m3_17_tanqi）" },
+    { month: 4, name: "冯雪莹", team: "BEJ48", date: "2017-04",   type: "退团",     story: false, note: "BEJ48" },
+    { month: 4, name: "陈音",   team: "XII",  date: "2017-04",    type: "退团",     story: false },
+    { month: 4, name: "王金铭", team: "HII",  date: "2017-04-08", type: "移籍SHY48", branchTeam: "SHY48", story: false, note: "加入SHY48 Team HIII" },
+    { month: 5, name: "罗兰",   team: "NII",  date: "2017-05",    type: "退团",     story: false },
+    { month: 5, name: "徐真",   team: "NII",  date: "2017-05",    type: "退团",     story: false },
+    { month: 5, name: "邹佳佳", team: "XII",  date: "2017-05",    type: "退团",     story: false },
+    { month: 8, name: "董艳芸", team: "NII",  date: "2017-08",    type: "退团",     story: false },
+    { month: 8, name: "张雅梦", team: "NII",  date: "2017-08",    type: "退团",     story: false },
+    { month: 9, name: "赵韩倩", team: "SII",  date: "2017-09-10", type: "暂休",     story: false, note: "学业规划" },
+    { month: 10, name: "赵梦婷", team: "PREP", date: "2017-10",   type: "离团",     story: false },
+    { month: 10, name: "刘炅然", team: "HII",  date: "2017-10-27", type: "兼任CKG48", story: false, note: "兼任 CKG48 Team K（保留本部在籍）" },
+    { month: 10, name: "王露皎", team: "HII",  date: "2017-10-27", type: "移籍CKG48", branchTeam: "CKG48", story: false, note: "CKG48 Team K" },
+    { month: 11, name: "曾艳芬", team: "NII",  date: "2017-11",    type: "退团",     story: true },
+    { month: 11, name: "刘筱筱", team: "GNZ48", date: "2017-11",   type: "退团",     story: false, note: "GNZ48" },
+    { month: 12, name: "沈之琳", team: "SII",  date: "2017-12",    type: "离团",     story: false },
+    { month: 12, name: "王柏硕", team: "HII",  date: "2017-12",    type: "离团",     story: false },
+    { month: 12, name: "周怡",   team: "NII",  date: "2017-12",    type: "离团",     story: false },
+  ],
+
+  /* ---------------- 2017 年史实节点（「本部新章」线锚点） ---------------- */
+  history2017: {
+    shy48Debut: "2017-01-12",     // SHY48 沈阳星梦剧院首演（一期生 1/7、2/19 两批共 34 人）
+    s7senses: "2017-04-07",       // 7SENSES 小分队成立
+    electionDate: "2017-07-29",   // 「我心翱翔」第四届总决选（鞠婧祎连霸）
+    fengshangDate: "2017-11-18",  // 第三届风尚大赏（戴萌 第一名）
+    ckg48Debut: "2017-10-27",     // CKG48 重庆星梦剧院首演（一期生 33 人，Team K / Team C）
+    electionTop5: ["鞠婧祎", "李艺彤", "黄婷婷", "冯薪朵", "陆婷"],  // 史实前五（剧情对照）
   },
 
   /* ---------------- 总决选考据数据（剧情对照用） ---------------- */

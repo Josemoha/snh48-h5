@@ -454,6 +454,7 @@ body {
 .tb-BEJ48 { color: #ff9b8a; border-color: rgba(255, 155, 138, 0.4); }   /* 分团：BEJ48 */
 .tb-GNZ48 { color: #7fe3d2; border-color: rgba(127, 227, 210, 0.4); }   /* 分团：GNZ48 */
 .tb-CKG48 { color: #ffd166; border-color: rgba(255, 209, 102, 0.4); }   /* 分团：CKG48 */
+.tb-SHY48 { color: #9be7ff; border-color: rgba(155, 231, 255, 0.4); }   /* 分团：SHY48（2017 本部新章线） */
 .tb-CGT48 { color: #c3a6ff; border-color: rgba(195, 166, 255, 0.4); }   /* 分团：CGT48 */
 .tb-PREP { color: #cfd5ee; border-color: rgba(207, 213, 238, 0.4); }    /* 本部：预备生 */
 
@@ -464,6 +465,10 @@ body {
 .member-card.mc-hall { border-color: rgba(245, 197, 66, 0.55); box-shadow: 0 0 12px rgba(245, 197, 66, 0.15); }
 .tb-HALL { color: var(--gold); border-color: rgba(245, 197, 66, 0.5); }
 .speaker-x { background: linear-gradient(135deg, #ffe08a, #f0a53c); }   /* 杨冰怡（Team X 队长·殿堂） */
+.speaker-aji { background: linear-gradient(135deg, #5eead4, #0d9488); }  /* 阿吉（2017 新媒体运营） */
+
+/* 结局页「进入下一年」入口按钮（2016 → 2017 本部新章） */
+#btn-ending-next { margin-top: 0; }
 
 /* 日志页 */
 .log-list { display: flex; flex-direction: column; gap: 10px; }
