@@ -311,7 +311,9 @@ const UI = {
       if (!raw) raw = localStorage.getItem(Game.BACKUP_KEY);   // 主档缺失 → 备份
       if (raw) info = JSON.parse(raw);
     } catch (e) { info = null; }
-    const eraName = info && info.era === "2026" ? "革新征程" : info && info.era === "2017" ? "本部新章" : "开辟分团";
+    const eraName = info && info.era === "2027" ? "大河新篇"
+      : info && info.era === "2026" ? "革新征程"
+      : info && info.era === "2017" ? "本部新章" : "开辟分团";
     const ok = !!info && Game.hasSave();
     cont.classList.toggle("hidden", !ok);
     if (ok) {
@@ -408,8 +410,9 @@ const UI = {
 
   showPrologue() {
     this.showScreen("screen-vn");
-    /* 按 era 取对应序章（2016 任职会议 / 2017 本部新章 / 2026 临危受命） */
-    const pro = Game.st.era === "2026" ? STORY.prologue26
+    /* 按 era 取对应序章（2016 任职会议 / 2017 本部新章 / 2026 临危受命 / 2027 年度决策会议） */
+    const pro = Game.st.era === "2027" ? STORY.prologue27
+      : Game.st.era === "2026" ? STORY.prologue26
       : Game.st.era === "2017" ? STORY.prologue17
       : STORY.prologue;
     const rawPages = typeof pro.pages === "function" ? pro.pages(Game.st) : pro.pages;   // 序章页面支持按状态定制（2017 分团线交接）
@@ -443,7 +446,7 @@ const UI = {
       this.playVNFull(closing, pro.sceneLabel, () => this.enterGame(true));
     };
 
-    /* 序章后的「路线抉择」（2026 线：解散/重建 CGT48）；2016 线无此环节 */
+    /* 序章后的「路线抉择」（2026 线：解散/重建 CGT48；2027 线：年度会议发言）；2016 线无此环节 */
     const showPathChoice = () => {
       const pc = pro.pathChoice;
       if (!pc) { startClosing(); return; }
@@ -451,6 +454,7 @@ const UI = {
       footer.innerHTML = "";
       const box = this.el("div", "vn-choices");
       for (const c of pc.choices) {
+        if (c.gate && !c.gate(Game.st)) continue;   // 选项可声明 gate（2027 序章按阵营出发言选项）
         const b = this.el("button", "vn-choice", c.label + "　—— " + (c.hint || ""));
         b.onclick = (e) => {
           e.stopPropagation();
@@ -524,7 +528,8 @@ const UI = {
      播放完毕自动回到经营界面再回调 onDone。 */
   playScene(scene, onDone) {
     const st = Game.st;
-    const fmt = t => Game.fmt(t, { city: st.branch.city || "目的地" });
+    /* 2027 线状态无 st.branch（分团筹备是 2016 线字段），取值兜底 */
+    const fmt = t => Game.fmt(t, { city: (st.branch && st.branch.city) || "目的地" });
     const rawPages = typeof scene.pages === "function" ? scene.pages(st) : (scene.pages || []);
     const main = rawPages.map(p => ({ ...p, t: fmt(p.t), s: p.s ? fmt(p.s) : p.s }));
     const after = (scene.after || []).map(p => ({ ...p, t: fmt(p.t), s: p.s ? fmt(p.s) : p.s }));
@@ -608,7 +613,7 @@ const UI = {
       { label: "叶盛负担", val: st.burden, cls: "v-burden", warn: st.burden >= 80 },
       { label: "训练度", val: st.train, cls: "v-train", warn: false },
     ];
-    if (st.era === "2017") chips.push({ label: "平均实力", val: Game.avgPwr(st), cls: "v-train", warn: false });
+    if (st.era === "2017" || st.era === "2027") chips.push({ label: "平均实力", val: Game.avgPwr(st), cls: "v-train", warn: false });
     this.$("hud-res").innerHTML = chips.map(c =>
       '<div class="res-chip"><div class="res-label">' + c.label + '</div><div class="res-value ' + c.cls + (c.warn ? " warn" : "") + '">' + c.val + "</div></div>"
     ).join("");
@@ -674,6 +679,72 @@ const UI = {
         st.cgt.open ? "✔ 重启首演已于 " + st.cgt.openMonth + " 月落幕" : st.cgt.stage >= 4 ? "重建就绪，本月末重启首演！" : "目标：年内让成都的剧场重新亮灯"));
       box.appendChild(mkCard("主线④ · CGT48 重建",
         st.cgt.open ? "✔ 已重启" : st.cgt.stage >= 4 ? "待首演" : "目标：重启首演", st.cgt.open ? "q-done" : "q-open", b4));
+      this.renderActions();
+      return;
+    }
+
+    /* ============ 2027 线（大河新篇）：五条主线看板 ============ */
+    if (st.era === "2027") {
+      const mkCard = (name, tag, tagCls, body) => {
+        const c = this.el("div", "quest-card");
+        const head = this.el("div", "quest-head", this.el("span", "quest-name", name));
+        head.appendChild(this.el("span", "quest-tag " + tagCls, tag));
+        c.appendChild(head);
+        if (body) c.appendChild(body);
+        return c;
+      };
+      /* 主线① WHN48·武汉（仅王婧派/平衡派：flags.wh27Main） */
+      if (st.flags.wh27Main) {
+        const dots27 = this.el("div", "quest-progress");
+        for (let i = 1; i <= 3; i++) dots27.appendChild(this.el("div", "p-dot" + (st.branch27.stage >= i ? " on" : "")));
+        const b1 = this.el("div", "");
+        b1.appendChild(this.el("div", "quest-detail",
+          st.branch27.open ? "✔ " + st.branch27.openMonth + " 月首演亮灯（每月+25万收入）" :
+          st.branch27.stage === 0 ? "立项启动 → 剧场改造（需资金≥160万）→ 招募集训（需士气≥55）" :
+          st.branch27.stage === 1 ? "剧场改造中（需资金≥160万，投入150万）" :
+          st.branch27.stage === 2 ? "招募集训中（需士气≥55）" : "筹备就绪，本月末首演亮灯！"));
+        b1.appendChild(dots27);
+        box.appendChild(mkCard("主线① · WHN48 年内落地",
+          st.branch27.open ? "✔ 江城的灯亮了" : st.branch27.stage >= 3 ? "待首演" : "进行中",
+          st.branch27.open ? "q-done" : "q-open", b1));
+      } else {
+        const b0 = this.el("div", "quest-detail",
+          "今年没有新团立项（陶总拍板：把已有的灯守亮）——武汉的档案袋，在王总办公室里留到了下一年");
+        box.appendChild(mkCard("主线① · 年度基调 · 守成", "陶莺路线", "q-open", b0));
+      }
+      /* 主线② 影视部焕新 */
+      const filmStageTxt = st.film.done ? "✔ 项目已播出（" + st.film.doneMonth + " 月开播）"
+        : st.film.stage === 3 ? "已杀青，本月末开播！" :
+        st.film.stage === 2 ? "开机拍摄中（需资金≥120万，投入100万）" :
+        st.film.stage === 1 ? "项目遴选（冲奖大制作 60万 / 网剧快跑 30万）" : "立项会谈（谈话对象：" + Game.filmLeadName(st) + "）";
+      const b2 = this.el("div", "quest-detail", filmStageTxt);
+      box.appendChild(mkCard("主线② · 影视部焕新",
+        st.film.done ? "✔ 重新点亮" : st.film.stage >= 3 ? "待开播" : "进行中",
+        st.film.done ? "q-done" : "q-open", b2));
+      /* 主线③ 提升团队实力 */
+      const growth27 = Game.avgPwr(st) - (st.pwrBase || 0);
+      const bar3b = this.el("div", "mc-bar pop"); bar3b.innerHTML = "<i style=\"width:" + Game.avgPwr(st) + "%\"></i>";
+      const b3 = this.el("div", "");
+      b3.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", "全团平均实力"), this.el("span", "", Game.avgPwr(st) + "（较年初 " + (growth27 >= 0 ? "+" : "") + growth27 + "）")]));
+      b3.appendChild(bar3b);
+      box.appendChild(mkCard("主线③ · 提升团队实力",
+        growth27 >= 5 ? "✔ 淬炼有成" : "进行中", growth27 >= 5 ? "q-done" : "q-open", b3));
+      /* 主线④ 分担叶盛 */
+      const bar4b = this.el("div", "mc-bar bond"); bar4b.innerHTML = "<i style=\"width:" + (100 - st.burden) + "%\"></i>";
+      const b4 = this.el("div", "");
+      b4.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", "叶盛的负担"), this.el("span", "", st.burden + "/100")]));
+      b4.appendChild(bar4b);
+      box.appendChild(mkCard("主线④ · 分担叶盛",
+        st.burden <= 30 ? "✔ 负担已减至低位" : st.burden >= 80 ? "⚠ 负担过重" : "进行中",
+        st.burden <= 30 ? "q-done" : "q-open", b4));
+      /* 主线⑤ 年度活动 */
+      const b5 = this.el("div", "quest-desc",
+        (st.geDone ? "总决选 ✔（第一名：" + st.geResult.top1 + "）" : "总决选 7月 · 筹备度 " + st.gePlan + "/100")
+        + "　|　" +
+        (st.rtCancelled ? "金曲大赏 ✘ 已被取消" : st.rtDone ? "金曲大赏 ✔（" + st.rtScore + "/100）" : "金曲大赏 12月 · 筹备度 " + st.rtPlan + "/100"));
+      box.appendChild(mkCard("主线⑤ · 年度活动筹备",
+        st.geDone && (st.rtDone || st.rtCancelled) ? "✔ 已了结" : "进行中",
+        st.geDone && (st.rtDone || st.rtCancelled) ? "q-done" : "q-open", b5));
       this.renderActions();
       return;
     }
@@ -1226,6 +1297,12 @@ const UI = {
       teams.push(["HALL", "荣誉殿堂"]);
       for (const b of DATA2026.branches) teams.push([b.id, b.id]);
       teams.push(["rest", "暂休"], ["left", "已离团"]);
+    } else if (st.era === "2027") {
+      teams = [["all", "全部"]];
+      for (const t of DATA2026.teams) teams.push([t.id, t.short]);
+      teams.push(["HALL", "荣誉殿堂"]);
+      for (const b of DATA2026.branches) teams.push([b.id, b.id]);
+      teams.push(["WHN48", "WHN48"], ["rest", "暂休"], ["left", "已离团"]);
     } else if (st.era === "2017") {
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"], ["PREP", "预备生"],
                ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["left", "已离团"]];
@@ -1241,7 +1318,7 @@ const UI = {
     const list = this.$("member-list");
     list.innerHTML = "";
     let members = st.members.slice();
-    const isBranchTab = ["BEJ48", "GNZ48", "CKG48", "SHY48", "CGT48"].includes(this._memberFilter);
+    const isBranchTab = ["BEJ48", "GNZ48", "CKG48", "SHY48", "CGT48", "WHN48"].includes(this._memberFilter);
     /* 「全部」= 全部在册（active + 暂休）；已离团、分团另有独立页签 */
     if (this._memberFilter === "all") members = members.filter(m => m.status === "active" || m.status === "rest");
     else if (isBranchTab)
@@ -1382,21 +1459,37 @@ const UI = {
 
   showEnding(grade) {
     const st = Game.st;
-    const endingsSrc = st.era === "2026" ? STORY.endings26 : st.era === "2017" ? STORY.endings17 : STORY.endings;
+    const endingsSrc = st.era === "2027" ? STORY.endings27
+      : st.era === "2026" ? STORY.endings26 : st.era === "2017" ? STORY.endings17 : STORY.endings;
     const ending = endingsSrc[grade] || endingsSrc.C;
     Game.clearSave();
     this.$("ending-rank").textContent = ending.rank;
     this.$("ending-title").textContent = ending.title;
-    this.$("ending-text").textContent = ending.text;
+    /* 结局正文支持函数（按 2026 成都决策 / WHN48 状态分叉，见 data_story_2027.js endings27） */
+    this.$("ending-text").textContent = typeof ending.text === "function" ? ending.text(st) : ending.text;
 
     const stats = this.$("ending-stats");
     stats.innerHTML = "";
-    const styleNames = st.era === "2026"
+    const styleNames = st.era === "2027"
+      ? { steady27: "守正派", polish27: "淬炼派", hype27: "造势派" }
+      : st.era === "2026"
       ? { steady: "守成派", content: "内容派", people: "人事派" }
       : st.era === "2017"
       ? { stable: "稳进派", content17: "淬炼派", hype: "造势派" }
       : { pragmatic: "实干派", communicator: "沟通派", visionary: "造势派" };
-    const rows = st.era === "2026" ? [
+    const rows = st.era === "2027" ? [
+      ["年度总分", grade === "S" ? "★★★★★" : grade === "A" ? "★★★★" : grade === "B" ? "★★★" : "★★"],
+      ["WHN48", st.flags.wh27Main
+        ? (st.branch27.open ? "✔ " + st.branch27.openMonth + " 月首演亮灯" : st.branch27.stage >= 1 ? "筹备到第 " + st.branch27.stage + " 阶段" : "未启动")
+        : "未立项（守成路线）"],
+      ["影视部焕新", st.film.done ? "✔ " + st.film.doneMonth + " 月开播" : st.film.stage >= 1 ? "推进到第 " + st.film.stage + " 阶段" : "未启动"],
+      ["总决选第一名", st.geResult ? st.geResult.top1 : "—"],
+      ["金曲大赏", st.rtCancelled ? "✘ 已取消" : st.rtDone ? st.rtScore + " / 100" : "—"],
+      ["全团平均实力", Game.avgPwr(st) + "（年初 " + (st.pwrBase || 0) + "）"],
+      ["年末资金", st.money + " 万"],
+      ["年末热度 / 士气", st.heat + " / " + st.morale],
+      ["管理风格", styleNames[st.startStyle] || "—"],
+    ] : st.era === "2026" ? [
       ["年度总分", grade === "S" ? "★★★★★" : grade === "A" ? "★★★★" : grade === "B" ? "★★★" : "★★"],
       ["CGT48", st.cgt.closed
         ? (st.cgt.settleDone ? "✔ 已解散·前成员妥善安置" : "✘ 已解散（安置 " + (st.cgt.settled || 0) + "/3）")
@@ -1436,13 +1529,14 @@ const UI = {
     this.showScreen("screen-ending");
     this.$("btn-ending-restart").onclick = () => this.showStart();
     this.$("btn-ending-title").onclick = () => this.showTitle();
-    /* 【2017「本部新章」线入口】2016 线结局界面追加「进入下一年」：
-       继承 2016 年末成员卡与经营状态，开启本部原创路线（破产结局除外）。 */
-    if (st.era === "2016" && grade !== "bankrupt") {
+    /* 【「进入下一年」入口】2016→2017「本部新章」/ 2026→2027「大河新篇」：
+       继承年末成员卡与经营状态开启续写线（破产结局除外）。 */
+    if ((st.era === "2016" || st.era === "2026") && grade !== "bankrupt") {
       const btnNext = this.el("button", "btn btn-primary", "进入下一年 →");
       btnNext.id = "btn-ending-next";
       btnNext.onclick = () => {
-        Game.carryTo2017();
+        if (st.era === "2026") Game.carryTo2027();
+        else Game.carryTo2017();
         this.showPrologue();
       };
       this.$("btn-ending-restart").parentElement.insertBefore(btnNext, this.$("btn-ending-title"));

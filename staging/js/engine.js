@@ -73,7 +73,8 @@ const Game = {
   /* 序章选择的管理风格 → 初始加成（在序章播放中途调用；按 era 取对应序章配置） */
   applyStyle(styleId) {
     const st = this.st;
-    const pro = st.era === "2026" ? STORY.prologue26
+    const pro = st.era === "2027" ? STORY.prologue27
+      : st.era === "2026" ? STORY.prologue26
       : st.era === "2017" ? STORY.prologue17
       : STORY.prologue;
     const style = pro.styles.find(s => s.id === styleId);
@@ -246,6 +247,203 @@ const Game = {
     return null;
   },
 
+  /* ========================================================================
+     2026 → 2027「大河新篇」线交接（2026 结算界面「进入下一年」入口，v0.10）
+     --------------------------------------------------------------------------
+     在 2026 年末成员卡与经营状态的基础上变动，并做五件事：
+     ① 登记成员卡快照到 st.history.roster2026（含 HALL/影视部与阵营结算）；
+     ② 为全部成员生成初始实力（pwr，口径同 carryTo2017：期数基础 + 人气×0.3，封顶 45）
+        并记录年初均值 pwrBase；
+     ③ 装载 2027 人员变动表（DATA2026.joining2027 / leaving2027，预挂载结构，暂为空）；
+     ④ 按阵营结算（camp26Final）与序章发言确立主线一：王婧派/平衡派 → flags.wh27Main
+        （WHN48 年内落地）；陶莺派 → 无主线一（在序章 speech27 选项中处理，此处仅登记）；
+     ⑤ 继承 CGT48 状态（重建成功则成都每月继续为总账创收）与影视部谈话对象
+        （flags.filmLead：鞠婧祎重新签约 → 其个人；否则孙珍妮/陆婷玉）。
+     ========================================================================== */
+  carryTo2027() {
+    const src = this.st;
+    const members = src.members;
+    /* ① 成员卡快照（2026 年末实况，含 pwr 前状态/HALL/阵营） */
+    const snapshot = members.map(m => ({
+      name: m.name, team: m.team, status: m.status, branchTeam: m.branchTeam || null,
+      pop: m.pop != null ? m.pop : null, bond: m.bond != null ? m.bond : null, hall: !!m.hall,
+    }));
+    /* ② 初始实力：期数基础 + 人气×0.3，封顶 45（内娱对比口径，同 2017）。
+       期数基础随年代顺延（老期生资历深基础高）；分团期数/移籍出身给中间值。 */
+    const genBase = {
+      "一期生": 14, "二期生": 12, "三期生": 10, "四期生": 8, "五期生": 6, "六期生": 5,
+      "七期生": 4, "八期生": 3, "九期生": 3, "十期生": 3, "十一期生": 3, "十二期生": 2,
+      "十三期生": 2, "十四期生": 2, "十五期生": 2, "十六期生": 2, "十七期生": 1, "十八期生": 1,
+      "十九期生": 1, "二十一期生": 1, "二十二期生": 1, "二十三期生": 1, "二十四期生": 1,
+      "留学生": 12, "AKB48派遣": 10,
+      "SHY48一期": 4, "SHY48三期": 4, "BEJ48七期": 3, "CKG48一期": 3,
+      "CGT48移籍": 3, "CGT48移籍·升格": 3,
+    };
+    for (const m of members) {
+      if (m.pop == null) continue;
+      const g = m.gen || "";
+      const base = genBase[g] != null ? genBase[g]
+        : genBase[g.split(" ")[0]] != null ? genBase[g.split(" ")[0]] : 3;   // 「六期生 · 影视部」等复合 gen 取首段
+      m.pwr = this.clamp(Math.round(base + m.pop * 0.3), 5, 45);
+    }
+    const pwrBase = this.avgPwr(src);
+
+    /* ⑤ 影视部谈话对象：鞠婧祎重新签约（2026 庭审胜诉选影视部）→ 其个人；否则孙珍妮/陆婷玉 */
+    const filmLead = members.some(m => m.name === "鞠婧祎" && m.hall) ? "鞠婧祎" : "孙珍妮、陆婷玉";
+
+    const st = {
+      saveVersion: this.SAVE_VERSION,
+      playerName: src.playerName,
+      era: "2027",
+      month: 1,
+      ap: 3,
+      money: src.money,
+      heat: src.heat,
+      morale: src.morale,
+      train: src.train,
+      burden: src.burden,
+      debt: 0,
+      /* 继承 2026 年末成员卡实况（含 branch/rest/left/HALL 状态与人气/羁绊） */
+      members: members,
+      log: [],
+      flags: Object.assign({}, src.flags),
+      decisions: Object.assign({}, src.decisions),
+      camp26: Object.assign({}, src.camp26 || { tao: 0, wang: 0 }),
+      /* 2026 主线对象保留：CGT48 重建成功 → 成都每月继续为总账创收 */
+      cgt: src.cgt,
+      elim: src.elim,
+      /* 2027 新主线状态 */
+      branch27: { stage: 0, open: false, openMonth: 0 },        // 主线一：WHN48（仅王婧派/平衡派）
+      film: { stage: 0, done: false, doneMonth: 0 },            // 主线二：影视部焕新
+      pwrBase: pwrBase,
+      gePlan: 0, geStrategy: null, geDone: false, geResult: null,
+      rtPlan: 0, rtDone: false, rtScore: 0, rtCancelled: false,
+      history: {
+        roster2026: snapshot,
+        ge2026Top1: src.geResult ? src.geResult.top1 : null,
+        rtCancelled2026: !!src.rtCancelled,
+      },
+    };
+    st.flags.filmLead = filmLead;
+    delete st.flags.monthStarted;
+    delete st.flags.freePromo;
+    /* 2026 一次性旗标不带入 2027 的判定流（保留在 history/decisions 中可回收） */
+    delete st.flags.p23Promoted;
+    delete st.flags.cgtPromoted;
+    this.st = st;
+    this.addLog(st, 1, "2026 年的答卷交卷，2027「大河新篇」开卷：成员卡已按年末实况登记，全团初始实力均值 " + pwrBase + "。", "main");
+    this.save();
+    return st;
+  },
+
+  /* 【2027 主线二】影视部项目谈话对象（序章已登记 flags.filmLead；此处供场景取用） */
+  filmLeadName(st) {
+    return (st.flags && st.flags.filmLead) || "孙珍妮、陆婷玉";
+  },
+
+  /* 【2026 末位淘汰】真实选取评审对象（v0.10.1）：
+     本部正式队员中考核末位者（人气最低，并列取羁绊更低者，再按姓名稳定排序）。
+     跳过：新晋入队的预备生（PREP 池）、荣誉殿堂/影视部成员（HALL）、
+     以及二十三期生（2月刚升格入队，随即被末位评审/委培不合情理）。
+     无可用对象（极端情形）返回 null，事件文案与裁决自行兜底。 */
+  pickElimTarget(st) {
+    const pool = (st.members || []).filter(m =>
+      m.status === "active" && m.team !== "PREP" && m.team !== "HALL" && !m.hall
+      && m.gen !== "二十三期生" && m.pop != null);
+    if (!pool.length) return null;
+    return pool.slice().sort((a, b) =>
+      a.pop - b.pop || a.bond - b.bond || (a.name < b.name ? -1 : 1))[0];
+  },
+
+  /* 【2027 主线一】WHN48 筹备阶段门控（同 branch17BlockReason 口径） */
+  wh27BlockReason() {
+    const st = this.st, b = st.branch27 || (st.branch27 = { stage: 0, open: false, openMonth: 0 });
+    if (b.stage === 1 && st.money < 160) return "资金不足（武汉剧场需≥160万）";
+    if (b.stage === 2 && st.morale < 55) return "士气不足（需≥55）";
+    return null;
+  },
+
+  /* 【2027 主线一】WHN48 筹备推进（阶段场景见 STORY.scenes27.wh；三段：立项→剧场→招募） */
+  advanceWH27() {
+    const st = this.st;
+    const b = st.branch27;
+    if (b.stage === 0) {
+      b.stage = 1;
+      return { text: "WHN48 立项启动：王婧把签好字的立项书复印了三份，一份当场钉在了你的办公室墙上。", tone: "main", vn: STORY.scenes27.whStart };
+    }
+    if (b.stage === 1) {
+      st.money -= 150; b.stage = 2;
+      return { text: "武汉星梦剧院改造开工：长江边的商圈顶层，第五座支流剧院破土动工。（资金-150万）", tone: "main", vn: STORY.scenes27.whTheater };
+    }
+    if (b.stage === 2) {
+      b.stage = 3;
+      return { text: "WHN48 首批十六人集训开营——江城的姑娘们，等的就是这声锣。", tone: "main", vn: STORY.scenes27.whRecruit };
+    }
+    return { text: "", tone: "none" };
+  },
+
+  /* 【2027 主线一】WHN48（武汉）首演亮灯建卡（engine 在月末开业判定处调用）：
+     ① 同人虚构一期生 16 人建卡（Team W / Team H，见 data_members_2026.js whFoundingRoster）；
+     ② 2026 线末位淘汰「调往 CGT48 委培」时约定移籍的成员（whAgreed26 标记）
+        随成立正式移籍入队——按 Team W/H 现有人数均衡编队。 */
+  deployWH(st) {
+    if (st.flags["founded_WHN48"]) return;
+    st.flags["founded_WHN48"] = true;
+    let n = 0;
+    for (const r of (DATA2026.whFoundingRoster || [])) {
+      if (st.members.some(x => x.name === r.name)) continue;
+      st.members.push({
+        id: "whn27_" + r.name, name: r.name, team: "WHN48", gen: "WHN48一期生",
+        pop: this.rnd(4, 10), bond: 8, status: "branch", branchTeam: "WHN48", branchLabel: r.branchLabel || "",
+        pwr: this.rnd(5, 10),
+      });
+      n++;
+    }
+    if (n) this.addLog(st, st.month, "WHN48 招募一期生 " + n + " 人建卡入册（Team W / Team H）。", "main");
+    /* ② 约定移籍兑现：CGT48 委培 → WHN48（2026 末位淘汰评审埋下的约定） */
+    let t = 0;
+    for (const m of st.members) {
+      if (!m.whAgreed26 || m.status === "left") continue;
+      if (m.status === "branch" && m.branchTeam === "WHN48") continue;
+      const w = st.members.filter(x => x.branchTeam === "WHN48" && x.branchLabel === "Team W").length;
+      const h = st.members.filter(x => x.branchTeam === "WHN48" && x.branchLabel === "Team H").length;
+      const lab = w <= h ? "Team W" : "Team H";
+      m.status = "branch"; m.team = "WHN48"; m.branchTeam = "WHN48"; m.branchLabel = lab;
+      m.note = "末位淘汰评审·调往CGT48委培——WHN48 成立，移籍入队（" + lab + "）";
+      delete m.whAgreed26;
+      t++;
+      this.addLog(st, st.month, m.name + " 履行移籍约定：CGT48 委培 → WHN48（" + lab + "）。", "main");
+    }
+    if (t) this.addLog(st, st.month, "2026 年末位淘汰时约定「移籍武汉」的委培成员共 " + t + " 人，随 WHN48 成立正式入队。", "main");
+  },
+
+  /* 【2027 主线二】影视部专项阶段门控 */
+  filmBlockReason() {
+    const st = this.st, f = st.film || (st.film = { stage: 0, done: false, doneMonth: 0 });
+    if (f.stage === 1 && st.money < 30) return "资金不足（项目遴选至少需30万）";
+    if (f.stage === 2 && st.money < 120) return "资金不足（开机投入需≥120万）";
+    return null;
+  },
+
+  /* 【2027 主线二】影视部推进（阶段场景见 STORY.scenes27.film；立项→遴选→开机，播出在月末判定） */
+  advanceFilm() {
+    const st = this.st;
+    const f = st.film;
+    if (f.stage === 0) {
+      f.stage = 1;
+      return { text: "影视部年度方向敲定：谈话纪要上，「影视部焕新」四个字被圈了两圈。", tone: "main", vn: STORY.scenes27.filmStart };
+    }
+    if (f.stage === 1) {
+      f.stage = 2;
+      return { text: "项目遴选落定，剧本围读排上日程——影视部今年的第一盘棋，落子了。", tone: "main", vn: STORY.scenes27.filmPick };
+    }
+    if (f.stage === 2) {
+      st.money -= 100; f.stage = 3;
+      return { text: "开机仪式礼成：摄影机架起来那一刻，影视部久违地热闹了起来。（资金-100万）", tone: "main", vn: STORY.scenes27.filmShoot };
+    }
+    return { text: "", tone: "none" };
+  },
+
   /* 成员卡结构：{ id, name, team, gen, pop, bond, status: 'active'|'left'|'rest'|'branch',
                    branchTeam?, branchLabel?（2026 分团成员的完整队伍标注） } */
   buildRoster(st) {
@@ -261,6 +459,7 @@ const Game = {
             id: m.id, name: m.name, team: m.team, gen: m.gen,
             pop: m.pop, bond: 15, status: "active",
             captain: !!m.captain, vice: !!m.vice,
+            hall: !!m.hall, note: m.note,   // 荣誉殿堂·影视部（孙珍妮/陆婷玉等 HALL 卡）
           });
       return;
     }
@@ -298,7 +497,17 @@ const Game = {
     if (!st.branch17) st.branch17 = { shy: 0, ckg: 0, shyOpen: false, ckgOpen: false, shyOpenMonth: 0, ckgOpenMonth: 0 };
     if (!st.orig) st.orig = { SII: false, NII: false, HII: false, X: false };
     if (st.pwrBase === undefined) st.pwrBase = 0;
+    /* 2027「大河新篇」线字段兜底 */
+    if (!st.branch27) st.branch27 = { stage: 0, open: false, openMonth: 0 };
+    if (!st.film) st.film = { stage: 0, done: false, doneMonth: 0 };
     if (!st.history) st.history = {};
+    /* WHN48 改名迁移（v0.10 首发曾用 WH48，读档时统一到 WHN48） */
+    if (st.flags && st.flags["founded_WH48"]) { st.flags["founded_WHN48"] = true; delete st.flags["founded_WH48"]; }
+    for (const m of (st.members || [])) {
+      if (m.team === "WH48") m.team = "WHN48";
+      if (m.branchTeam === "WH48") m.branchTeam = "WHN48";
+      if (m.gen === "武汉48一期生") m.gen = "WHN48一期生";
+    }
     return st;
   },
 
@@ -517,9 +726,10 @@ const Game = {
       }
     }
 
-    // ① 新成员入队（2016：六期生3月 / 七期生9、10月；2017：八期生4、5、6、9月；2026：二十四期生5月）
+    // ① 新成员入队（2016：六期生3月 / 七期生9、10月；2017：八期生4、5、6、9月；2026：二十四期生5月；2027：预挂载表）
     const joinSrc = st.era === "2016" ? DATA.joining2016
       : st.era === "2017" ? DATA.joining2017
+      : st.era === "2027" ? (DATA2026.joining2027 || [])
       : DATA2026.joining2026;
     for (const j of joinSrc) {
       if (j.month === st.month) {
@@ -527,8 +737,8 @@ const Game = {
           id: "j" + j.name, name: j.name, team: j.team, gen: j.gen,
           pop: st.era === "2016" ? this.rnd(16, 30) : st.era === "2017" ? this.rnd(10, 18) : this.rnd(8, 14),
           bond: st.era === "2016" ? 15 : st.era === "2017" ? 12 : 8, status: "active",
-          /* 新人初始实力同样从低起步（内娱对比口径） */
-          pwr: st.era === "2017" ? this.rnd(5, 10) : undefined,
+          /* 新人初始实力同样从低起步（内娱对比口径；2017/2027 实装实力系统） */
+          pwr: (st.era === "2017" || st.era === "2027") ? this.rnd(5, 10) : undefined,
           note: j.note,
         });
         this.addLog(st, st.month, "新成员入队：" + j.name + "（" + j.team + " · " + j.gen + "）", "good");
@@ -540,9 +750,11 @@ const Game = {
       }
     }
 
-    // ② 离团/移籍生效（2016/2017 线；2026 线的人员退出走末位淘汰事件）
+    // ② 离团/移籍生效（2016/2017/2027 线；2026 线的人员退出走末位淘汰事件）
     //    移籍分团（type 以「移籍」开头）→ status='branch'；兼任（type 以「兼任」开头）→ 保留在籍仅备注
-    const leaveSrc = st.era === "2026" ? [] : (st.era === "2017" ? DATA.leaving2017 : DATA.leaving2016);
+    const leaveSrc = st.era === "2026" ? []
+      : st.era === "2027" ? (DATA2026.leaving2027 || [])
+      : st.era === "2017" ? DATA.leaving2017 : DATA.leaving2016;
     for (const lv of leaveSrc) {
       if (lv.month !== st.month) continue;
       /* 人员表按「2016 年末游戏内实况」装载：已因玩家决策离团/暂休的成员自动跳过 */
@@ -680,6 +892,53 @@ const Game = {
       return acts;
     }
 
+    /* ============ 2027 线（大河新篇）：五条主线 ============ */
+    if (st.era === "2027") {
+      const b27 = st.branch27;
+      const whDesc = {
+        0: "WHN48 立项启动：对接武汉方面，敲定剧场与筹备组（王婧督办）",
+        1: "武汉星梦剧院改造（需资金≥160万，投入150万）",
+        2: "WHN48 首批成员招募集训（需士气≥55）",
+        3: "筹备已全部就绪，静待首演亮灯",
+      };
+      const filmDesc = {
+        0: "影视部立项会谈：与" + this.filmLeadName(st) + "敲定年度方向",
+        1: "项目遴选：冲奖大制作（投入60万）或网剧快跑（投入30万）",
+        2: "开机拍摄（需资金≥120万，投入100万）",
+        3: "已杀青，待播出档期",
+      };
+      const canWH = () => {
+        if (b27.stage === 1) return st.money >= 160;
+        if (b27.stage === 2) return st.morale >= 55;
+        return true;
+      };
+      const acts27 = [];
+      if (st.flags.wh27Main) {
+        acts27.push({ id: "wh27", main: true, name: "推进WHN48筹备", desc: whDesc[b27.stage],
+          disabled: b27.stage >= 3 || !canWH(),
+          disabledTip: b27.stage === 1 ? "资金不足（需≥160万）" :
+                       b27.stage === 2 ? "士气不足（需≥55），多走访成员" : "" });
+      }
+      acts27.push(
+        { id: "film", main: true, name: "推进影视部专项", desc: filmDesc[st.film.stage],
+          disabled: st.film.stage >= 3 || (st.film.stage === 1 && st.money < 30) || (st.film.stage === 2 && st.money < 120),
+          disabledTip: st.film.stage === 1 ? "资金不足（项目遴选至少需30万）" :
+                       st.film.stage === 2 ? "资金不足（开机需≥120万）" : "" },
+        { id: "ge", main: true, name: "筹备总选举", desc: "打投组织、物料与拉票（7月总选前，筹备度+18）",
+          disabled: st.month < 2 || st.month > 6 || st.geDone },
+        { id: "rt", main: true, name: "筹备金曲大赏", desc: st.rtCancelled ? "金曲大赏已被取消" : "舞台编排与新歌打磨（12月大赏前，筹备度+20）",
+          disabled: st.rtCancelled || st.month < 10 || st.month > 12 || st.rtDone },
+        { id: "coach", main: true, name: "安排成员特训", desc: "一对一特训：目标成员实力+6 羁绊+4（耗资20万；主线③）" },
+        { id: "visit", main: true, name: "走访成员", desc: "与一名成员谈心：羁绊↑ 士气↑ 叶盛负担↓" },
+        { id: "duty", name: "替叶盛值班", desc: "接手一轮成员事务：叶盛负担-15" },
+        { id: "show", name: "剧场公演", desc: "稳定票仓：资金↑ 热度↑ 士气↓" },
+        { id: "business", name: "商务合作", desc: "接代言与商演：资金↑↑ 热度↓ 叶盛负担↑" },
+        { id: "train", name: "全团特训", desc: "提升训练度（影响公演收入与大赏评分）：花费15万，全团实力+1" },
+        { id: "promo", name: "宣传造势", desc: "投放物料与线下活动：热度+10（花费20万）" },
+      );
+      return acts27;
+    }
+
     /* ============ 2016 线（原版行动） ============ */
     const branchDesc = {
       0: "与AKB48方经纪顾问山本学确认协作框架，分团企划正式启动",
@@ -749,6 +1008,22 @@ const Game = {
         const blocked17 = this.branch17BlockReason();
         if (blocked17) return { text: "双团开设暂无法推进：" + blocked17, tone: "blocked" };
         res = this.advanceBranch17();
+        break;
+      }
+      case "wh27": {
+        /* 引擎层门控（与按钮 disabled 双保险；主线一未确立时不出现） */
+        if (!st.flags.wh27Main) return { text: "WHN48 今年没有立项——先在年会上过掉这一关吧。", tone: "blocked" };
+        const blockedWH = this.wh27BlockReason();
+        if (blockedWH) return { text: "WHN48筹备暂无法推进：" + blockedWH, tone: "blocked" };
+        res = this.advanceWH27();
+        break;
+      }
+      case "film": {
+        /* 引擎层门控（开机阶段需资金≥120万） */
+        if (st.film.stage >= 3) return { text: "影视部今年的项目已经杀青，等播出吧。", tone: "blocked" };
+        const blockedFilm = this.filmBlockReason();
+        if (blockedFilm) return { text: "影视部专项暂无法推进：" + blockedFilm, tone: "blocked" };
+        res = this.advanceFilm();
         break;
       }
       case "orig": {
@@ -839,7 +1114,7 @@ const Game = {
         st.train = this.clamp(st.train + 12, 0, 100);
         st.morale = this.clamp(st.morale - 2, 0, 100);
         let trainTail = "";
-        if (st.era === "2017") { this.gainAllPwr(st, 1); trainTail = " 全团实力+1（多次训练的累积终会显现）。"; }
+        if (st.era === "2017" || st.era === "2027") { this.gainAllPwr(st, 1); trainTail = " 全团实力+1（多次训练的累积终会显现）。"; }
         res = { text: "全团特训一天，整齐度提升明显。（训练度+12 资金-15 士气-2）" + trainTail, tone: "normal" };
         break;
       }
@@ -1095,6 +1370,13 @@ const Game = {
       const expense = 52;
       return { income, expense, net: income - expense };
     }
+    if (st.era === "2027") {
+      /* 2027：回暖之年（收入基数回到 45）；成都（2026 重建成功）与WHN48 开业后各贡献月收入 */
+      const income = Math.round(45 + st.heat * 0.5 + st.train * 0.25
+        + (st.cgt && st.cgt.open ? 25 : 0) + (st.branch27 && st.branch27.open ? 25 : 0));
+      const expense = 56;
+      return { income, expense, net: income - expense };
+    }
     if (st.era === "2017") {
       /* 2017：本部规模更大（支出60），SHY48/CKG48 开业后各自贡献月收入 */
       const income = Math.round(45 + st.heat * 0.5 + st.train * 0.25
@@ -1210,21 +1492,46 @@ const Game = {
       steps.push({ type: "vn", title: "CGT48 重启首演", pages: STORY.scenesCgt.debut(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
     }
 
-    /* ④·六 金曲大赏取消判定（2026 线：9月末盘点，营业不佳则陶莺取消大赏） */
-    if (st.era === "2026" && st.month === 9 && !st.rtCancelled && (st.money < 80 || st.heat < 30)) {
+    /* ④·六 金曲大赏取消判定（2026/2027 线：9月末盘点，营业不佳则陶莺取消大赏） */
+    if ((st.era === "2026" || st.era === "2027") && st.month === 9 && !st.rtCancelled && (st.money < 80 || st.heat < 30)) {
       st.rtCancelled = true;
       st.rtDone = true;   // 主线①的大赏部分按已了结处理（以取消收场）
       this.addLog(st, st.month, "陶莺宣布：因营业状况不佳，本年度金曲大赏取消。", "bad");
-      steps.push({ type: "vn", title: "金曲大赏 · 取消", pages: STORY.rtCancelEvent(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
+      const cancelNar = st.era === "2027" ? STORY.rtCancelEvent27(st) : STORY.rtCancelEvent(st);
+      steps.push({ type: "vn", title: "金曲大赏 · 取消", pages: cancelNar.map(p => ({ ...p, t: this.fmt(p.t) })) });
+    }
+
+    /* ④·七 WHN48（武汉）首演亮灯判定（2027 线：筹备就绪后当月月末开业，王婧派主线一） */
+    if (st.era === "2027" && st.flags.wh27Main && !st.branch27.open && st.branch27.stage >= 3) {
+      st.branch27.open = true;
+      st.branch27.openMonth = st.month;
+      st.money += 60;
+      st.heat = this.clamp(st.heat + 8, 0, 100);
+      this.addLog(st, st.month, "WHN48 首演亮灯落幕！长江边的第五座支流剧院，此后每月为总账带来 25 万收入。", "main");
+      steps.push({ type: "vn", title: "WHN48 · 首演亮灯", pages: STORY.scenes27.whOpen(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
+      this.deployWH(st);
+    }
+
+    /* ④·八 影视部项目播出判定（2027 线：杀青后当月月末首播） */
+    if (st.era === "2027" && !st.film.done && st.film.stage >= 3) {
+      st.film.done = true;
+      st.film.doneMonth = st.month;
+      st.money += 80;
+      st.heat = this.clamp(st.heat + 12, 0, 100);
+      st.morale = this.clamp(st.morale + 3, 0, 100);
+      this.addLog(st, st.month, "影视部年度项目开播！平台版权收入 80 万入账，热度大涨。", "main");
+      steps.push({ type: "vn", title: "影视部 · 开播之夜", pages: STORY.scenes27.filmAir(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
     }
 
     /* ⑤ 月度脚本事件或随机事件（按 era 取源）。
        月度事件以 chain 惰性下发：UI 播放每个事件前才评估 gate——
        这样同一月末里「前置事件的选择」可以解锁后续事件
        （如 5月：下一站选 SHY48/CKG48 → 解锁开拓者点将）。 */
-    const monthlySrc = st.era === "2026" ? STORY.monthly26 : st.era === "2017" ? STORY.monthly17 : STORY.monthly;
+    const monthlySrc = st.era === "2027" ? STORY.monthly27
+      : st.era === "2026" ? STORY.monthly26 : st.era === "2017" ? STORY.monthly17 : STORY.monthly;
     let randomSrc;
-    if (st.era === "2026") randomSrc = STORY.randomPool26;
+    if (st.era === "2027") randomSrc = STORY.randomPool26.concat(STORY.randomPool27 || []);
+    else if (st.era === "2026") randomSrc = STORY.randomPool26;
     else if (st.era === "2017") randomSrc = STORY.randomPool.concat(STORY.randomPool17 || []);
     else randomSrc = STORY.randomPool;
     const monthlies = monthlySrc[st.month] || [];
@@ -1266,10 +1573,11 @@ const Game = {
       }
     }
 
-    /* ⑦ 十二月：金曲大赏结算（2026 线若被取消则改为年末总结会）+ 年度结局 */
+    /* ⑦ 十二月：金曲大赏结算（2026/2027 线若被取消则改为年末总结会）+ 年度结局 */
     if (st.month === 12) {
-      if (st.era === "2026" && st.rtCancelled) {
-        steps.push({ type: "vn", title: "年末总结会", pages: STORY.rtCancelledClose(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
+      if ((st.era === "2026" || st.era === "2027") && st.rtCancelled) {
+        const closeNar = st.era === "2027" ? STORY.rtCancelledClose27(st) : STORY.rtCancelledClose(st);
+        steps.push({ type: "vn", title: "年末总结会", pages: closeNar.map(p => ({ ...p, t: this.fmt(p.t) })) });
       } else {
         steps.push(this.resolveRT(st));
       }
@@ -1281,7 +1589,10 @@ const Game = {
 
   /* 把事件对象转成 UI 可播放的 step（pages 支持函数；文本做 {name} 替换） */
   buildEventStep(ev, st) {
-    const pages = typeof ev.pages === "function" ? ev.pages(st) : ev.pages;
+    /* 随机事件池的简卡格式（{title, text, choices}）也兼容：无 pages 时把 text 包成单页旁白
+       （v0.10 修复：此前随机事件一旦命中会因 pages 为 undefined 而报错——历代月度表
+         恰好覆盖了全部月份，所以从未触发过这个潜伏 bug） */
+    const pages = typeof ev.pages === "function" ? ev.pages(st) : (ev.pages || [{ nar: true, t: ev.text || "" }]);
     return {
       type: "vn", title: ev.title,
       pages: pages.map(p => ({ ...p, t: this.fmt(p.t) })),
@@ -1301,19 +1612,21 @@ const Game = {
     st.geDone = true;
     // 策略效果
     if (st.geStrategy === "focus") {
-      const top = this.activeMembers(st).sort((a, b) => b.pop - a.pop)[0];
+      const top = this.activeMembers(st).filter(m => m.team !== "HALL").sort((a, b) => b.pop - a.pop)[0];
       if (top) { top.geBoost = 25; st.morale = this.clamp(st.morale - 6, 0, 100); }
     } else if (st.geStrategy === "balance") {
       for (const m of this.activeMembers(st)) if (m.bond >= 40) m.geBoost = (m.geBoost || 0) + 6;
       st.morale = this.clamp(st.morale + 8, 0, 100);
     }
-    // 计分排名：SNH48 在籍成员 + 分团成员（官宣后参选，2017 线含全部四分团在册成员）。
-    // 2017 线新增：实力（pwr）为第二大影响因子（人气第一）；赵嘉敏不参选；HALL 不参选
-    const pwrW = st.era === "2017" ? 1.1 : 0;    // 实力权重（占比第二）
-    const bondW = st.era === "2017" ? 0.6 : 0.8;
-    const pool = this.activeMembers(st).concat(
-      st.branch.announce ? st.members.filter(m => m.status === "branch") : []
-    ).filter(m => m.name !== "赵嘉敏" && m.team !== "HALL");   // 荣誉殿堂/影视部成员不参选
+    // 计分排名：SNH48 在籍成员 + 分团成员（2016 官宣后参选；2017 含全部分团；2027 含WHN48 开业后成员）。
+    // 2017/2027 线新增：实力（pwr）为第二大影响因子（人气第一）；赵嘉敏不参选；HALL 不参选
+    const pwrW = (st.era === "2017" || st.era === "2027") ? 1.1 : 0;    // 实力权重（占比第二）
+    const bondW = (st.era === "2017" || st.era === "2027") ? 0.6 : 0.8;
+    const extraPool = st.era === "2027"
+      ? (st.branch27 && st.branch27.open ? st.members.filter(m => m.status === "branch" && m.branchTeam === "WHN48") : [])
+      : (st.branch.announce ? st.members.filter(m => m.status === "branch") : []);
+    const pool = this.activeMembers(st).concat(extraPool)
+      .filter(m => m.name !== "赵嘉敏" && m.team !== "HALL");   // 荣誉殿堂/影视部成员不参选
     const ranked = pool
       .map(m => ({ m, score: m.pop * 1.5 + (m.pwr || 0) * pwrW + m.bond * bondW + st.gePlan * 0.3 + st.heat * 0.25 + (m.geBoost || 0) + this.rnd(0, 12) }))
       .sort((a, b) => b.score - a.score);
@@ -1328,8 +1641,8 @@ const Game = {
       top48,
       strategy: st.geStrategy,
       // 分团内部 TOP7（未官宣则无分团参选）
-      bejTop7: st.branch.announce ? ranked.filter(r => r.m.status === "branch" && r.m.branchTeam === "BEJ48").slice(0, 7).map(r => r.m.name) : null,
-      gnzTop7: st.branch.announce ? ranked.filter(r => r.m.status === "branch" && r.m.branchTeam === "GNZ48").slice(0, 7).map(r => r.m.name) : null,
+      bejTop7: st.era !== "2027" && st.branch.announce ? ranked.filter(r => r.m.status === "branch" && r.m.branchTeam === "BEJ48").slice(0, 7).map(r => r.m.name) : null,
+      gnzTop7: st.era !== "2027" && st.branch.announce ? ranked.filter(r => r.m.status === "branch" && r.m.branchTeam === "GNZ48").slice(0, 7).map(r => r.m.name) : null,
     };
     for (const m of st.members) delete m.geBoost;
 
@@ -1342,10 +1655,12 @@ const Game = {
     const crownPages = STORY.geNarrative.crown.map(p => ({
       ...p, s: p.s === "{top1}" ? ranked[0].m.name : p.s, t: this.fmt(p.t),
     }));
-    const title = st.era === "2026" ? "SNH48 年度人气总决选 · 结果"
+    const title = st.era === "2027" ? "第十四届偶像年度人气总决选 · 结果"
+      : st.era === "2026" ? "SNH48 年度人气总决选 · 结果"
       : st.era === "2017" ? "「我心翱翔」第四届总决选 · 结果"
       : "「比翼齐飞」第三届总决选 · 结果";
-    const aftermath = st.era === "2026" ? STORY.geAftermath26
+    const aftermath = st.era === "2027" ? STORY.geAftermath27(st)
+      : st.era === "2026" ? STORY.geAftermath26
       : st.era === "2017" ? STORY.geAftermath17(st)
       : STORY.geAftermath(st);
     return {
@@ -1370,17 +1685,19 @@ const Game = {
     st.money += money;
     st.heat = this.clamp(st.heat + heat, 0, 100);
     this.addLog(st, 12, "年度金曲大赏落幕（评价：" + tier + (origBonus ? "，含原创曲目加成" : "") + "）。资金+" + money + "万。", "gold");
-    const rtNar = st.era === "2017" ? STORY.rtNarrative17 : STORY.rtNarrative;
+    const rtNar = st.era === "2027" ? STORY.rtNarrative27 : st.era === "2017" ? STORY.rtNarrative17 : STORY.rtNarrative;
+    const narPages = rtNar[tier === "great" ? "great" : "normal"];
     return {
       type: "rtResult", tier, score, money,
       title: "年度金曲大赏 · 收官",
-      pagesAfter: rtNar[tier === "great" ? "great" : "normal"].map(p => ({ ...p, t: this.fmt(p.t) })),
+      pagesAfter: (typeof narPages === "function" ? narPages(st) : narPages).map(p => ({ ...p, t: this.fmt(p.t) })),
     };
   },
 
   /* ============================ 年度评分与结局 ============================ */
 
   computeGrade(st) {
+    if (st.era === "2027") return this.computeGrade27(st);
     if (st.era === "2026") return this.computeGrade26(st);
     if (st.era === "2017") return this.computeGrade17(st);
     let score = 0;
@@ -1480,6 +1797,49 @@ const Game = {
     score += Math.round(st.heat / 4);
     score += Math.round(st.morale / 10);
     score += Math.min(10, Math.floor(st.money / 50));
+    if (st.debt >= 1) score -= 10;
+
+    if (score >= 90) return "S";
+    if (score >= 70) return "A";
+    if (score >= 50) return "B";
+    return "C";
+  },
+
+  /* 2027 线年度评分（v0.10）：
+     影视部(20) + WHN48(20，仅王婧派/平衡派主线一存在时计分) + 总选(15) + 大赏(12，取消则0)
+     + 实力成长(10) + 热度/4(≤25) + 士气/10(≤8) + 资金/60(≤8) − 赤字10
+     → S≥90 / A≥70 / B≥50 / C（无主线一时满分约 98，S 仍可达但需近全优） */
+  computeGrade27(st) {
+    let score = 0;
+    // ① 影视部焕新（20）：项目播出 20 / 杀青待播 12 / 开机 8 / 立项 4
+    if (st.film.done) score += 20;
+    else if (st.film.stage >= 3) score += 12;
+    else if (st.film.stage >= 2) score += 8;
+    else if (st.film.stage >= 1) score += 4;
+    // ② WHN48（20，仅主线一存在时计分；无主线一则不计，影视部/资源面权重自然占优）
+    if (st.flags.wh27Main) {
+      if (st.branch27.open) score += st.branch27.openMonth <= 11 ? 20 : 14;
+      else if (st.branch27.stage >= 2) score += 10;
+      else if (st.branch27.stage >= 1) score += 5;
+    }
+    // ③ 总选举（15）
+    if (st.geDone) {
+      score += 12;
+      const t1 = st.members.find(m => m.name === st.geResult.top1);
+      if (t1 && t1.bond >= 60) score += 3;
+    }
+    // ④ 金曲大赏（12；取消 = 0）
+    if (!st.rtCancelled) {
+      if (st.rtScore >= 85) score += 12;
+      else if (st.rtScore >= 65) score += 9;
+      else score += 4;
+    }
+    // ⑤ 成员实力成长（10）：年末均值相较年初的提升×2
+    score += this.clamp(Math.round((this.avgPwr(st) - (st.pwrBase || 0)) * 2), 0, 10);
+    // ⑥ 资源面
+    score += Math.round(st.heat / 4);
+    score += Math.min(8, Math.round(st.morale / 10));
+    score += Math.min(8, Math.floor(st.money / 60));
     if (st.debt >= 1) score -= 10;
 
     if (score >= 90) return "S";

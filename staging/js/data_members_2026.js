@@ -26,7 +26,7 @@ const DATA2026 = {
     source: "snh48wiki.top",
     fetchedDate: "2026-09-17",
     confidence: "checked",
-    note: "本部 74 人（SII17/NII13/HII12/X15/预备生17）；四分团 159 人；SHY48 已于 2019 年解散；Team FT 2019 年取消",
+    note: "本部 74 人（SII17/NII13/HII12/X15/预备生17）+ 影视部 2 人（HALL 分类）；四分团 159 人；SHY48 已于 2019 年解散；Team FT 2019 年取消",
   },
 
   /* ---------------- 本部队伍 ---------------- */
@@ -132,6 +132,15 @@ const DATA2026 = {
     { id: "zhengkewei",  name: "郑柯炜", team: "PREP", gen: "二十三期预备生", join: "2025-09-23", pop: 14 },
     { id: "hanyunyi",    name: "韩云伊", team: "PREP", gen: "二十三期预备生", join: "2025-12-05", pop: 12 },
     { id: "yingziyan",   name: "应籽言", team: "PREP", gen: "二十二期预备生", join: "2025-03-29", pop: 16 },
+
+    /* ---------------- 荣誉殿堂 · 影视部（HALL 分类，v0.10 新增） ----------------
+       转入影视发展的公司体系艺人（不参加总选举，成员页「荣誉殿堂」标签页）：
+       · 孙珍妮：snh48wiki 档案考据（tmp/research/careers3.json）——六期生，
+         2016-03-26 入团（Team HII），「2023 年以后转影视部发展」；
+       · 陆婷玉：丝芭影视签约演员（《隐形守护者》《花戎》等），非偶像体系出身，
+         多次担任 SNH48 总决选/盛典特邀主持（网络公开报道，无 snh48wiki 档案页）。 */
+    { id: "sunzhenni", name: "孙珍妮", team: "HALL", gen: "六期生 · 影视部", join: "2016-03-26", pop: 76, hall: true, note: "影视部（2023 年起转影视发展）" },
+    { id: "lutingyu",  name: "陆婷玉", team: "HALL", gen: "影视部签约演员", pop: 72, hall: true, note: "丝芭影视签约演员（非偶像体系出身）" },
 
     /* ---------------- 分团成员（简卡：仅姓名 + 队伍标注，不参与本部玩法） ----------------
        注：游戏中 CGT48 已于 2025 年底停摆（同人设定），名单保留供剧情与重建线引用；
@@ -319,6 +328,48 @@ const DATA2026 = {
     { month: 5, name: "李沁洁", team: "PREP", gen: "二十四期生", join: "2026-05-01", note: "与GNZ48李沁洁同名的另一人" },
     { month: 5, name: "吉雅楠", team: "PREP", gen: "二十四期生", join: "2026-05-01" },
     { month: 5, name: "何绮多", team: "PREP", gen: "二十四期生", join: "2026-05-01" },
+  ],
+
+  /* ---------------- 2027 年人员变动（2027「大河新篇」线） ----------------
+     【同人虚构说明】2027 年为未来年份，官方名单尚未公布——二十五期生 6 人为
+     【同人虚构人物】（成员卡备注已标注，现实无对应）；
+     官方名单公布后可整表替换为史实数据（joining2026 同款格式 month/name/team/gen/join）。
+     引擎装载：engine.monthStart 按 DATA2026.joining2027 / leaving2027 逐月生效（era==="2027"）。
+     参考口径：二十五期生按惯例约 2027 年 5 月前后公布（加入本部预备生）。 */
+  joining2027: [
+    { month: 5, name: "苏念安", team: "PREP", gen: "二十五期生", join: "2027-05-01", note: "同人虚构角色（二十五期生）" },
+    { month: 5, name: "顾星晚", team: "PREP", gen: "二十五期生", join: "2027-05-01", note: "同人虚构角色（二十五期生）" },
+    { month: 5, name: "温书宁", team: "PREP", gen: "二十五期生", join: "2027-05-01", note: "同人虚构角色（二十五期生）" },
+    { month: 5, name: "程夏至", team: "PREP", gen: "二十五期生", join: "2027-05-01", note: "同人虚构角色（二十五期生）" },
+    { month: 5, name: "白诗晗", team: "PREP", gen: "二十五期生", join: "2027-05-01", note: "同人虚构角色（二十五期生）" },
+    { month: 5, name: "贺清圆", team: "PREP", gen: "二十五期生", join: "2027-05-01", note: "同人虚构角色（二十五期生）" },
+  ],
+  leaving2027: [
+    // { month: 7, name: "——", team: "X", type: "毕业", note: "——" },   ← 预挂载：官方名单公布后按格式填入
+  ],
+
+  /* ---------------- WHN48（武汉）成立名单（2027「大河新篇」线·同人虚构） ----------------
+     【重要】WHN48 本身为架空设定（王子杰地图伏笔的同人回收），现实中不存在该团体，
+     以下一期生为【同人虚构人物】，非真实成员——若官方日后公布真实名单可整表替换。
+     Team W 8 人 + Team H 8 人；deployWH 在 WHN48 首演亮灯时建卡（预备生起步），
+     并将 2026 线末位淘汰「调往 CGT48 委培」时约定移籍的成员（whAgreed26）一并转入。 */
+  whFoundingRoster: [
+    { name: "江雨眠", branchLabel: "Team W" },
+    { name: "夏晚晴", branchLabel: "Team W" },
+    { name: "林知夏", branchLabel: "Team W" },
+    { name: "周芷宁", branchLabel: "Team W" },
+    { name: "许清晏", branchLabel: "Team W" },
+    { name: "唐诗遥", branchLabel: "Team W" },
+    { name: "罗小满", branchLabel: "Team W" },
+    { name: "韩霁月", branchLabel: "Team W" },
+    { name: "方念楚", branchLabel: "Team H" },
+    { name: "阮青禾", branchLabel: "Team H" },
+    { name: "闻人镜", branchLabel: "Team H" },
+    { name: "池鹿鸣", branchLabel: "Team H" },
+    { name: "岑今是", branchLabel: "Team H" },
+    { name: "易绾云", branchLabel: "Team H" },
+    { name: "任平生", branchLabel: "Team H" },
+    { name: "纪云裳", branchLabel: "Team H" },
   ],
 };
 

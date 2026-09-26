@@ -55,7 +55,7 @@ STORY.prologue26 = {
   /* ======================================================================
      会后抉择：解散 or 重建 CGT48（运营理念冲突——陶莺实权派 vs 王婧的「天下布妹」遗志）
      tag cgtPath：dissolve（解散·倾向陶莺派，主线④变为安置前成员）
-                 / rebuild（重建·倾向王婧派，维持主线④，解锁王总私下嘱托·武汉48）
+                 / rebuild（重建·倾向王婧派，维持主线④，解锁王总私下嘱托·WHN48）
      ====================================================================== */
   pathChoice: {
     sceneLabel: "散会后 · 三楼走廊",
@@ -81,10 +81,10 @@ STORY.prologue26 = {
       },
       {
         label: "「把它建回来。」——站王婧：完成未竟的扩张",
-        hint: "倾向王婧派：维持重建主线④；获得王总全力背书与一份私下嘱托",
+        hint: "倾向王婧派：维持重建主线④；获得王总全力背书与一份私下嘱托（WHN48）",
         tag: "cgtPath", value: "rebuild",
         apply: st => {
-          st.flags.wuhan48 = true;   // 【伏笔】王子杰地图上圈着的下一站：武汉48（后续剧情回收）
+          st.flags.wuhan48 = true;   // 【伏笔】王子杰地图上圈着的下一站：WHN48·武汉（后续剧情回收；旗标名保留 wuhan48 兼容旧档）
           st.heat = Math.min(100, st.heat + 2);
           return "你把「重建」两个字签在了意见栏最下方。消息传得很快——那晚之后，至少有三位前CGT48成员给叶盛发来了同一句话：「等到了。」";
         },
@@ -103,7 +103,7 @@ STORY.prologue26 = {
           { s: "陶莺", cls: "speaker-tao", t: "（收到意见书，看了很久）……重建可以。但丑话说在前面：年内亮不了灯，明年就没有这笔预算。你用自己的军令状换的这条路，走稳。" },
           { nar: true, t: "深夜，你收拾完东西正要下班，王婧敲了敲门——她一个人，手里拿着一张翻旧了的地图。" },
           { s: "王婧", cls: "speaker-wangjing", t: "（把地图摊在你桌上，指着武汉两个字，笔迹已经有些淡了）堂哥最后半年，反复说一件事：成都之后，是武汉。「天下布妹」是他起的名字，土，可他喜欢。——子杰没能看到成都的灯再亮起来。" },
-          { s: "王婧", cls: "speaker-wangjing", t: "CGT48 交给你，我放心。但还有一句话，我只说给你一个人听：完成他最后的心愿。武汉48——总有一天，我想在立项书上，替他签这个字。（【伏笔已埋：武汉48 · 后续剧情回收】）" },
+          { s: "王婧", cls: "speaker-wangjing", t: "CGT48 交给你，我放心。但还有一句话，我只说给你一个人听：完成他最后的心愿。WHN48——总有一天，我想在立项书上，替他签这个字。（【伏笔已埋：WHN48 · 后续剧情回收】）" },
           { s: "{name}", cls: "speaker-me", t: "「王总。先点亮成都，再谈武汉。两张灯牌——我都会想办法让它亮起来。」" },
         ];
     return head.concat([
@@ -217,28 +217,40 @@ STORY.monthly26 = {
     },
   ],
 
-  /* ---------- 3月：第一次末位淘汰评审 ---------- */
+  /* ---------- 3月：第一次末位淘汰评审（真实选取成员：engine.pickElimTarget，
+     跳过预备生池 PREP 与荣誉殿堂/影视部 HALL；裁决落到成员卡，见各 effect） ---------- */
   3: [
     {
       id: "m3_26_elim1",
       title: "3月 · 末位淘汰评审（第一季度）",
-      pages: st => [
-        { nar: true, t: "季度考核结果放在长桌上：训练出勤、公演完成度、粉丝增长，三张表折算出的排名清清楚楚。\n\n名单末尾的三个名字被红笔圈了出来——都是进团不久、还没攒下任何声量的孩子。" },
-        { s: "陶莺", cls: "speaker-tao", t: "机制是董事会定的，我是法人，你是执行人。这三个名字，你给个处理意见。" },
-        { s: "叶盛", cls: "speaker-yesheng", t: "（在你身后，几乎听不见地说）她们才来半年……但你要是心软，下一次评审，难的会是你。" },
-      ],
+      pages: st => {
+        const m = Game.pickElimTarget(st);
+        return [
+          { nar: true, t: "季度考核结果放在长桌上：训练出勤、公演完成度、粉丝增长，三张表折算出的排名清清楚楚。\n\n名单末尾的一个名字被红笔圈了出来——" + (m ? "「" + m.name + "」（" + m.team + "）。" : "排在最末的那一行。") },
+          { s: "陶莺", cls: "speaker-tao", t: "机制是董事会定的，我是法人，你是执行人。这个名字，你给个处理意见。" },
+          { s: "叶盛", cls: "speaker-yesheng", t: "（在你身后，几乎听不见地说）名字报上去容易，收回难。但你要是心软，下一次评审，难的会是你。" },
+        ];
+      },
       choices: [
         { label: "按机制执行：协商解除合约", hint: "淘汰执行+1 士气-6 热度-1", tag: "elimQ1", value: "execute",
-          effect: st => { st.elim.executed += 1; st.morale = Math.max(0, st.morale - 6); st.heat = Math.max(0, st.heat - 1); return "你签了字。办公室里安静得可怕。当晚，有个女孩的行李箱轮子碾过走廊的声音，很久才消失。陶莺收到执行报告，回了两个字：「按此。」"; } },
-        { label: "给她们一个季度缓刑观察期", hint: "缓刑+1 士气+4（陶莺的耐心在消耗）", tag: "elimQ1", value: "stay",
-          effect: st => { st.elim.defied += 1; st.morale = Math.min(100, st.morale + 4); return "你在评审表上写下「缓刑观察，季度复评」。三个女孩在门外哭成一团，转身就把练功房的灯亮到了后半夜。只是陶莺在文件上画了个问号——她的耐心，又少了一格。"; } },
-        { label: "调往 CGT48 委培（武汉48成立后移籍武汉）", hint: "调往+1 士气-2：重建路线专属", tag: "elimQ1", value: "transfer", gate: st => !st.cgt.closed,
-          effect: st => { st.elim.transferred += 1; st.morale = Math.max(0, st.morale - 2); return "你把三份调令换成了一份「委培生」名单：身份是 CGT48 储备，还有一个写在未来的户口——武汉48成立之日，整体移籍。不是淘汰，是开荒。"; } },
+          effect: st => { const m = Game.pickElimTarget(st); st.elim.executed += 1; st.morale = Math.max(0, st.morale - 6); st.heat = Math.max(0, st.heat - 1);
+            if (m) { m.status = "left"; m.note = "末位淘汰评审·协商解约离团"; }
+            return "你签了字。办公室里安静得可怕。" + (m ? "当晚，" + m.name + " 的行李箱轮子碾过走廊的声音，很久才消失。" : "当晚，行李箱轮子碾过走廊的声音，很久才消失。") + "陶莺收到执行报告，回了两个字：「按此。」"; } },
+        { label: "给一个季度缓刑观察期", hint: "缓刑+1 士气+4（陶莺的耐心在消耗）", tag: "elimQ1", value: "stay",
+          effect: st => { const m = Game.pickElimTarget(st); st.elim.defied += 1; st.morale = Math.min(100, st.morale + 4);
+            if (m) m.note = "末位淘汰评审·缓刑观察（季度复评）";
+            return "你在评审表上写下「缓刑观察，季度复评」。" + (m ? m.name + " 在门外哭了一场，转身就把练功房的灯亮到了后半夜。" : "") + "只是陶莺在文件上画了个问号——她的耐心，又少了一格。"; } },
+        { label: "调往 CGT48 委培（WHN48成立后移籍武汉）", hint: "调往+1 士气-2：重建路线专属", tag: "elimQ1", value: "transfer", gate: st => !st.cgt.closed,
+          effect: st => { const m = Game.pickElimTarget(st); st.elim.transferred += 1; st.morale = Math.max(0, st.morale - 2);
+            if (m) { m.whAgreed26 = true; m.status = "branch"; m.team = "CGT48"; m.branchTeam = "CGT48"; m.branchLabel = "委培生"; m.note = "末位淘汰评审·调往CGT48委培（约定WHN48成立后移籍）"; }
+            return "你把调令换成了一份「委培生」名单" + (m ? "——" + m.name + " 的名字写在第一行" : "") + "：身份是 CGT48 储备，还有一个写在未来的户口——WHN48成立之日，整体移籍。不是淘汰，是开荒。"; } },
         { label: "调往其他分团（广州 / 重庆 / 北京轮替）", hint: "调往+1 士气-2：解散路线专属", tag: "elimQ1", value: "transfer", gate: st => !!st.cgt.closed,
           effect: st => {
-            const dest = ["GNZ48（广州）", "CKG48（重庆）", "BEJ48（北京）"][st.elim.transferred % 3];
+            const m = Game.pickElimTarget(st);
+            const d = [["GNZ48", "广州"], ["CKG48", "重庆"], ["BEJ48", "北京"]][st.elim.transferred % 3];
             st.elim.transferred += 1; st.morale = Math.max(0, st.morale - 2);
-            return "你联系了三个分团的总监，按轮替把这批孩子送了过去——本批去向：" + dest + "。班底虽然散了，舞台还没散。";
+            if (m) { m.status = "branch"; m.team = d[0]; m.branchTeam = d[0]; m.branchLabel = "委培生"; m.note = "末位淘汰评审·调往" + d[0] + "委培"; }
+            return "你联系了三个分团的总监，按轮替把孩子送了过去——本批去向：" + d[0] + "（" + d[1] + "）" + (m ? "，" + m.name + " 的调令当天发出" : "") + "。班底虽然散了，舞台还没散。";
           } },
       ],
     },
@@ -364,21 +376,32 @@ STORY.monthly26 = {
       id: "m6_26_elim2",
       title: "6月 · 末位淘汰评审（第二季度）",
       gate: st => true,
-      pages: st => [
-        { nar: true, t: "第二季度评审如期而至。这一次的红圈里，有一个意想不到的名字：一位服役多年的老成员——训练分没掉，是因为她把大量时间花在了带预备生上。\n\n陶莺的批注只有四个字：「按机制办。」" },
-      ],
+      pages: st => {
+        const m = Game.pickElimTarget(st);
+        return [
+          { nar: true, t: "第二季度评审如期而至。这一次的红圈里，是一个意想不到的名字：" + (m ? "「" + m.name + "」（" + m.team + "）" : "一个熟面孔") + "——考核折算分贴着红线，排在了正式队员的最末。\n\n陶莺的批注只有四个字：「按机制办。」" },
+        ];
+      },
       choices: [
         { label: "按机制执行", hint: "淘汰执行+1 士气-8 热度-2", tag: "elimQ2", value: "execute",
-          effect: st => { st.elim.executed += 1; st.morale = Math.max(0, st.morale - 8); st.heat = Math.max(0, st.heat - 2); return "老成员离团那天，全队去送。她挨个抱了一遍，最后跟你握手：「机制是机制，不怪你。把她们带好。」\n\n那晚叶盛在办公室坐到天亮。"; } },
+          effect: st => { const m = Game.pickElimTarget(st); st.elim.executed += 1; st.morale = Math.max(0, st.morale - 8); st.heat = Math.max(0, st.heat - 2);
+            if (m) { m.status = "left"; m.note = "末位淘汰评审·协商解约离团"; }
+            return (m ? m.name + " 离团那天，全队去送。她挨个抱了一遍，最后跟你握手：" : "她离团那天，全队去送。她挨个抱了一遍，最后跟你握手：") + "「机制是机制，不怪你。把她们带好。」\n\n那晚叶盛在办公室坐到天亮。"; } },
         { label: "顶着压力缓刑，上书说明特殊情况", hint: "缓刑+1 士气+6（陶莺积怨加深）", tag: "elimQ2", value: "stay",
-          effect: st => { st.elim.defied += 1; st.morale = Math.min(100, st.morale + 6); return "你把预备生们联名写的感谢信钉在评审表后面，一起呈了上去。陶莺看完没说话——缓刑通过，但你听见财务总监轻轻叹了口气。"; } },
-        { label: "调往 CGT48 委培，让老带新（武汉48成立后移籍武汉）", hint: "调往+1 士气-1：重建路线专属", tag: "elimQ2", value: "transfer", gate: st => !st.cgt.closed,
-          effect: st => { st.elim.transferred += 1; st.morale = Math.max(0, st.morale - 1); return "「不是淘汰，是委以重任。」——调令上的这句话是你加的。她看完调令，沉默很久，最后说：「成都……好啊。等武汉立项，我再去把第二盏灯点亮。」"; } },
+          effect: st => { const m = Game.pickElimTarget(st); st.elim.defied += 1; st.morale = Math.min(100, st.morale + 6);
+            if (m) m.note = "末位淘汰评审·缓刑观察（季度复评）";
+            return "你把队友们联名写的请求信钉在评审表后面，一起呈了上去" + (m ? "——落款第一行，是 " + m.name + " 同队姐妹的名字" : "") + "。陶莺看完没说话——缓刑通过，但你听见财务总监轻轻叹了口气。"; } },
+        { label: "调往 CGT48 委培，让老带新（WHN48成立后移籍武汉）", hint: "调往+1 士气-1：重建路线专属", tag: "elimQ2", value: "transfer", gate: st => !st.cgt.closed,
+          effect: st => { const m = Game.pickElimTarget(st); st.elim.transferred += 1; st.morale = Math.max(0, st.morale - 1);
+            if (m) { m.whAgreed26 = true; m.status = "branch"; m.team = "CGT48"; m.branchTeam = "CGT48"; m.branchLabel = "委培生"; m.note = "末位淘汰评审·调往CGT48委培（约定WHN48成立后移籍）"; }
+            return "「不是淘汰，是委以重任。」——调令上的这句话是你加的。" + (m ? m.name + " 看完调令，沉默很久" : "她看完调令，沉默很久") + "，最后说：「成都……好啊。等武汉立项，我再去把第二盏灯点亮。」"; } },
         { label: "调往其他分团（广州 / 重庆 / 北京轮替）", hint: "调往+1 士气-1：解散路线专属", tag: "elimQ2", value: "transfer", gate: st => !!st.cgt.closed,
           effect: st => {
-            const dest = ["GNZ48（广州）", "CKG48（重庆）", "BEJ48（北京）"][st.elim.transferred % 3];
+            const m = Game.pickElimTarget(st);
+            const d = [["GNZ48", "广州"], ["CKG48", "重庆"], ["BEJ48", "北京"]][st.elim.transferred % 3];
             st.elim.transferred += 1; st.morale = Math.max(0, st.morale - 1);
-            return "调令上写明「集团内部平调」——本批去向：" + dest + "。她看完调令，沉默很久，最后说：「换条河，也能唱下去。」";
+            if (m) { m.status = "branch"; m.team = d[0]; m.branchTeam = d[0]; m.branchLabel = "委培生"; m.note = "末位淘汰评审·调往" + d[0] + "委培"; }
+            return "调令上写明「集团内部平调」——本批去向：" + d[0] + "（" + d[1] + "）" + (m ? "。" + m.name + " 看完调令，沉默很久，最后说：「换条河，也能唱下去。」" : "。她看完调令，最后说：「换条河，也能唱下去。」");
           } },
       ],
     },
@@ -490,22 +513,33 @@ STORY.monthly26 = {
       id: "m9_26_elim3",
       title: "9月 · 末位淘汰评审（第三季度）",
       gate: st => true,
-      pages: st => [
-        { nar: true, t: "第三次季度评审。这一次陶莺亲自到场——她把考核表推到你面前，旁边放着一份文件：《关于年终金曲大赏的预算可行性评估》。\n\n「评审照常。大赏办不办，月底给你答案。」" },
-      ],
+      pages: st => {
+        const m = Game.pickElimTarget(st);
+        return [
+          { nar: true, t: "第三次季度评审。这一次陶莺亲自到场——她把考核表推到你面前" + (m ? "，「" + m.name + "」（" + m.team + "）的名字又一次出现在红线以下" : "") + "，旁边放着一份文件：《关于年终金曲大赏的预算可行性评估》。\n\n「评审照常。大赏办不办，月底给你答案。」" },
+        ];
+      },
       choices: [
         { label: "按机制执行", hint: "淘汰执行+1 士气-7", tag: "elimQ3", value: "execute",
-          effect: st => { st.elim.executed += 1; st.morale = Math.max(0, st.morale - 7); return "你在执行栏签下名字。走廊尽头的储物柜，今年第三次被清空。没有人再哭了——这才是最让人难受的。"; } },
+          effect: st => { const m = Game.pickElimTarget(st); st.elim.executed += 1; st.morale = Math.max(0, st.morale - 7);
+            if (m) { m.status = "left"; m.note = "末位淘汰评审·协商解约离团"; }
+            return "你在执行栏签下名字" + (m ? "——" + m.name + " 的那一栏" : "") + "。走廊尽头的储物柜，今年第三次被清空。没有人再哭了——这才是最让人难受的。"; } },
         { label: "缓刑，并以 CGT48 重建进度作保", hint: "缓刑+1 士气+5（需陶莺信任）", tag: "elimQ3", value: "stay",
           gate: st => st.cgt.stage >= 2,
-          effect: st => { st.elim.defied += 1; st.morale = Math.min(100, st.morale + 5); return "你指着成都的工程进度照片说：「给我一个季度，我把成都的灯点亮——到时候请她去验收人心。」陶莺难得没画问号。"; } },
-        { label: "调往 CGT48 委培，注入重建先锋队（武汉48成立后移籍武汉）", hint: "调往+1 士气-1：重建路线专属", tag: "elimQ3", value: "transfer", gate: st => !st.cgt.closed,
-          effect: st => { st.elim.transferred += 1; st.morale = Math.max(0, st.morale - 1); return "「成都不要被淘汰的人，要开荒的人。」——这句话后来被印在了重建营的营旗上，营旗背面，是武汉。"; } },
+          effect: st => { const m = Game.pickElimTarget(st); st.elim.defied += 1; st.morale = Math.min(100, st.morale + 5);
+            if (m) m.note = "末位淘汰评审·缓刑观察（季度复评）";
+            return "你指着成都的工程进度照片说：「给我一个季度，我把成都的灯点亮——到时候请她去验收人心。」" + (m ? m.name + " 站在门外，把这句话听完了。" : "") + "陶莺难得没画问号。"; } },
+        { label: "调往 CGT48 委培，注入重建先锋队（WHN48成立后移籍武汉）", hint: "调往+1 士气-1：重建路线专属", tag: "elimQ3", value: "transfer", gate: st => !st.cgt.closed,
+          effect: st => { const m = Game.pickElimTarget(st); st.elim.transferred += 1; st.morale = Math.max(0, st.morale - 1);
+            if (m) { m.whAgreed26 = true; m.status = "branch"; m.team = "CGT48"; m.branchTeam = "CGT48"; m.branchLabel = "委培生"; m.note = "末位淘汰评审·调往CGT48委培（约定WHN48成立后移籍）"; }
+            return "「成都不要被淘汰的人，要开荒的人。」——这句话后来被印在了重建营的营旗上" + (m ? "，而 " + m.name + " 成了擎旗的人之一" : "") + "，营旗背面，是武汉。"; } },
         { label: "调往其他分团（广州 / 重庆 / 北京轮替）", hint: "调往+1 士气-1：解散路线专属", tag: "elimQ3", value: "transfer", gate: st => !!st.cgt.closed,
           effect: st => {
-            const dest = ["GNZ48（广州）", "CKG48（重庆）", "BEJ48（北京）"][st.elim.transferred % 3];
+            const m = Game.pickElimTarget(st);
+            const d = [["GNZ48", "广州"], ["CKG48", "重庆"], ["BEJ48", "北京"]][st.elim.transferred % 3];
             st.elim.transferred += 1; st.morale = Math.max(0, st.morale - 1);
-            return "「集团内部平调，不设试用期。」——本批去向：" + dest + "。三团轮替接收的方案，陶莺看完只改了一个标点。";
+            if (m) { m.status = "branch"; m.team = d[0]; m.branchTeam = d[0]; m.branchLabel = "委培生"; m.note = "末位淘汰评审·调往" + d[0] + "委培"; }
+            return "「集团内部平调，不设试用期。」——本批去向：" + d[0] + "（" + d[1] + "）" + (m ? "。" + m.name + " 的档案随调令当天转出" : "") + "。三团轮替接收的方案，陶莺看完只改了一个标点。";
           } },
       ],
     },

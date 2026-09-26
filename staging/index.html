@@ -13,6 +13,7 @@
     js/data_story.js      2016 剧情数据：序章、月度事件、随机事件池、结局
     js/data_story_2026.js 2026 剧情数据（含理念阵营映射 camp26Map）
     js/data_story_2017.js 2017「本部新章」剧情数据（由 2016 结局进入下一年开启）
+    js/data_story_2027.js 2027「大河新篇」剧情数据（由 2026 结局进入下一年开启，按阵营分叉）
     js/engine.js          游戏引擎：状态、回合结算、主线判定、存档（localStorage）
     js/ui.js              界面渲染与交互（屏幕切换、VN 播放器、点将窗、弹窗）
     js/main.js            启动入口
@@ -21,7 +22,7 @@
     docs/DEPLOY.md        部署/分发指引
   ----------------------------------------------------------------------------
   脚本加载顺序固定为：compat → data_members → data_members_2026 → data_story
-  → data_story_2026 → data_story_2017 → engine → ui → main
+  → data_story_2026 → data_story_2017 → data_story_2027 → engine → ui → main
   全局命名空间：DATA / DATA2026 / STORY / Game / UI
 ============================================================================ -->
 <html lang="zh-CN">
@@ -66,7 +67,7 @@
         <p class="disclaimer-detail">本游戏为爱好者自制的同人模拟游戏，剧情、数值与人物言行均为虚构演绎，<br>不代表任何真实人物、团体与公司的立场。</p>
         <p class="author-line">作者ID：<span class="author-name">南柯十七号</span></p>
       </div>
-      <p class="version-line">H5 v0.9.1 · 三条年代线 · 2016「开辟分团」 × 2017「本部新章」（通关后解锁） × 2026「革新征程」</p>
+      <p class="version-line">H5 v0.10.0 · 四条年代线 · 2016「开辟分团」 × 2017「本部新章」（通关后解锁） × 2026「革新征程」 × 2027「大河新篇」（通关后解锁）</p>
     </div>
   </section>
 
@@ -195,6 +196,7 @@
 <script src="js/data_story.js"></script>
 <script src="js/data_story_2026.js"></script>
 <script src="js/data_story_2017.js"></script>
+<script src="js/data_story_2027.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>
