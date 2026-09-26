@@ -1242,7 +1242,8 @@ const UI = {
     list.innerHTML = "";
     let members = st.members.slice();
     const isBranchTab = ["BEJ48", "GNZ48", "CKG48", "SHY48", "CGT48"].includes(this._memberFilter);
-    if (this._memberFilter === "all") members = members.filter(m => m.status === "active");
+    /* 「全部」= 全部在册（active + 暂休）；已离团、分团另有独立页签 */
+    if (this._memberFilter === "all") members = members.filter(m => m.status === "active" || m.status === "rest");
     else if (isBranchTab)
       members = members.filter(m => m.status === "branch" && m.branchTeam === this._memberFilter);
     else if (this._memberFilter === "rest") members = members.filter(m => m.status === "rest");

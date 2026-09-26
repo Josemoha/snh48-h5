@@ -214,7 +214,8 @@ const DATA = {
     { month: 3, name: "孟玥",     team: "NII", date: "2016-03-02", type: "毕业",     story: true },
     { month: 3, name: "刘诗蕾",   team: "NII", date: "2016-03",    type: "离团",     story: false },
     { month: 3, name: "宫泽佐江", team: "SII", date: "2016-03-16", type: "活动结束", story: true, note: "返回日本专注于 SKE48 的工作" },
-    { month: 3, name: "唐安琪",   team: "NII", date: "2016-03",    type: "暂休",     story: false, note: "3月末意外烧伤，专心治疗休养（纯叙事事件 m3_tanqi_rest；2017线 m3_17_tanqi 回收）" },
+    /* 唐安琪 note 为玩家向文案（会显示在成员卡上）；事件 ID 信息仅留注释 */
+    { month: 3, name: "唐安琪",   team: "NII", date: "2016-03",    type: "暂休",     story: false, note: "3月末意外烧伤，专心治疗休养（2017 线康复后解约）" },
     { month: 5, name: "程文路",   team: "XII", date: "2016-05",    type: "离团",     story: false },
     { month: 6, name: "铃木玛莉亚", team: "SII", date: "2016-06-10", type: "撤销兼任", story: true, note: "AKB48 方面结束兼任，回归 AKB48" },
     { month: 7, name: "申月姣",   team: "SII", date: "2016-07-01", type: "退团",     story: false },
@@ -425,7 +426,7 @@ const DATA = {
      【v0.9.1】原 2017-12 鞠婧祎「明星殿堂」装载条目已移除：荣誉殿堂规则由 7 月总选/8 月事件驱动，
      未连霸则鞠婧祎保持在籍（不再有 12 月明星殿堂变动）。 */
   leaving2017: [
-    { month: 3, name: "唐安琪", team: "NII", date: "2017-03",    type: "离团",     story: false, note: "康复后协商解约（选项式事件 m3_17_tanqi）" },
+    { month: 3, name: "唐安琪", team: "NII", date: "2017-03",    type: "离团",     story: false, note: "康复后协商解约，告别舞台" },
     { month: 4, name: "冯雪莹", team: "BEJ48", date: "2017-04",   type: "退团",     story: false, note: "BEJ48" },
     { month: 4, name: "陈音",   team: "XII",  date: "2017-04",    type: "退团",     story: false },
     { month: 4, name: "王金铭", team: "HII",  date: "2017-04-08", type: "移籍SHY48", branchTeam: "SHY48", story: false, note: "加入SHY48 Team HIII" },

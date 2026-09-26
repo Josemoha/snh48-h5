@@ -503,6 +503,20 @@ const Game = {
     const steps = [];
     st.ap = 3;
 
+    // ⓪ 旧存档追补：错过月度事件装载的唐安琪（v0.9.1 前建的档已过 3 月时不会再触发）
+    //    · 2016 线 4 月起仍在籍 → 补为暂休（3月末意外烧伤）；
+    //    · 2017 线 4 月起仍暂休 → 补为依约解约离团（默认祝福路线，无副作用）。
+    const taq = st.members.find(x => x.name === "唐安琪");
+    if (taq) {
+      if (st.era === "2016" && st.month >= 4 && taq.status === "active") {
+        taq.status = "rest"; taq.note = "3月末意外烧伤，专心治疗休养";
+        this.addLog(st, st.month, "唐安琪 暂休（3月末意外烧伤，专心治疗休养）", "bad");
+      } else if (st.era === "2017" && st.month >= 4 && taq.status === "rest") {
+        taq.status = "left"; taq.note = "2017-03 因身体原因合约解除，告别舞台";
+        this.addLog(st, st.month, "唐安琪 依约解约离团（康复后告别舞台）", "bad");
+      }
+    }
+
     // ① 新成员入队（2016：六期生3月 / 七期生9、10月；2017：八期生4、5、6、9月；2026：二十四期生5月）
     const joinSrc = st.era === "2016" ? DATA.joining2016
       : st.era === "2017" ? DATA.joining2017
@@ -547,7 +561,10 @@ const Game = {
       if (lv.type.indexOf("移籍") === 0) { m.status = "branch"; m.branchTeam = lv.branchTeam || "BEJ48"; }
       else if (lv.type.indexOf("兼任") === 0) { if (lv.note) m.note = lv.note; }
       else if (lv.type === "明星殿堂") { m.status = "left"; if (lv.note) m.note = lv.note; }
-      else m.status = lv.type === "暂休" ? "rest" : "left";
+      else {
+        m.status = lv.type === "暂休" ? "rest" : "left";
+        if (lv.note) m.note = lv.note;   // 暂休/离团原因写入成员卡（如：唐安琪意外烧伤休养）
+      }
       if (lv.type.indexOf("兼任") !== 0) {
         this.addLog(st, st.month, lv.name + " " + lv.type + (lv.type.indexOf("移籍") === 0 ? "——成为分团创始成员" : (lv.team ? "（" + lv.team + "）" : "")), lv.type.indexOf("移籍") === 0 ? "main" : "bad");
       } else {
