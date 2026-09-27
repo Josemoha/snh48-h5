@@ -75,6 +75,7 @@ const Game = {
     const st = this.st;
     const pro = st.era === "2027" ? STORY.prologue27
       : st.era === "2026" ? STORY.prologue26
+      : st.era === "2018" ? STORY.prologue18
       : st.era === "2017" ? STORY.prologue17
       : STORY.prologue;
     const style = pro.styles.find(s => s.id === styleId);
@@ -336,9 +337,717 @@ const Game = {
     return st;
   },
 
+  /* ========================================================================
+     快速通道开局（主界面·中途年份直入，v0.11.1）
+     --------------------------------------------------------------------------
+     用途：作者实测与已通关前几年剧情的玩家，直接从 2017/2018/2027 开局。
+     原理：伪造「前一年年末」的游戏状态（史实默认 + 玩家在开局前补选的关键决策），
+           然后走真实的跨线交接函数（carryTo2017 / carryTo2018 / carryTo2027），
+           保证与正常通关进入的年份状态同构。
+     局限：跳过前几年剧情与经营细节，前一年经营盘面取合理中位值（资金/热度/士气），
+           总选结果按史实锚定（2016/2017 鞠婧祎、2026 杨冰怡）。
+     ========================================================================== */
+  newGameFast(playerName, era, choices) {
+    choices = choices || {};
+    if (era === "2017") {
+      this.fastState2016(playerName, choices);
+      this.carryTo2017();
+      return this.st;
+    }
+    if (era === "2018") {
+      this.fastState2016(playerName, choices);
+      this.carryTo2017();
+      this.fastSim2017(choices);
+      this.carryTo2018();
+      /* 快速通道补选：Team XII 去留（史实=解散，未选时按默认）。登记后 1 月张怡事件
+         自动跳过（gate 判决策已定），效果与张怡事件一致（keep=士气+4 / dissolve=资金+20）。 */
+      const stF = this.st;
+      const xk18 = choices.xiiKeep18 === "keep" ? "keep" : "dissolve";
+      stF.decisions.xiiKeep18 = xk18;
+      stF.flags.xiiKept18 = xk18 === "keep";
+      if (xk18 === "keep") stF.morale = this.clamp(stF.morale + 4, 0, 100);
+      else stF.money += 20;
+      return this.st;
+    }
+    if (era === "2027") {
+      this.fastState2026(playerName, choices);
+      this.carryTo2027();
+      return this.st;
+    }
+    return this.newGame(playerName, null, era);
+  },
+
+  /* 【快速通道·2016 年末】伪造 2016 年末实况：base 名单 + 决策补选 + 全年人员变动快进 */
+  fastState2016(playerName, choices) {
+    const st = this.newGame(playerName, null, "2016");
+    const d = st.decisions;
+    /* —— 决策补选①：下一站（branchPost）—— 先登记，开拓者六人在人员快进后点定 */
+    const post = choices.branchPost || "none";
+    d.branchPost = post;
+    /* —— 决策补选②：赵嘉敏学业（zhaoMin）—— */
+    const zjmChoice = choices.zhaoMin || "rest";
+    d.zhaoMin = zjmChoice;
+    const zjm = st.members.find(x => x.name === "赵嘉敏");
+    if (zjmChoice === "terminate") {
+      if (zjm) { zjm.status = "left"; zjm.note = "解除合约"; }
+      st.money += 150;
+    } else if (zjmChoice === "study") {
+      if (zjm) { zjm.status = "rest"; zjm.note = "学业规划 · 延期毕业"; }
+    } else if (zjm) {
+      zjm.status = "rest"; zjm.note = "学业暂休（2016-07-30 发表）";
+    }
+    /* —— 决策补选③：对日合作模式（jpMode，影响 2017 复刻线与铃木玛莉亚）—— */
+    if (choices.jpMode) d.jpMode = choices.jpMode;
+
+    /* —— 2016 全年史实人员变动快进 + 4·20 分团成立 —— */
+    this.fastSimJoinLeave(st, "2016");
+    for (const name of DATA.branchMovers.BEJ.concat(DATA.branchMovers.GNZ)) {
+      const m = st.members.find(x => x.name === name);
+      if (m && m.status === "active") {
+        m.status = "branch";
+        m.branchTeam = DATA.branchMovers.BEJ.indexOf(name) >= 0 ? "BEJ48" : "GNZ48";
+      }
+    }
+    st.branch = { stage: 6, city: "广州", announce: true, announceMonth: 4 };
+
+    /* —— SHY/CKG 路线：开拓者六人（人员快进后点定，确保六人年内均在籍；
+       低人气者优先——与「高人气成员可能不满」的原点将提示同向）—— */
+    if (post === "SHY48" || post === "CKG48") {
+      const six = st.members
+        .filter(m => m.status === "active" && !m.hall && m.team !== "HALL")
+        .sort((a, b) => (a.pop || 0) - (b.pop || 0) || (a.name < b.name ? -1 : 1))
+        .slice(0, 6);
+      d.pioneerList = six.map(m => m.name);   // 注意：pioneerList 存姓名（deployBranch 按名查找，与 pioneerPick 口径一致）
+      for (const m of six) {
+        m.bond = this.clamp((m.bond || 0) - 15, 0, 100);
+        m.note = "开拓者先遣队（随总监移籍" + post + "）";
+      }
+    }
+
+    /* —— 年末经营盘面（合理中位值）与 2016 总选锚点（史实：鞠婧祎夺冠） —— */
+    st.money = 700; st.heat = 48; st.morale = 74; st.train = 36; st.burden = 48;
+    st.geResult = { top1: "鞠婧祎", top48: [], strategy: null, bejTop7: null, gnzTop7: null };
+    st.month = 12;
+    return st;
+  },
+
+  /* 【快速通道·2017 全年】在 fastState2016 → carryTo2017 的状态上快进 2017 一年 */
+  fastSim2017(choices) {
+    const st = this.st;
+    /* 双团按史实节奏开业（SHY 2 月 / CKG 10 月），先遣队随开业进驻（deployBranch） */
+    st.branch17 = { shy: 1, ckg: 3, shyOpen: false, ckgOpen: false, shyOpenMonth: 0, ckgOpenMonth: 0 };
+    st.month = 2;
+    this.deployBranch(st, "SHY48");
+    st.branch17.shyOpen = true; st.branch17.shyOpenMonth = 2;
+    st.month = 10;
+    this.deployBranch(st, "CKG48");
+    st.branch17.ckgOpen = true; st.branch17.ckgOpenMonth = 10;
+    delete st.flags.pioneerPending;
+    st.month = 12;
+
+    /* 全年史实人员变动快进 */
+    this.fastSimJoinLeave(st, "2017");
+
+    /* 原创公演四套完成（史实向题名） */
+    st.orig = { SII: true, NII: true, HII: true, X: true };
+
+    /* —— 赵嘉敏 2017-09 分叉状态落卡（补选项 zhaoState：freeze/study/release/terminate）—— */
+    const zjm = st.members.find(x => x.name === "赵嘉敏");
+    const zhaoState = choices.zhaoState || "freeze";
+    if (zhaoState === "study") {
+      st.decisions.zhaoMin = "study";
+      if (zjm) { zjm.status = "active"; zjm.note = "学成归队（2017-09）"; }
+    } else if (zhaoState === "terminate") {
+      st.decisions.zhaoMin = "terminate";
+      if (zjm) { zjm.status = "left"; zjm.note = "解除合约"; }
+    } else {
+      st.decisions.zhaoMin = "rest";
+      st.decisions.zhaoMin17 = zhaoState;   // freeze（史实官司暂休）/ release（无责解约）
+      if (zjm && zhaoState === "release") { zjm.status = "left"; zjm.note = "协商解除合约（公司放弃违约金）"; }
+      else if (zjm) {
+        if (zjm.status === "active") zjm.status = "rest";
+        zjm.note = "合同冻结：违约金争议诉讼中，暂停一切团体活动";
+      }
+    }
+
+    /* —— 葛佳慧 2017-11 分叉（promise 承诺音乐规划 / release 支付违约金解约）—— */
+    const gjChoice = choices.gejiahui17 || "promise";
+    st.decisions.gejiahui17 = gjChoice;
+    const gj = st.members.find(x => x.name === "葛佳慧");
+    if (gjChoice === "release") {
+      if (gj) { gj.status = "left"; gj.note = "2017-11 支付违约金解约（寻求音乐合作）"; }
+      st.money += 20;
+    } else if (gj) {
+      gj.note = "2017-11 承诺音乐规划（专项企划待落地）";
+    }
+
+    /* —— 阿吉（2017-01）：是否与阿吉深聊（ajiTalk）——yes 时 flags.aji（卫视资源图谱），
+       并将 2018 年 5 月阿吉留任概率由 50% 提升至 75%（m5_18_aji 事件读取）—— */
+    const ajiTalk = (choices.ajiTalk || "yes") === "yes" ? "yes" : "no";
+    st.decisions.ajiTalk = ajiTalk;
+    if (ajiTalk === "yes") st.flags.aji = true;
+
+    /* —— 复刻《双面偶像》决策（2018 主线④的前置；仅非复刻线 2017 有此抉择）——
+       复刻模式（jpMode=replicate）下 2017 主线⑥为四套复刻公演、无《双面偶像》提案，
+       两线互斥：清除该 tag，2018 主线④自然不可用（红白预赛等复刻专属内容走 jpMode）。 */
+    if ((choices.jpMode || st.decisions.jpMode) === "replicate") {
+      delete st.decisions.shuangmian17;
+    } else {
+      st.decisions.shuangmian17 = choices.shuangmian17 || "plan";
+    }
+
+    /* —— 第四届总决选（2017-07）：鞠婧祎夺冠 → 荣誉殿堂开堂并升堂 —— */
+    st.geResult = { top1: "鞠婧祎", top48: [], strategy: null, bejTop7: null, gnzTop7: null };
+    st.flags.hall17 = true; st.flags.jjyHall17 = true;
+    const jjy = st.members.find(x => x.name === "鞠婧祎");
+    if (jjy && jjy.status !== "left") {
+      jjy.hall = true; jjy.team = "HALL"; jjy.branchTeam = null; jjy.status = "active";
+      jjy.note = "第四届总决选第一名 · 首位升入荣誉殿堂";
+    }
+
+    /* 年末经营盘面 */
+    st.money = 850; st.heat = 52; st.morale = 72; st.train = 40; st.burden = 45;
+  },
+
+  /* 【快速通道·2026 年末】伪造 2026 年末实况（2026 线按玩家补选的三大决策收束） */
+  fastState2026(playerName, choices) {
+    const st = this.newGame(playerName, null, "2026");
+    const d = st.decisions;
+    /* —— 决策补选①：成都 CGT48 路线（cgtPath）—— */
+    const cgt = choices.cgtPath || "rebuild";
+    d.cgtPath = cgt;
+    st.cgt = cgt === "dissolve"
+      ? { stage: 0, open: false, openMonth: 0, closed: true, settled: 3, settleDone: true }
+      : { stage: 3, open: true, openMonth: 6, closed: false, settled: 0, settleDone: false };
+    /* —— 决策补选②：理念阵营（camp26Final：tao/wang/balance）—— */
+    const camp = choices.camp26Final || "balance";
+    st.camp26 = camp === "tao" ? { tao: 5, wang: 2 } : camp === "wang" ? { tao: 2, wang: 5 } : { tao: 3, wang: 3 };
+    d.camp26Final = camp;
+    st.flags.camp26Final = camp;
+    /* —— 决策补选③：鞠婧祎合约官司结局（cinema 影视部 / buyout 违约金解约 / lose 败诉终止）—— */
+    const jjyEnd = choices.jjyEnd || "cinema";
+    d.jjyCase = jjyEnd === "lose" ? "pressure" : "legal";
+    if (jjyEnd === "cinema") {
+      d.jjyVerdict = "cinema";
+      st.flags.jjyWin = true; st.flags.jjyResolved = true;
+      st.members.push({
+        id: "jujingyi26", name: "鞠婧祎", team: "HALL", gen: "二期生 · 影视部",
+        pop: 94, bond: 25, status: "active", hall: true, note: "荣誉殿堂 · 影视部（2026 重新签约）",
+      });
+    } else if (jjyEnd === "buyout") {
+      d.jjyVerdict = "buyout";
+      st.flags.jjyWin = true; st.flags.jjyResolved = true;
+      st.money += 200;
+    } else {
+      st.flags.jjyWin = false; st.flags.jjyResolved = true;
+    }
+
+    /* 全年人员变动快进（二十四期生 5 月入队；2026 退出走末位淘汰，此处按未执行处理） */
+    this.fastSimJoinLeave(st, "2026");
+
+    /* 第六届总决选（2026-07）：杨冰怡连霸 → 升入荣誉殿堂 */
+    st.geResult = { top1: "杨冰怡", top48: [], strategy: null, bejTop7: null, gnzTop7: null };
+    st.flags.bingyiHall = true;
+    const by = st.members.find(x => x.name === "杨冰怡");
+    if (by) { by.hall = true; by.team = "HALL"; by.note = "连续两届总决选第一名 · 升入荣誉殿堂"; }
+
+    st.money = 520; st.heat = 42; st.morale = 58; st.train = 38; st.burden = 55;
+    st.month = 12;
+    return st;
+  },
+
+  /* 【快速通道】整年人员变动快进（与 endMonth 同口径的简化版）：
+     入队建卡（pop/bond 按年代随机基数，2017+ 含 pwr；分团 branchTeam 建简卡）；
+     离团按类型生效（毕业/离团/退团→left，暂休→rest，移籍→branch，兼任→仅备注）；
+     跳过已离团/暂休/殿堂成员与赵嘉敏（完全由决策线驱动）。 */
+  fastSimJoinLeave(st, era) {
+    const joinSrc = era === "2016" ? DATA.joining2016
+      : era === "2017" ? DATA.joining2017
+      : era === "2026" ? DATA2026.joining2026 : [];
+    const leaveSrc = era === "2016" ? DATA.leaving2016
+      : era === "2017" ? DATA.leaving2017 : [];
+    for (let month = 1; month <= 12; month++) {
+      for (const j of joinSrc) {
+        if (j.month !== month) continue;
+        if (st.members.some(x => x.name === j.name)) continue;
+        if (j.branchTeam) {
+          st.members.push({
+            id: "ft" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
+            pop: 0, bond: 0, status: "branch", branchTeam: j.branchTeam, branchLabel: "预备生", note: j.note,
+          });
+        } else {
+          st.members.push({
+            id: "ft" + j.name, name: j.name, team: j.team, gen: j.gen,
+            pop: era === "2016" ? this.rnd(16, 30) : era === "2017" ? this.rnd(10, 18) : this.rnd(8, 14),
+            bond: era === "2016" ? 15 : era === "2017" ? 12 : 8, status: "active",
+            pwr: era === "2017" ? this.rnd(5, 10) : undefined,
+            note: j.note,
+          });
+          if (era === "2017" && j.name === "葛佳慧") {
+            const gjj = st.members.find(x => x.name === "葛佳慧");
+            if (gjj) gjj.pwr = this.rnd(11, 14);
+          }
+        }
+      }
+      for (const lv of leaveSrc) {
+        if (lv.month !== month) continue;
+        const m0 = st.members.find(x => x.name === lv.name);
+        if (!m0 || m0.status === "left" || m0.status === "rest") continue;
+        if (m0.hall) continue;
+        if (lv.name === "赵嘉敏") continue;                                   // 决策线驱动
+        if (lv.name === "铃木玛莉亚" && this.isReplicate(st)) continue;        // 复刻路线兼任延续
+        /* 先遣队成员不随史实表离团（快速通道保障：开拓者六人须撑到分团开业进驻） */
+        if (Array.isArray(st.decisions && st.decisions.pioneerList) && st.decisions.pioneerList.indexOf(lv.name) >= 0) continue;
+        const mt = (lv.type.match(/BEJ48|GNZ48|SHY48|CKG48/) || [null])[0];
+        if (lv.type.indexOf("移籍") === 0) {
+          m0.status = "branch"; m0.team = mt || "BEJ48"; m0.branchTeam = mt || "BEJ48";
+        } else if (lv.type.indexOf("兼任") === 0) {
+          if (lv.note) m0.note = lv.note;
+        } else {
+          m0.status = lv.type === "暂休" ? "rest" : "left";
+          if (lv.note) m0.note = lv.note;
+        }
+      }
+    }
+  },
+
   /* 【2027 主线二】影视部项目谈话对象（序章已登记 flags.filmLead；此处供场景取用） */
   filmLeadName(st) {
     return (st.flags && st.flags.filmLead) || "孙珍妮、陆婷玉";
+  },
+
+  /* ========================================================================
+     2017 → 2018「星阵重列」线交接（2017 结算界面「进入下一年」入口，v0.11）
+     --------------------------------------------------------------------------
+     在 2017 年末成员卡与经营状态的基础上变动：
+     ① 登记成员卡快照到 st.history.roster2017（含殿堂/分团状态与总选结果）；
+     ② 实力（pwr）沿 2017 装配值继续成长（不重置），重算年初均值 pwrBase；
+     ③ 继承 SHY48/CKG48 开业状态（branch17，月收入延续）与 2016 分团兼任 tag
+        （concur17/branchPost——主线⑥分担分团由此判定）；
+     ④ 新主线状态：reorg18（组阁）/ prep18（预备生汇报公演）/ show18（鹅厂选秀）/
+       sm18（复刻双面偶像，仅 shuangmian17=plan）；
+     ⑤ 2018 人员变动表装载（DATA.joining2018 / leaving2018，史实考据）。
+     【组阁交互说明】主线①筹备以三/四段行动推进（方案→协调[→XII确认]），
+       筹备完毕（reorg18.ready）后编制会定于 3 月末召开（九期生 2 月入队后全员一并编排），
+       UI 编制会两阶段弹窗逐人定队+队长队副任命，落地在 applyReorg18()。
+     ========================================================================== */
+  carryTo2018() {
+    const src = this.st;
+    const members = src.members;
+    /* ① 成员卡快照（2017 年末实况，含 pwr/殿堂/分团状态） */
+    const snapshot = members.map(m => ({
+      name: m.name, team: m.team, status: m.status, branchTeam: m.branchTeam || null,
+      pop: m.pop != null ? m.pop : null, bond: m.bond != null ? m.bond : null, hall: !!m.hall,
+    }));
+    /* ② 实力沿用（2017 装配后已随特训/成长演进），重算年初均值 */
+    const pwrBase = this.avgPwr(src);
+
+    const st = {
+      saveVersion: this.SAVE_VERSION,
+      playerName: src.playerName,
+      era: "2018",
+      month: 1,
+      ap: 3,
+      money: src.money,
+      heat: src.heat,
+      morale: src.morale,
+      train: src.train,
+      burden: src.burden,
+      debt: 0,
+      /* 继承 2017 年末成员卡实况（含 branch/rest/left/HALL 状态与人气/羁绊/实力） */
+      members: members,
+      log: [],
+      flags: Object.assign({}, src.flags),
+      decisions: Object.assign({}, src.decisions),
+      /* 2016/2017 主线对象保留：SHY48/CKG48 开业收入延续；分团兼任 tag 沿用（主线⑥） */
+      branch: src.branch,
+      branch17: src.branch17,
+      orig: src.orig,
+      /* 2018 新主线状态 */
+      reorg18: { stage: 0, done: false },                       // 主线①：全团大重组（xiiKept 存 flags）
+      prep18: { sys: false, promoted: 0 },                      // 主线②：预备生汇报公演（年内升格人数）
+      show18: { stage: 0, done: false, album: false },          // 主线⑤：备战鹅厂选秀 + 葛佳慧专辑
+      sm18: { stage: 0, done: false, team: null },              // 主线④：复刻《双面偶像》（仅 plan tag）
+      pwrBase: pwrBase,
+      gePlan: 0, geStrategy: null, geDone: false, geResult: null,
+      rtPlan: 0, rtDone: false, rtScore: 0,
+      history: {
+        roster2017: snapshot,
+        ge2017Top1: src.geResult ? src.geResult.top1 : null,    // 连霸判定（主线③升堂事件）
+        origDone2017: this.origCount(src),
+      },
+    };
+    delete st.flags.monthStarted;
+    delete st.flags.freePromo;
+    delete st.flags.pioneerPending;
+    /* 2017 一次性旗标不带入 2018 的判定流（保留在 history/decisions 中可回收） */
+    delete st.flags.ckgReadyLogged;
+    this.st = st;
+    this.addLog(st, 1, "2017 年的答卷交卷，2018「星阵重列」开卷：成员卡已按年末实况登记（实力沿 2017 继续成长），年初实力均值 " + pwrBase + "。", "main");
+    this.save();
+    return st;
+  },
+
+  /* 【2018 主线①】组阁筹备阶段门控 */
+  reorg18BlockReason() {
+    const st = this.st, r = st.reorg18;
+    if (r.ready) return "筹备已完毕——组阁编制会定于 3 月末召开";
+    if (r.stage === 1 && st.money < 30) return "资金不足（组阁筹备预算需≥30万）";
+    return null;
+  },
+
+  /* 【2018 主线①】组阁推进：取消XII=三段（方案→协调→筹备完毕）；保留XII=四段（多一步「XII编制确认」）。
+     筹备完毕后不立即召开编制会——r.ready=true，编制会定于 3 月末召开（3月月末事件 m3_18_reorg_final
+     转交 UI 编制会，确保九期生 2 月入队后全员一并编排）；3 月及以后才走完筹备的，行动当场转交
+     （tone=pickReorg18 兜底），落地同在 applyReorg18()。 */
+  advanceReorg18() {
+    const st = this.st, r = st.reorg18;
+    const kept = !!st.flags.xiiKept18;
+    if (r.stage === 0) {
+      r.stage = 1;
+      return { text: "组阁方案研讨启动：运营部连夜把全团的人气、实力、队伍黏性三张表钉在了墙上。", tone: "main", vn: STORY.scenes18.reorgPlan };
+    }
+    if (r.stage === 1) {
+      st.money -= 30; r.stage = 2;
+      return { text: "分团协调会开完：组阁涉及的分团上调与落编移籍预案，得到了四家分团总监的签字。（资金-30万）", tone: "main", vn: STORY.scenes18.reorgCoord };
+    }
+    if (r.stage === 2 && kept) {
+      r.stage = 3;
+      return { text: "Team XII 编制确认会结束：张怡把 XII 的名册亲手交到了你手上。", tone: "main", vn: STORY.scenes18.reorgXII };
+    }
+    if ((r.stage === 2 && !kept) || r.stage === 3) {
+      if (st.month >= 3) return { text: "", tone: "pickReorg18" };
+      r.ready = true;
+      return { text: "筹备到此收官——编制名单进入终审。组阁编制会定于 3 月末召开：九期生 2 月入队，届时全员（含新人）一并编排。", tone: "main", vn: STORY.scenes18.reorgReady };
+    }
+    return { text: "", tone: "none" };
+  },
+
+  /* 【2018 主线①】Team XII 去留确认（编制会前兜底）：正常流程在 1 月张怡事件里选择；
+     若玩家先于 1 月月末启动组阁行动（张怡事件 gate=reorg18.stage===0 不再触发），
+     编制会弹窗会先补问——与张怡事件同一决策 tag（xiiKeep18）与同一效果。 */
+  confirmXiiKeep18(keep) {
+    const st = this.st;
+    st.decisions.xiiKeep18 = keep ? "keep" : "dissolve";
+    st.flags.xiiKept18 = !!keep;
+    if (keep) st.morale = this.clamp(st.morale + 4, 0, 100);
+    else st.money += 20;
+    this.addLog(st, st.month, "Team XII 去留落定：" + (keep ? "保留编制（张怡的请求被应允，士气+4）" : "取消编制（XII 完成历史使命，资金+20）") + "。", "main");
+    this.save();
+    return {
+      text: keep ? "Team XII 保留——编制会将包含 XII 的编组（张怡的请求被应允，士气+4）。"
+                 : "Team XII 取消——XII 成员将在编制会全员重编（资金+20）。",
+      tone: "main",
+    };
+  },
+
+  /* 【2018 主线①】组阁编制对象：
+     head = 本部在籍且队伍为 SII/NII/HII/X/XII/FT/PREP 的成员（全部重编；
+       PREP=本部预备生——九期生等随编制会一并编排，可留任预备生或直接定队）；
+     branch = 分团在籍且有人气的成员（pop≥20 的移籍老兵/先遣队，可上调本部享「上调红利」）。 */
+  reorg18Pools(st) {
+    st = st || this.st;
+    const HEAD = ["SII", "NII", "HII", "X", "XII", "FT", "PREP"];   // FT 首次组阁前为空池，入列以保证重入（单元测试双跑）时口径一致
+    const BR = ["BEJ48", "GNZ48", "SHY48", "CKG48"];
+    return {
+      head: st.members.filter(m => m.status === "active" && HEAD.indexOf(m.team) >= 0),
+      branch: st.members.filter(m => m.status === "branch" && (m.pop || 0) >= 20 && BR.indexOf(m.branchTeam) >= 0),
+    };
+  },
+
+  /* 【2018 主线①】组阁编制落地（UI.showReorg18Picker 确认回调）：
+     assign   = { 成员id → "SII"|"NII"|"HII"|"X"|"FT"|"XII"(仅保留路线) |"prep"(编入/留任预备生) |"drop"(落编移籍) |"stay"(分团留任) }
+     captains = { 队伍 → { captain: 成员id, vice: 成员id|null } }
+     规则：每队下限13 / 上限20（主力16+替补4，按人气自动划档）；FT 随组阁成立；
+     本部预备生（PREP 池，含九期生）一并参编——默认留任预备生（不计入编入上限），
+     也可直接定队升格入队（人气+4 羁绊+4，与汇报公演升格同档）；
+     编入预备生 ≤16 人——本部正式成员降入预备生（留沪不挪窝，羁绊-4，轻于落编）；
+     落编者按 BEJ→GNZ→SHY→CKG 轮替移籍分团（远离本部与粉丝圈，羁绊-8）；
+     分团成员上调预备生依旧视为上调（人气+8~14、羁绊+12）。 */
+  applyReorg18(assign, captains) {
+    const st = this.st, r = st.reorg18;
+    const kept = !!st.flags.xiiKept18;
+    const TEAMS = kept ? ["SII", "NII", "HII", "X", "XII", "FT"] : ["SII", "NII", "HII", "X", "FT"];
+    const BR = ["BEJ48", "GNZ48", "SHY48", "CKG48"];
+    const pools = this.reorg18Pools(st);
+    assign = assign || {}; captains = captains || {};
+
+    /* 第一遍：计数校验（未指定的本部成员视为留在原队；预备生默认留任、不计入
+       「编入预备生」上限；XII 解散时 XII 不可作为目标；编入预备生 ≤16 人仅计
+       正式成员降入与分团上调预备生） */
+    const cnt = {}; TEAMS.forEach(t => { cnt[t] = 0; });
+    let drops = 0, preps = 0;
+    const targetOf = m => {
+      const def = m.team === "PREP" ? "prep" : (m.status === "branch" ? "stay" : m.team);
+      const t = assign[m.id] != null ? assign[m.id] : def;
+      if (t === "drop" || t === "stay" || t === "prep") return t;
+      if (TEAMS.indexOf(t) < 0) return null;
+      if (t === "XII" && !kept) return null;
+      return t;
+    };
+    for (const m of pools.head.concat(pools.branch)) {
+      const t = targetOf(m);
+      if (t == null) return { text: "编制表无效（含未知队伍目标）。", tone: "blocked" };
+      if (t === "drop") drops++;
+      else if (t === "prep") { if (m.team !== "PREP") preps++; }
+      else if (t !== "stay") cnt[t]++;
+    }
+    if (preps > 16) {
+      return { text: "编入预备生 " + preps + " 人越界——编制会至多 16 人转入预备生池。", tone: "blocked" };
+    }
+    for (const t of TEAMS) {
+      if (cnt[t] < 13 || cnt[t] > 20) {
+        return { text: "Team " + t + " 编制 " + cnt[t] + " 人越界——每队下限 13 人、上限 20 人（主力 16 + 替补 4）。", tone: "blocked" };
+      }
+    }
+
+    /* 第二遍：队长任命先校验后落笔（校验失败时不得已改动任何成员卡）。
+       newTeamOf：id → 编制会后的队伍（落编/留任为 null）。 */
+    const byId = {};
+    for (const m of pools.head.concat(pools.branch)) byId[m.id] = m;
+    const newTeamOf = {};
+    for (const m of pools.head.concat(pools.branch)) {
+      const t = targetOf(m);
+      newTeamOf[m.id] = (t === "drop" || t === "stay") ? null : t;
+    }
+    for (const t of TEAMS) {
+      const c = captains[t] || {};
+      const cap = c.captain ? byId[c.captain] : null;
+      if (!cap || newTeamOf[cap.id] !== t) {
+        return { text: "Team " + t + " 尚未任命队长——每个队伍都需要一名队长。", tone: "blocked" };
+      }
+      if (c.vice) {
+        const vice = byId[c.vice];
+        if (!vice || newTeamOf[vice.id] !== t) {
+          return { text: "Team " + t + " 的队副人选不在该队编制内。", tone: "blocked" };
+        }
+      }
+    }
+
+    /* 第三遍：落编移籍 + 编入预备生 + 调队/预备生升格 + 分团上调 */
+    const moved = [], upped = [], dropped = [], prepped = [], prepUp = [];
+    let brIdx = 0;
+    for (const m of pools.head) {
+      const t = targetOf(m);
+      if (t === "prep") {
+        if (m.team === "PREP") continue;   // 预备生留任：无变化，不计入编入上限
+        /* 本部正式成员 → 预备生：留在本部只是退出正式队序列，羁绊-4（轻于落编） */
+        m.team = "PREP"; m.branchTeam = null; m.branchLabel = null;
+        m.captain = false; m.vice = false; delete m.sub;
+        m.bond = this.clamp((m.bond || 0) - 4, 1, 100);
+        m.note = "2018组阁 · 编入预备生";
+        prepped.push(m.name);
+        this.addLog(st, st.month, m.name + " 组阁编入预备生（羁绊-4）。", "normal");
+      } else if (t === "drop") {
+        const bt = BR[brIdx++ % BR.length];
+        m.status = "branch"; m.team = bt; m.branchTeam = bt; m.branchLabel = "";
+        m.captain = false; m.vice = false; delete m.sub;
+        m.bond = this.clamp((m.bond || 0) - 8, 1, 100);
+        m.note = "2018组阁落编 · 移籍" + bt;
+        dropped.push(m.name);
+        this.addLog(st, st.month, m.name + " 组阁落编，移籍" + bt + "（羁绊-8）。", "normal");
+      } else if (t !== m.team) {
+        const fromPrep = m.team === "PREP";
+        m.team = t; m.branchTeam = null;
+        if (fromPrep) {
+          /* 预备生 → 正式队：组阁年的直接定队通道（与汇报公演升格同档加成） */
+          m.pop = this.clamp((m.pop || 0) + 4, 1, 100);
+          m.bond = this.clamp((m.bond || 0) + 4, 1, 100);
+          m.note = "2018组阁 · 自预备生升格入 Team " + t;
+          prepUp.push(m.name);
+          this.addLog(st, st.month, m.name + " 组阁自预备生升格入 Team " + t + "（人气+4 羁绊+4）。", "good");
+        } else {
+          moved.push(m.name);
+        }
+      }
+    }
+    for (const m of pools.branch) {
+      const t = targetOf(m);
+      if (t === "stay" || t === "drop") continue;
+      if (t === "prep") {
+        /* 分团成员 → 预备生：依旧视为上调（组阁年通道），享上调红利、不降羁绊 */
+        m.status = "active"; m.team = "PREP"; m.branchTeam = null; m.branchLabel = null;
+        m.pop = this.clamp((m.pop || 0) + this.rnd(8, 14), 1, 100);
+        m.bond = this.clamp((m.bond || 0) + 12, 1, 100);
+        m.note = "2018组阁上调预备生" + (m.note ? "（原：" + m.note + "）" : "");
+        upped.push(m.name);
+        this.addLog(st, st.month, m.name + " 自分团上调本部预备生（上调红利：人气与羁绊上一个台阶）。", "good");
+        continue;
+      }
+      m.status = "active"; m.team = t; m.branchTeam = null; m.branchLabel = null;
+      m.pop = this.clamp((m.pop || 0) + this.rnd(8, 14), 1, 100);
+      m.bond = this.clamp((m.bond || 0) + 12, 1, 100);
+      m.note = "2018组阁上调本部" + (m.note ? "（原：" + m.note + "）" : "");
+      upped.push(m.name);
+      this.addLog(st, st.month, m.name + " 自分团上调本部，编入 Team " + t + "（上调红利：人气与羁绊上一个台阶）。", "good");
+    }
+
+    /* 主力/替补划档：每队按人气排序，前 16 人为主力，其余为替补 */
+    for (const t of TEAMS) {
+      const list = st.members
+        .filter(m => m.status === "active" && m.team === t)
+        .sort((a, b) => (b.pop || 0) - (a.pop || 0));
+      list.forEach((m, i) => { m.sub = i >= 16; });
+    }
+
+    /* 队长/队副任命：先清空现职，再按 captains 表落任（每队 1 队长、队副至多 1） */
+    for (const m of st.members) { m.captain = false; m.vice = false; }
+    for (const t of TEAMS) {
+      const c = captains[t] || {};
+      byId[c.captain].captain = true;
+      if (c.vice) byId[c.vice].vice = true;
+    }
+
+    /* FT 成立 + 主线达成 */
+    st.flags.ftFormed = true;
+    r.stage = 4; r.done = true; r.ready = false;
+    st.flags.reorg18Done = true;
+    st.morale = this.clamp(st.morale + 5, 0, 100);
+    st.heat = this.clamp(st.heat + 5, 0, 100);
+    this.addLog(st, st.month, "★主线一「全团大重组」达成：新编制名单公布（调队 " + moved.length + " 人 · 预备生升格 " + prepUp.length + " 人 · 分团上调 " + upped.length + " 人 · 编入预备生 " + prepped.length + " 人 · 落编移籍 " + dropped.length + " 人 · Team FT 成立" + (kept ? " · XII 保留" : " · XII 谢幕") + "）。", "main");
+    this.save();
+    return {
+      text: "组阁编制会落幕：调队 " + moved.length + " 人 · 预备生升格 " + prepUp.length + " 人 · 分团上调 " + upped.length + " 人 · 编入预备生 " + prepped.length + " 人 · 落编移籍 " + dropped.length + " 人 · Team FT 成立。",
+      tone: "main",
+      vn: STORY.scenes18.reorgDone,
+    };
+  },
+
+  /* 【2018 主线④】复刻《双面偶像》阶段门控（仅 shuangmian17=plan；队伍平均实力影响效果） */
+  sm18BlockReason() {
+    const st = this.st, s = st.sm18;
+    if (s.stage === 1 && st.money < 40) return "资金不足（复刻排练预算需≥40万）";
+    return null;
+  },
+  avgTeamPwr(st, team) {
+    const list = st.members.filter(m => m.status === "active" && m.team === team && m.pwr != null);
+    if (!list.length) return 0;
+    return Math.round(list.reduce((a, m) => a + m.pwr, 0) / list.length);
+  },
+
+  /* 【2018 主线④】复刻队伍选定（UI.pickTeam18 回调）：立项并进入排练阶段 */
+  setSm18Team(team) {
+    const st = this.st, s = st.sm18;
+    s.team = team;
+    s.stage = 1;
+    return { text: "复刻工程立项：承办队伍定为 " + team + "。广州方面把《双面偶像》的道具清单、控台点位表和排练笔记整套发到了上海。", tone: "main", vn: STORY.scenes18.smStart };
+  },
+
+  /* 【2018 主线④】复刻推进：排练→首演验收（队伍均值影响效果） */
+  advanceSm18() {
+    const st = this.st, s = st.sm18;
+    if (s.stage === 1) {
+      st.money -= 40; s.stage = 2;
+      const avg = this.avgTeamPwr(st, s.team);
+      const bonus = avg >= 30 ? "排练厅的评价是「一次到位」" : avg >= 22 ? "排练按期推进，细节还需打磨" : "排练进度偏慢——这支队伍的实力底子还要练";
+      return { text: "《双面偶像》复刻排练开启（承办：" + (s.team || "待定") + "，队伍平均实力 " + avg + "）：" + bonus + "。（资金-40万）", tone: "main", vn: STORY.scenes18.smRehearsal };
+    }
+    if (s.stage === 2) {
+      s.stage = 3; s.done = true;
+      st.flags.sm18Done = true;
+      const avg = this.avgTeamPwr(st, s.team);
+      const heat = avg >= 30 ? 10 : avg >= 22 ? 7 : 4;
+      st.heat = this.clamp(st.heat + heat, 0, 100);
+      st.morale = this.clamp(st.morale + 4, 0, 100);
+      this.addLog(st, st.month, "★主线四「复刻《双面偶像》」达成：" + (s.team || "") + " 承办首演落幕（队伍均值 " + avg + "，热度+" + heat + "）。", "main");
+      return { text: "《双面偶像》复刻首演落幕——广州的舞台在上海重生。", tone: "main", vn: STORY.scenes18.smDebut };
+    }
+    return { text: "", tone: "none" };
+  },
+
+  /* 【2018 主线⑤】备战鹅厂选秀：派遣名单落地（showMultiPick 回调；葛佳慧承诺自动占位） */
+  setShow18Squad(ids) {
+    const st = this.st, s = st.show18;
+    s.squad = ids;
+    s.stage = 1;
+    const m = st.members.find(x => x.name === "葛佳慧");
+    if (m && st.decisions.gejiahui17 === "promise" && ids.indexOf(m.id) < 0) ids.push(m.id);
+    return { text: "选秀派遣名单敲定（共 " + ids.length + " 人）：封闭集训即刻启动。", tone: "main" };
+  },
+  show18BlockReason() {
+    const st = this.st, s = st.show18;
+    if (s.stage === 1 && st.money < 30) return "资金不足（封闭集训需≥30万）";
+    return null;
+  },
+  advanceShow18() {
+    const st = this.st, s = st.show18;
+    if (s.stage === 0) return { text: "", tone: "pickSquad18" };   // 转交 UI 点将窗（UI.showShow18Picker）
+    if (s.stage === 1) {
+      st.money -= 30; s.stage = 2;
+      return { text: "封闭集训开营：声乐、舞蹈、镜头表现，三线并进。（资金-30万）", tone: "main", vn: STORY.scenes18.showCamp };
+    }
+    if (s.stage === 2) {
+      s.stage = 3; s.done = true;
+      st.flags.show18Done = true;
+      st.heat = this.clamp(st.heat + 12, 0, 100);
+      st.money += 40;
+      /* 【阿吉留任追加回收】《梦想演播厅》定盘方向（flags.dreamStage18，5月事件落定）：
+         studio=综艺预热（热度+6）/ draft=备战特训（出征成员羁绊+4 实力+2） */
+      const squad18 = (s.squad || []).map(id => st.members.find(m => m.id === id)).filter(Boolean);
+      if (st.flags.dreamStage18 === "studio") {
+        st.heat = this.clamp(st.heat + 6, 0, 100);
+        this.addLog(st, st.month, "《梦想演播厅》选秀特辑收官：团内竞演的热度直接灌进了首轮录制（热度+6）。", "good");
+      } else if (st.flags.dreamStage18 === "draft") {
+        let n18 = 0;
+        for (const m of squad18) {
+          m.bond = this.clamp((m.bond || 0) + 4, 0, 100);
+          if (m.pwr != null) m.pwr = Math.min(90, m.pwr + 2);
+          n18++;
+        }
+        this.addLog(st, st.month, "《梦想演播厅》资源全押集训：出征成员羁绊+4 实力+2（" + n18 + " 人）。", "good");
+      }
+      this.addLog(st, st.month, "★主线五「备战鹅厂选秀」达成：派遣成员完成首轮录制，话题度大涨（热度+12，商务预付+40万）。", "main");
+      return { text: "首轮录制收官——节目播出后，「丝芭系」的训练成果刷了屏。", tone: "main", vn: STORY.scenes18.showAir };
+    }
+    return { text: "", tone: "none" };
+  },
+
+  /* 【2018 主线⑤·葛佳慧企划】个人专辑发行（gejiahui17=promise 专属，2017 承诺的回收） */
+  releaseAlbum18() {
+    const st = this.st, s = st.show18;
+    if (s.album) return { text: "专辑已发行。", tone: "blocked" };
+    if (st.money < 40) return { text: "资金不足（专辑制作需≥40万）", tone: "blocked" };
+    st.money -= 40;
+    s.album = true;
+    st.flags.album18Done = true;
+    const gj = st.members.find(x => x.name === "葛佳慧");
+    if (gj) { gj.pop = this.clamp(gj.pop + 6, 0, 100); gj.bond = this.clamp(gj.bond + 10, 0, 100); gj.note = "2018 个人专辑《给梦想的回信》发行（2017 音乐企划兑现）"; }
+    st.heat = this.clamp(st.heat + 6, 0, 100);
+    st.morale = this.clamp(st.morale + 4, 0, 100);
+    this.addLog(st, st.month, "葛佳慧个人专辑《给梦想的回信》发行——去年许下的音乐企划，兑现了。（热度+6 士气+4）", "gold");
+    return { text: "专辑上线当晚，评论区最高赞写着：「说过的舞台，真的给了。」", tone: "main", vn: STORY.scenes18.albumOut };
+  },
+
+  /* 【2018 主线②】预备生汇报公演：月度事件回调——表现优异者升格（含分团预备生上调本部） */
+  promotePrep18(id, team) {
+    const st = this.st;
+    const m = st.members.find(x => x.id === id);
+    if (!m) return { text: "未找到该成员。", tone: "blocked" };
+    const fromBranch = m.status === "branch";
+    m.team = team; m.branchTeam = null; m.branchLabel = null;
+    m.status = "active";
+    if (fromBranch) {
+      /* 分团上调本部：羁绊与人气提升（组阁年的「上调红利」） */
+      m.pop = this.clamp((m.pop || 0) + this.rnd(8, 14), 1, 100);
+      m.bond = this.clamp((m.bond || 0) + 12, 1, 100);
+    } else {
+      m.pop = this.clamp((m.pop || 0) + 4, 0, 100);
+      m.bond = this.clamp((m.bond || 0) + 4, 0, 100);
+    }
+    st.prep18.promoted += 1;
+    this.addLog(st, st.month, "预备生汇报公演 · 升格：" + m.name + " → " + team + (fromBranch ? "（自分团上调本部）" : "") + "。", "good");
+    return { text: m.name + " 升格入 " + team + (fromBranch ? "——分团上调本部，人气与羁绊都上了一级。" : "。"), tone: "main" };
+  },
+
+  /* 【2018 主线②】预备生汇报公演候选：本部 PREP + 分团预备生。
+     确定性排序（pwr×2 + 人气 + 羁绊×0.5 加权）取前 3——pages 与裁决 effect 两次调用
+     必须指向同一位成员，故不用随机。 */
+  prepStageCandidates(st) {
+    const pool = st.members.filter(m => (m.team === "PREP" || (m.status === "branch" && (m.branchLabel === "预备生" || m.branchLabel === "")))
+      && m.status !== "left" && m.name);
+    return pool.slice().sort((a, b) =>
+      ((b.pwr || 0) * 2 + (b.pop || 0) + (b.bond || 0) * 0.5) - ((a.pwr || 0) * 2 + (a.pop || 0) + (a.bond || 0) * 0.5)
+      || (a.name < b.name ? -1 : 1)).slice(0, 3);
   },
 
   /* 【2026 末位淘汰】真实选取评审对象（v0.10.1）：
@@ -583,6 +1292,16 @@ const Game = {
     return ((st.decisions && st.decisions.jpMode) || st.jpMode) === "replicate";
   },
 
+  /* 【赵嘉敏·史实路线判定】是否处于「官司暂休」路线（2018-06 毕业的唯一触发前提）：
+     zhaoMin17=freeze（2017 赵母事件选「冻结合同」）；旧档未登记 zhaoMin17 时，
+     只要 2016 未选解约/学业线（zhaoMin 为空或 rest）即按史实默认。 */
+  zjmFreezeRoute(st) {
+    st = st || this.st;
+    const d = st.decisions || {};
+    if (d.zhaoMin17 != null) return d.zhaoMin17 === "freeze";
+    return d.zhaoMin == null || d.zhaoMin === "rest";
+  },
+
   /* 【2017 分团线伏笔】开拓者点将（下一站兼任 SHY48/CKG48 后触发）：
      六名现役成员明年随总监移籍。
      规则：BEJ48/GNZ48 成员（status='branch'）无影响；
@@ -627,6 +1346,44 @@ const Game = {
       (refused.length ? "（全团士气-" + 3 * moraleHit + "）" : "") };
   },
 
+  /* 【2018 通用】小分队成军·公司选取（UI 点将回调，pickMode ho2pick/bluevpick）：
+     unit="HO2"（2人）/"BlueV"（5人）；选中者小分队成军曝光（人气+5 羁绊+5，
+     成员卡备注），名单存姓名（decisions.unitsHO2/unitsBlueV）供后续剧情回收。 */
+  setUnit18(unit, ids) {
+    const st = this.st;
+    const need = unit === "HO2" ? 2 : 5;
+    const members = (ids || []).map(id => st.members.find(m => m.id === id)).filter(Boolean);
+    if (members.length !== need) return { text: "名单无效（" + unit + " 需 " + need + " 人）。", tone: "blocked" };
+    const key = unit === "HO2" ? "unitsHO2" : "unitsBlueV";
+    st.decisions[key] = members.map(m => m.name);
+    for (const m of members) {
+      m.pop = this.clamp((m.pop || 0) + 5, 0, 100);
+      m.bond = this.clamp((m.bond || 0) + 5, 0, 100);
+      m.note = (m.note ? m.note + "；" : "") + "SNH48小分队" + unit + "成员（公司指定成军）";
+    }
+    this.addLog(st, st.month, "小分队 " + unit + " 名单公布（公司指定）：" + members.map(m => m.name).join("、") + "。", "main");
+    this.save();
+    return { text: unit + " 名单敲定：" + members.map(m => m.name).join("、") + "。小分队成军曝光（每人人气+5 羁绊+5）。", tone: "main" };
+  },
+
+  /* 【2018 复刻路线专属】红白歌会·中国预赛出征名单（UI.showKohakuPicker 回调）：
+     全团（本部+分团在册）五人；被选中者预赛舞台曝光（羁绊+8 人气+3），
+     名单存姓名（decisions.kohaku18Squad）供 12 月决赛结算（m12_18_kohaku_final）。 */
+  setKohakuSquad(ids) {
+    const st = this.st;
+    const squad = (ids || []).map(id => st.members.find(m => m.id === id)).filter(Boolean);
+    if (squad.length !== 5) return { text: "名单无效（需五人）。", tone: "blocked" };
+    st.decisions.kohaku18Squad = squad.map(m => m.name);   // 存姓名（与 pioneerList 同口径，跨事件按名查找）
+    for (const m of squad) {
+      m.bond = this.clamp((m.bond || 0) + 8, 0, 100);
+      m.pop = this.clamp((m.pop || 0) + 3, 0, 100);
+    }
+    const loc = st.decisions.kohaku18 === "hq" ? "本部" : (st.decisions.kohaku18 || "分团");
+    this.addLog(st, st.month, "红白歌会·中国预赛名单公布（承办：" + loc + "）：" + squad.map(m => m.name).join("、") + "。", "main");
+    this.save();
+    return { text: "红白预赛五人名单敲定：" + squad.map(m => m.name).join("、") + "。预赛舞台曝光（每人羁绊+8 人气+3）——表现优异者将于年末获邀赴日参加红白决赛。", tone: "main" };
+  },
+
   /* 复刻路线限定：宫泽佐江毕业公演赴日名单（Team SII 五人点将）。
      生效：五人羁绊+10 人气+3；名单记入 decisions.miyazawaInvite 供后续剧情回收。 */
   miyazawaInvite(ids) {
@@ -665,6 +1422,32 @@ const Game = {
     this.addLog(st, st.month, "赴日名单公布：" + names.join("、") + " ——随铃木玛莉亚赴东京参加毕业公演。（羄绊+10 人气+3）", "main");
     this.save();
     return { text: "东京的镜头对准了她们：" + names.join("、") + "。毕业公演的安可环节，玛莉亚把话筒递向了上海来的五个孩子。（五人羄绊+10 人气+3）" };
+  },
+
+  /* 复刻路线限定：北原里英东京毕业公演赴日名单（其效力队伍五人点将，
+     pickMode="kitahara5" → UI.showKitaharaPicker）。生效同 mariaInvite：
+     五人羁绊+10 人气+3、热度+3；名单记入 decisions.kitaharaSend；
+     公演落幕北原里英毕业退团（2017 玛莉亚东京路线派遣的兼任成员）。 */
+  kitaharaSend(ids) {
+    const st = this.st;
+    const kh = st.members.find(m => m.name === "北原里英" && m.status === "active");
+    if (!kh) return { text: "未找到北原里英。" };
+    const picked = (ids || [])
+      .map(id => st.members.find(m => m.id === id))
+      .filter(m => m && m.status === "active" && m.team === kh.team);
+    if (picked.length !== 5) return { text: "名单无效（需 Team " + kh.team + " 在籍成员五人）" };
+    const names = picked.map(m => m.name);
+    for (const m of picked) {
+      m.bond = this.clamp(m.bond + 10, 0, 100);
+      m.pop = this.clamp(m.pop + 3, 0, 100);
+    }
+    st.heat = this.clamp(st.heat + 3, 0, 100);
+    this.recordDecision("kitaharaSend", names);
+    kh.status = "left";
+    kh.note = "2018-05 AKB48毕业·兼任结束（毕业公演：东京）";
+    this.addLog(st, st.month, "赴日名单公布：" + names.join("、") + " ——随北原里英赴东京参加毕业公演。（羁绊+10 人气+3；热度+3）", "main");
+    this.save();
+    return { text: "东京的镜头对准了她们：" + names.join("、") + "。毕业公演的安可，北原里英把话筒递向了上海来的五个孩子——兼任一年，就此谢幕。（五人羁绊+10 人气+3；热度+3；北原里英 离团。）" };
   },
 
   /* 【决策标签登记】剧情选项带 tag/value 时调用（UI 在选项生效时触发）。
@@ -726,19 +1509,41 @@ const Game = {
       }
     }
 
-    // ① 新成员入队（2016：六期生3月 / 七期生9、10月；2017：八期生4、5、6、9月；2026：二十四期生5月；2027：预挂载表）
+    // ⓪' 2018 线：赵嘉敏 2018-06 毕业仅限「史实官司暂休」路线（zhaoMin=rest/默认 + zhaoMin17=freeze；
+    //    旧档未登记 zhaoMin17 时按史实默认）。学业线（study，2017-09 已归队）与其他在籍状态
+    //    不随史实表离团——在籍至 2020-10（后续年份实装时再挂离团事件）。
+    const zjm18 = st.era === "2018" ? st.members.find(x => x.name === "赵嘉敏") : null;
+    if (zjm18 && st.month >= 6 && zjm18.status === "rest" && this.zjmFreezeRoute(st)) {
+      zjm18.status = "left";
+      zjm18.note = "2018-06 合约期满毕业，专注影视";
+      this.addLog(st, st.month, "赵嘉敏 合约期满毕业——拉锯一年的官司暂休到此画上句号，她以演员的身份重新出发。", "main");
+    }
+
+    // ① 新成员入队（2016：六期生3月 / 七期生9、10月；2017：八期生4、5、6、9月；2018：九/十/十一期生+分团新期生；
+    //    2026：二十四期生5月；2027：预挂载表）。2018 起支持 branchTeam 字段：分团新期生建分团预备生简卡。
     const joinSrc = st.era === "2016" ? DATA.joining2016
       : st.era === "2017" ? DATA.joining2017
+      : st.era === "2018" ? DATA.joining2018
       : st.era === "2027" ? (DATA2026.joining2027 || [])
       : DATA2026.joining2026;
     for (const j of joinSrc) {
       if (j.month === st.month) {
+        if (st.era === "2018" && j.branchTeam) {
+          /* 【2018】分团新期生：分团预备生简卡（无人气/羁绊，分团标签页展示） */
+          st.members.push({
+            id: "j" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
+            pop: 0, bond: 0, status: "branch", branchTeam: j.branchTeam, branchLabel: "预备生",
+            note: j.note,
+          });
+          this.addLog(st, st.month, j.branchTeam + " 新成员入团：" + j.name + "（" + j.gen + " · 预备生）", "good");
+          continue;
+        }
         st.members.push({
           id: "j" + j.name, name: j.name, team: j.team, gen: j.gen,
           pop: st.era === "2016" ? this.rnd(16, 30) : st.era === "2017" ? this.rnd(10, 18) : this.rnd(8, 14),
           bond: st.era === "2016" ? 15 : st.era === "2017" ? 12 : 8, status: "active",
-          /* 新人初始实力同样从低起步（内娱对比口径；2017/2027 实装实力系统） */
-          pwr: (st.era === "2017" || st.era === "2027") ? this.rnd(5, 10) : undefined,
+          /* 新人初始实力同样从低起步（内娱对比口径；2017/2027/2018 实装实力系统） */
+          pwr: (st.era === "2017" || st.era === "2027" || st.era === "2018") ? this.rnd(5, 10) : undefined,
           note: j.note,
         });
         this.addLog(st, st.month, "新成员入队：" + j.name + "（" + j.team + " · " + j.gen + "）", "good");
@@ -750,10 +1555,11 @@ const Game = {
       }
     }
 
-    // ② 离团/移籍生效（2016/2017/2027 线；2026 线的人员退出走末位淘汰事件）
+    // ② 离团/移籍生效（2016/2017/2018/2027 线；2026 线的人员退出走末位淘汰事件）
     //    移籍分团（type 以「移籍」开头）→ status='branch'；兼任（type 以「兼任」开头）→ 保留在籍仅备注
     const leaveSrc = st.era === "2026" ? []
       : st.era === "2027" ? (DATA2026.leaving2027 || [])
+      : st.era === "2018" ? DATA.leaving2018
       : st.era === "2017" ? DATA.leaving2017 : DATA.leaving2016;
     for (const lv of leaveSrc) {
       if (lv.month !== st.month) continue;
@@ -767,8 +1573,9 @@ const Game = {
         this.addLog(st, st.month, "AKB48方面确认：铃木玛莉亚的兼任将延续到明年。", "good");
         continue;
       }
-      /* 赵嘉敏：6月「学业与舞台」已选 解约/学业暂休 → 本处不再处理（史实暂休路线仍走原时间线） */
-      if (lv.name === "赵嘉敏" && st.decisions && st.decisions.zhaoMin && st.decisions.zhaoMin !== "rest") continue;
+      /* 赵嘉敏：2018-06 毕业仅限「史实官司暂休」路线（zhaoMin17=freeze，旧档默认史实）；
+         学业线归队等其他在籍状态不随史实表离团（在籍至 2020-10） */
+      if (lv.name === "赵嘉敏" && !this.zjmFreezeRoute(st)) continue;
       const m = m0;
       if (lv.type.indexOf("移籍") === 0) { m.status = "branch"; m.branchTeam = lv.branchTeam || "BEJ48"; }
       else if (lv.type.indexOf("兼任") === 0) { if (lv.note) m.note = lv.note; }
@@ -892,6 +1699,56 @@ const Game = {
       return acts;
     }
 
+    /* ============ 2018 线（星阵重列）：六条主线 ============ */
+    if (st.era === "2018") {
+      const r18 = st.reorg18;
+      const kept = !!st.flags.xiiKept18;
+      const reorgDesc = {
+        0: "组阁方案研讨：人气/实力/队伍黏性三张表摆上桌（取消XII共三步，保留XII多一步编制确认）",
+        1: "分团协调会：上调与落编移籍预案（需资金≥30万，投入30万）",
+        2: kept ? "Team XII 编制确认会：张怡与 XII 的去留决议" : "筹备收官：编制名单进入终审，编制会定于 3 月末召开",
+        3: "筹备收官：编制名单进入终审，编制会定于 3 月末召开",
+        4: "组阁已完成——新体制运行中",
+      };
+      const sm18desc = {
+        0: "复刻工程立项：与广州团队对接道具与控台（选定承办队伍）",
+        1: "《双面偶像》复刻排练（需资金≥40万，投入40万；队伍平均实力影响效果）",
+        2: "复刻首演验收",
+        3: "复刻已完成",
+      };
+      const showDesc = {
+        0: "选秀派遣点将：从全团（非殿堂）选 11 人出征" + (st.decisions.gejiahui17 === "promise" ? "（葛佳慧依约自动占一席）" : ""),
+        1: "封闭集训（需资金≥30万，投入30万）",
+        2: "出征录制：首轮舞台竞演",
+        3: "首轮录制已完成",
+      };
+      return [
+        { id: "reorg18", main: true, name: "推进全团组阁", desc: r18.ready ? "筹备完毕——编制会 3 月末召开（九期生入队后全员编排）" : reorgDesc[r18.stage],
+          disabled: r18.done || r18.ready || (r18.stage === 1 && st.money < 30),
+          disabledTip: r18.ready ? "筹备已完毕，等 3 月末编制会" : r18.stage === 1 ? "资金不足（需≥30万）" : "" },
+        { id: "sm18", main: true, name: "复刻《双面偶像》", desc: sm18desc[st.sm18.stage],
+          disabled: !st.decisions.shuangmian17 || st.decisions.shuangmian17 !== "plan" || st.sm18.done || (st.sm18.stage === 1 && st.money < 40),
+          disabledTip: st.sm18.stage === 1 ? "资金不足（需≥40万）" : "" },
+        { id: "show18", main: true, name: "推进选秀备战", desc: showDesc[st.show18.stage],
+          disabled: st.show18.done || (st.show18.stage === 1 && st.money < 30),
+          disabledTip: st.show18.stage === 1 ? "资金不足（需≥30万）" : "" },
+        ...(st.decisions.gejiahui17 === "promise" && !st.show18.album ? [
+          { id: "album18", main: true, name: "发行葛佳慧个人专辑", desc: "2017 年许下的音乐企划（需资金≥40万，投入40万）",
+            disabled: st.money < 40, disabledTip: "资金不足（需≥40万）" }] : []),
+        { id: "ge", main: true, name: "筹备总选举", desc: "打投组织、物料与拉票（7月「砥砺前行」前，筹备度+18）",
+          disabled: st.month < 2 || st.month > 6 || st.geDone },
+        { id: "rt", main: true, name: "筹备金曲大赏", desc: "舞台编排与新歌打磨（12月大赏前，筹备度+20）",
+          disabled: st.month < 10 || st.month > 12 || st.rtDone },
+        { id: "coach", main: true, name: "安排成员特训", desc: "一对一特训：目标成员实力+6 羁绊+4（耗资20万；主线③）" },
+        { id: "visit", main: true, name: this.branchDutyPost(st) ? "分团巡访" : "走访成员", desc: this.branchDutyPost(st) ? "赴" + this.branchDutyPost(st) + "与成员谈心：羁绊↑ 士气↑ 叶盛负担↓" : "与一名成员谈心：羁绊↑ 士气↑ 叶盛负担↓" },
+        { id: "duty", name: this.branchDutyPost(st) ? "分团事务值班" : "替叶盛值班", desc: this.branchDutyPost(st) ? "接手一轮" + this.branchDutyPost(st) + "日常事务：叶盛负担-15" : "接手一轮成员事务：叶盛负担-15" },
+        { id: "show", name: "剧场公演", desc: "稳定票仓：资金↑ 热度↑ 士气↓" },
+        { id: "business", name: "商务合作", desc: "接代言与商演：资金↑↑ 热度↓ 叶盛负担↑" },
+        { id: "train", name: "全团特训", desc: "提升训练度（影响公演收入与大赏评分）：花费15万，全团实力+1" },
+        { id: "promo", name: "宣传造势", desc: "投放物料与线下活动：热度+10（花费20万）" },
+      ];
+    }
+
     /* ============ 2027 线（大河新篇）：五条主线 ============ */
     if (st.era === "2027") {
       const b27 = st.branch27;
@@ -1008,6 +1865,32 @@ const Game = {
         const blocked17 = this.branch17BlockReason();
         if (blocked17) return { text: "双团开设暂无法推进：" + blocked17, tone: "blocked" };
         res = this.advanceBranch17();
+        break;
+      }
+      case "reorg18": {
+        const blockedR = this.reorg18BlockReason();
+        if (blockedR) return { text: "组阁暂无法推进：" + blockedR, tone: "blocked" };
+        res = this.advanceReorg18();
+        break;
+      }
+      case "sm18": {
+        /* 第一段为「选定复刻队伍」：tone=pickTeam18 转交 UI 队伍选择窗，落地在 setSm18Team() */
+        const blockedS = this.sm18BlockReason();
+        if (blockedS) return { text: "复刻暂无法推进：" + blockedS, tone: "blocked" };
+        if (st.sm18.stage === 0) return { text: "", tone: "pickTeam18" };
+        res = this.advanceSm18();
+        break;
+      }
+      case "show18": {
+        /* 第一段为「派遣点将」：tone=pickSquad18 转交 UI 点将窗，落地在 setShow18Squad() */
+        if (st.show18.stage === 0) return { text: "", tone: "pickSquad18" };
+        const blockedW = this.show18BlockReason();
+        if (blockedW) return { text: "选秀备战暂无法推进：" + blockedW, tone: "blocked" };
+        res = this.advanceShow18();
+        break;
+      }
+      case "album18": {
+        res = this.releaseAlbum18();
         break;
       }
       case "wh27": {
@@ -1384,6 +2267,13 @@ const Game = {
       const expense = 60;
       return { income, expense, net: income - expense };
     }
+    if (st.era === "2018") {
+      /* 2018：组阁年（全团资源重新排布，收入基数回到 48）；SHY48/CKG48 延续月收入 */
+      const income = Math.round(48 + st.heat * 0.5 + st.train * 0.25
+        + (st.branch17 && st.branch17.shyOpen ? 20 : 0) + (st.branch17 && st.branch17.ckgOpen ? 25 : 0));
+      const expense = 62;
+      return { income, expense, net: income - expense };
+    }
     const income = Math.round(45 + st.heat * 0.5 + st.train * 0.25 + (st.branch.announce ? 35 : 0));
     const expense = 55;
     return { income, expense, net: income - expense };
@@ -1528,10 +2418,12 @@ const Game = {
        这样同一月末里「前置事件的选择」可以解锁后续事件
        （如 5月：下一站选 SHY48/CKG48 → 解锁开拓者点将）。 */
     const monthlySrc = st.era === "2027" ? STORY.monthly27
-      : st.era === "2026" ? STORY.monthly26 : st.era === "2017" ? STORY.monthly17 : STORY.monthly;
+      : st.era === "2026" ? STORY.monthly26 : st.era === "2018" ? STORY.monthly18
+      : st.era === "2017" ? STORY.monthly17 : STORY.monthly;
     let randomSrc;
     if (st.era === "2027") randomSrc = STORY.randomPool26.concat(STORY.randomPool27 || []);
     else if (st.era === "2026") randomSrc = STORY.randomPool26;
+    else if (st.era === "2018") randomSrc = STORY.randomPool.concat(STORY.randomPool18 || []);
     else if (st.era === "2017") randomSrc = STORY.randomPool.concat(STORY.randomPool17 || []);
     else randomSrc = STORY.randomPool;
     const monthlies = monthlySrc[st.month] || [];
@@ -1569,6 +2461,20 @@ const Game = {
           st.morale = this.clamp(st.morale + 3, 0, 100);
           st.heat = this.clamp(st.heat + 3, 0, 100);
           steps.push({ type: "vn", title: "荣誉殿堂 · 开堂与首位升堂", pages: STORY.hallAscend17(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
+        }
+      }
+      /* 【荣誉殿堂】2018 线（主线③）：总选第一名若为 2017 年第一（连霸）→ 当场升堂；
+         制度已设（2017），连霸是升堂的硬条件——非连霸不升堂、保持在籍。 */
+      if (st.era === "2018" && st.geResult && !st.flags.hall18) {
+        st.flags.hall18 = true;
+        const top1 = st.members.find(m => m.name === st.geResult.top1);
+        if (st.geResult.top1 && st.geResult.top1 === st.history.ge2017Top1 && top1 && top1.status !== "left" && !top1.hall) {
+          st.flags.reignHall18 = true;
+          top1.hall = true; top1.team = "HALL"; top1.branchTeam = null; top1.status = "active";
+          top1.note = "第四届、第五届总决选连霸 · 升入荣誉殿堂";
+          st.morale = this.clamp(st.morale + 3, 0, 100);
+          st.heat = this.clamp(st.heat + 3, 0, 100);
+          steps.push({ type: "vn", title: "荣誉殿堂 · 连霸升堂", pages: STORY.hallAscend18(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
         }
       }
     }
@@ -1619,9 +2525,9 @@ const Game = {
       st.morale = this.clamp(st.morale + 8, 0, 100);
     }
     // 计分排名：SNH48 在籍成员 + 分团成员（2016 官宣后参选；2017 含全部分团；2027 含WHN48 开业后成员）。
-    // 2017/2027 线新增：实力（pwr）为第二大影响因子（人气第一）；赵嘉敏不参选；HALL 不参选
-    const pwrW = (st.era === "2017" || st.era === "2027") ? 1.1 : 0;    // 实力权重（占比第二）
-    const bondW = (st.era === "2017" || st.era === "2027") ? 0.6 : 0.8;
+    // 2017/2018/2027 线新增：实力（pwr）为第二大影响因子（人气第一）；赵嘉敏不参选；HALL 不参选
+    const pwrW = (st.era === "2017" || st.era === "2018" || st.era === "2027") ? 1.1 : 0;    // 实力权重（占比第二）
+    const bondW = (st.era === "2017" || st.era === "2018" || st.era === "2027") ? 0.6 : 0.8;
     const extraPool = st.era === "2027"
       ? (st.branch27 && st.branch27.open ? st.members.filter(m => m.status === "branch" && m.branchTeam === "WHN48") : [])
       : (st.branch.announce ? st.members.filter(m => m.status === "branch") : []);
@@ -1657,10 +2563,12 @@ const Game = {
     }));
     const title = st.era === "2027" ? "第十四届偶像年度人气总决选 · 结果"
       : st.era === "2026" ? "SNH48 年度人气总决选 · 结果"
+      : st.era === "2018" ? "「砥砺前行」第五届总决选 · 结果"
       : st.era === "2017" ? "「我心翱翔」第四届总决选 · 结果"
       : "「比翼齐飞」第三届总决选 · 结果";
     const aftermath = st.era === "2027" ? STORY.geAftermath27(st)
       : st.era === "2026" ? STORY.geAftermath26
+      : st.era === "2018" ? STORY.geAftermath18(st)
       : st.era === "2017" ? STORY.geAftermath17(st)
       : STORY.geAftermath(st);
     return {
@@ -1685,7 +2593,8 @@ const Game = {
     st.money += money;
     st.heat = this.clamp(st.heat + heat, 0, 100);
     this.addLog(st, 12, "年度金曲大赏落幕（评价：" + tier + (origBonus ? "，含原创曲目加成" : "") + "）。资金+" + money + "万。", "gold");
-    const rtNar = st.era === "2027" ? STORY.rtNarrative27 : st.era === "2017" ? STORY.rtNarrative17 : STORY.rtNarrative;
+    const rtNar = st.era === "2027" ? STORY.rtNarrative27 : st.era === "2018" ? STORY.rtNarrative18
+      : st.era === "2017" ? STORY.rtNarrative17 : STORY.rtNarrative;
     const narPages = rtNar[tier === "great" ? "great" : "normal"];
     return {
       type: "rtResult", tier, score, money,
@@ -1699,6 +2608,7 @@ const Game = {
   computeGrade(st) {
     if (st.era === "2027") return this.computeGrade27(st);
     if (st.era === "2026") return this.computeGrade26(st);
+    if (st.era === "2018") return this.computeGrade18(st);
     if (st.era === "2017") return this.computeGrade17(st);
     let score = 0;
     // ① 分团（30）
@@ -1761,6 +2671,50 @@ const Game = {
 
     if (score >= 95) return "S";
     if (score >= 75) return "A";
+    if (score >= 55) return "B";
+    return "C";
+  },
+
+  /* 2018 线年度评分（v0.11「星阵重列」）：
+     组阁(25) + 预备生汇报公演(10，年内升格人数×2封顶) + 总选(15) + 大赏(12)
+     + 选秀备战(12：完成8 + 葛佳慧专辑4) + 复刻双面偶像(8，仅 plan 线) + 实力成长(10)
+     + 热度/4(≤10) + 士气/10(≤5) + 资金/60(≤5) − 赤字10 → S≥90 / A≥70 / B≥55 */
+  computeGrade18(st) {
+    let score = 0;
+    // ① 全团大重组（25）
+    if (st.reorg18.done) score += 25;
+    else if (st.reorg18.stage >= 2) score += 12;
+    else if (st.reorg18.stage >= 1) score += 5;
+    // ② 预备生汇报公演（10）：年内升格人数（含分团上调）
+    score += Math.min(10, (st.prep18.promoted || 0) * 2);
+    // ③ 总选举（15）
+    if (st.geDone) {
+      score += 12;
+      const t1 = st.members.find(m => m.name === st.geResult.top1);
+      if (t1 && t1.bond >= 60) score += 3;
+    }
+    // ④ 金曲大赏（12）
+    if (st.rtScore >= 85) score += 12;
+    else if (st.rtScore >= 65) score += 9;
+    else if (st.rtDone) score += 4;
+    // ⑤ 选秀备战（12）：首轮录制完成 8 + 葛佳慧专辑 4（2017 承诺线专属）
+    if (st.show18.done) score += 8;
+    if (st.show18.album) score += 4;
+    // ⑥ 复刻《双面偶像》（8，仅 plan 线存在；完成满分，推进中 4）
+    if (st.decisions.shuangmian17 === "plan") {
+      if (st.sm18.done) score += 8;
+      else if (st.sm18.stage >= 1) score += 4;
+    }
+    // ⑦ 成员实力成长（10）
+    score += this.clamp(Math.round((this.avgPwr(st) - (st.pwrBase || 0)) * 2), 0, 10);
+    // ⑧ 资源面
+    score += Math.min(10, Math.round(st.heat / 4));
+    score += Math.min(5, Math.round(st.morale / 10));
+    score += Math.min(5, Math.floor(st.money / 60));
+    if (st.debt >= 1) score -= 10;
+
+    if (score >= 90) return "S";
+    if (score >= 70) return "A";
     if (score >= 55) return "B";
     return "C";
   },

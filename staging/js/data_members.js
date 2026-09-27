@@ -456,6 +456,152 @@ const DATA = {
     electionTop5: ["鞠婧祎", "李艺彤", "黄婷婷", "冯薪朵", "陆婷"],  // 史实前五（剧情对照）
   },
 
+  /* ---------------- 2018 年内新加入（2018「星阵重列」线用） ----------------
+     史实（snh48wiki 期生时间线快照 tmp/research/timeline.txt）：
+     · 2018-02-03 SNH48 九期生 12 人公布（与首次大组阁同日）；
+     · 2018-07-14 十期生首位张敏淇公布（「揭面计划」升格预备生）、2018-09-09 追加 4 人；
+     · 2018-11-02 十一期生首位颜沁公布；
+     · 分团新期生：BEJ48 三期（2018-01-19，2人）/ SHY48 三期（2018-03-17，7人）/
+       CKG48 二期（2018-04-07，8人）/ BEJ48 五期（2018-06，3人）/ CKG48 三期（2018-09-01，7人）/
+       GNZ48 六期（2018-10-05，4人）/ SHY48 四期（2018-10-05，12人）/ BEJ48 六期（2018-11-08，2人）。
+     本部新期生 team 挂 PREP；分团新期生带 branchTeam（引擎建分团预备生简卡）。 */
+  joining2018: [
+    { month: 1,  name: "杨鑫",   branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2018-01-19" },
+    { month: 1,  name: "周洁艺", branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2018-01-19" },
+    { month: 2,  name: "陈盼",     team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "李美琪",   team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "李星羽",   team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "李玉倩",   team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "王溪源",   team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "王欣颜甜甜", team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "杨令仪",   team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "杨美琪",   team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "张茜",     team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "张馨月",   team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "周诗雨",   team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 2,  name: "朱小丹",   team: "PREP", gen: "九期生", join: "2018-02-03" },
+    { month: 3,  name: "陈俊羽", branchTeam: "SHY48", gen: "SHY48三期生", join: "2018-03-17" },
+    { month: 3,  name: "刁滢",   branchTeam: "SHY48", gen: "SHY48三期生", join: "2018-03-17" },
+    { month: 3,  name: "黄嘉怡", branchTeam: "SHY48", gen: "SHY48三期生", join: "2018-03-17" },
+    { month: 3,  name: "李苏洪", branchTeam: "SHY48", gen: "SHY48三期生", join: "2018-03-17" },
+    { month: 3,  name: "王嘉瑜", branchTeam: "SHY48", gen: "SHY48三期生", join: "2018-03-17" },
+    { month: 3,  name: "王雨兰", branchTeam: "SHY48", gen: "SHY48三期生", join: "2018-03-17" },
+    { month: 3,  name: "朱敏",   branchTeam: "SHY48", gen: "SHY48三期生", join: "2018-03-17" },
+    { month: 4,  name: "戴紫薇", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
+    { month: 4,  name: "吴晓桐", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
+    { month: 4,  name: "魏小燕", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
+    { month: 4,  name: "徐楚雯", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
+    { month: 4,  name: "徐慧玲", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
+    { month: 4,  name: "余梦露", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
+    { month: 4,  name: "邹冰清", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
+    { month: 4,  name: "周桐冉", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
+    { month: 6,  name: "程宇璐", branchTeam: "BEJ48", gen: "BEJ48五期生", join: "2018-06-07" },
+    { month: 6,  name: "李丽满", branchTeam: "BEJ48", gen: "BEJ48五期生", join: "2018-06-07" },
+    { month: 6,  name: "任蔓琳", branchTeam: "BEJ48", gen: "BEJ48五期生", join: "2018-06-21" },
+    { month: 7,  name: "张敏淇", team: "PREP", gen: "十期生", join: "2018-07-14" },
+    { month: 9,  name: "曹露丹", branchTeam: "CKG48", gen: "CKG48三期生", join: "2018-09-01" },
+    { month: 9,  name: "方琪",   branchTeam: "CKG48", gen: "CKG48三期生", join: "2018-09-01" },
+    { month: 9,  name: "郭爽",   branchTeam: "CKG48", gen: "CKG48三期生", join: "2018-09-01" },
+    { month: 9,  name: "康兆薇", branchTeam: "CKG48", gen: "CKG48三期生", join: "2018-09-01" },
+    { month: 9,  name: "彭榆涵", branchTeam: "CKG48", gen: "CKG48三期生", join: "2018-09-01" },
+    { month: 9,  name: "田密",   branchTeam: "CKG48", gen: "CKG48三期生", join: "2018-09-01" },
+    { month: 9,  name: "赵思雨", branchTeam: "CKG48", gen: "CKG48三期生", join: "2018-09-01" },
+    { month: 9,  name: "刘洁",   team: "PREP", gen: "十期生", join: "2018-09-09" },
+    { month: 9,  name: "栾嘉仪", team: "PREP", gen: "十期生", join: "2018-09-09" },
+    { month: 9,  name: "周睿林", team: "PREP", gen: "十期生", join: "2018-09-09" },
+    { month: 9,  name: "鲁静萍", team: "PREP", gen: "十期生", join: "2018-09-09" },
+    { month: 10, name: "邓熳慧", branchTeam: "GNZ48", gen: "GNZ48六期生", join: "2018-10-05" },
+    { month: 10, name: "叶舒淇", branchTeam: "GNZ48", gen: "GNZ48六期生", join: "2018-10-05" },
+    { month: 10, name: "鄢羽蝶", branchTeam: "GNZ48", gen: "GNZ48六期生", join: "2018-10-05" },
+    { month: 10, name: "张润",   branchTeam: "GNZ48", gen: "GNZ48六期生", join: "2018-10-05" },
+    { month: 10, name: "程一",   branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 10, name: "卞佳宁", branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 10, name: "冯嘉宝", branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 10, name: "黄逸",   branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 10, name: "刘宇晴", branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 10, name: "尚官",   branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 10, name: "王秋茹", branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 10, name: "王永祺", branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 10, name: "王梓",   branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 10, name: "武晓迪", branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 10, name: "张瑾瑜", branchTeam: "SHY48", gen: "SHY48四期生", join: "2018-10-05" },
+    { month: 11, name: "颜沁",   team: "PREP", gen: "十一期生", join: "2018-11-02" },
+    { month: 11, name: "张语倩", branchTeam: "BEJ48", gen: "BEJ48六期生", join: "2018-11-08" },
+    { month: 11, name: "李海淋", branchTeam: "BEJ48", gen: "BEJ48六期生", join: "2018-11-08" },
+  ],
+
+  /* ---------------- 2018 年内离团 / 移籍 / 兼任变动（2018「星阵重列」线用） ----------------
+     在「2017 年末游戏内成员卡实际状态」基础上生效（已离团/暂休者引擎自动跳过）。
+     史实锚点（snh48wiki 离团时间线快照 tmp/research/leave2.json，2018 全年 78 条；
+     分团期生 gen 快照原文不带团名，已按游戏内口径补前缀）：
+     · 2018-02-03 首次大组阁（Team XII 解散/Team Ft 成立的史实节点——游戏内由主线①组阁
+       交互承载，成员变动后续实装时处理，本表不预挂）；
+     · 2018-06 赵嘉敏正式毕业（仅史实官司暂休路线：zhaoMin17=freeze；学业线归队后
+       在籍至 2020-10，引擎特判 zjmFreezeRoute）。
+     【考据注】于珊珊（GNZ48 一期生，2018-01 病逝）：出于对逝者的尊重，不挂载、不涉及。
+     type 口径：本部正式队员=毕业 / 预备生=离团 / 分团成员=退团。 */
+  leaving2018: [
+    { month: 1,  name: "龚诗淇", date: "2018-01", type: "毕业", story: false, note: "二期生" },
+    { month: 1,  name: "吴燕文", date: "2018-01", type: "离团", story: false, note: "三期生（预备生）" },
+    { month: 1,  name: "刘梦雅", date: "2018-01", type: "毕业", story: false, note: "五期生" },
+    { month: 2,  name: "袁航",   date: "2018-02", type: "毕业", story: false, note: "五期生" },
+    { month: 2,  name: "林歆源", date: "2018-02", type: "离团", story: false, note: "八期生（预备生）" },
+    { month: 2,  name: "张文静", date: "2018-02", type: "毕业", story: false, note: "五期生" },
+    { month: 2,  name: "黄彤扬", date: "2018-02", type: "毕业", story: false, note: "六期生" },
+    { month: 2,  name: "吕梦莹", date: "2018-02", type: "毕业", story: false, note: "六期生" },
+    { month: 2,  name: "周源",   date: "2018-02", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 3,  name: "严佼君", date: "2018-03", type: "毕业", story: false, note: "五期生" },
+    { month: 3,  name: "林忆宁", date: "2018-03", type: "毕业", story: false, note: "六期生" },
+    { month: 3,  name: "姚祎纯", date: "2018-03", type: "离团", story: false, note: "七期生（预备生）" },
+    { month: 3,  name: "张凯祺", date: "2018-03", type: "毕业", story: false, note: "五期生" },
+    { month: 3,  name: "秦玺",   date: "2018-03", type: "退团", story: false, note: "SHY48一期生" },
+    { month: 3,  name: "石羽莎", date: "2018-03", type: "退团", story: false, note: "BEJ48一期生" },
+    { month: 3,  name: "石勤",   date: "2018-03", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 3,  name: "郑阳莹", date: "2018-03", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 4,  name: "李晶",   date: "2018-04", type: "毕业", story: false, note: "四期生" },
+    { month: 5,  name: "李泽亚", date: "2018-05", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 5,  name: "宋思娴", date: "2018-05", type: "毕业", story: false, note: "五期生" },
+    { month: 6,  name: "赵嘉敏", date: "2018-06", type: "毕业", story: true, note: "合约期满毕业，专注影视（仅史实官司暂休路线生效；学业线归队后在籍至2020-10）" },
+    { month: 6,  name: "李清扬", date: "2018-06", type: "毕业", story: false, note: "三期生（预备生）" },
+    { month: 7,  name: "罗雪丽", date: "2018-07", type: "毕业", story: false, note: "六期生" },
+    { month: 7,  name: "汪束",   date: "2018-07", type: "毕业", story: false, note: "四期生" },
+    { month: 8,  name: "郝婉晴", date: "2018-08", type: "毕业", story: false, note: "三期生" },
+    { month: 8,  name: "郭倩芸", date: "2018-08", type: "毕业", story: false, note: "八期生" },
+    { month: 8,  name: "李媛媛", date: "2018-08", type: "毕业", story: false, note: "六期生" },
+    { month: 8,  name: "李伊虹", date: "2018-08", type: "退团", story: false, note: "GNZ48一期生" },
+    { month: 8,  name: "李恩锐", date: "2018-08", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 8,  name: "陈梓荧", date: "2018-08", type: "退团", story: false, note: "GNZ48一期生" },
+    { month: 8,  name: "张馨月", date: "2018-08", type: "离团", story: false, note: "九期生（预备生）" },
+    { month: 9,  name: "陈雨琪", date: "2018-09", type: "毕业", story: false, note: "五期生" },
+    { month: 9,  name: "刘佩鑫", date: "2018-09", type: "毕业", story: false, note: "三期生" },
+    { month: 9,  name: "曾晓雯", date: "2018-09", type: "毕业", story: false, note: "七期生" },
+    { month: 9,  name: "刘菊子", date: "2018-09", type: "毕业", story: false, note: "七期生" },
+    { month: 9,  name: "夏文倩", date: "2018-09", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 9,  name: "章宇阳", date: "2018-09", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 10, name: "赵晔",   date: "2018-10", type: "毕业", story: false, note: "三期生" },
+    { month: 10, name: "陈问言", date: "2018-10", type: "毕业", story: false, note: "二期生" },
+    { month: 10, name: "杨韫玉", date: "2018-10", type: "毕业", story: false, note: "四期生" },
+    { month: 10, name: "刘瀛",   date: "2018-10", type: "离团", story: false, note: "七期生（预备生）" },
+    { month: 10, name: "徐诗琪", date: "2018-10", type: "离团", story: false, note: "七期生（预备生）" },
+    { month: 10, name: "刘娜",   date: "2018-10", type: "退团", story: false, note: "SHY48一期生" },
+    { month: 10, name: "刘娇",   date: "2018-10", type: "退团", story: false, note: "SHY48一期生" },
+    { month: 11, name: "李想",   date: "2018-11", type: "毕业", story: false, note: "六期生" },
+    { month: 11, name: "成珏",   date: "2018-11", type: "毕业", story: false, note: "六期生" },
+    { month: 11, name: "陈慧婧", date: "2018-11", type: "毕业", story: false, note: "六期生" },
+    { month: 11, name: "王溪源", date: "2018-11", type: "离团", story: false, note: "九期生（预备生）" },
+    { month: 12, name: "陶菀瑞", date: "2018-12", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 12, name: "陶波尔", date: "2018-12", type: "毕业", story: false, note: "八期生" },
+  ],
+
+  /* ---------------- 2018 年史实节点（「星阵重列」线锚点） ---------------- */
+  history2018: {
+    reorgDate: "2018-02-03",      // 首次全团大组阁（九期生同日公布；Team Ft 成立的史实节点）
+    electionDate: "2018-07-28",   // 「砥砺前行」第五届总决选（李艺彤第一，终结连霸）
+    ftDebut: "2018-03-23",        // Team Ft《梦想的旗帜》首演（组阁后新体制首个新公演）
+    ftShuangmian: "2018-09-01",   // Team Ft《双面偶像》首演（与主线④复刻联动）
+    electionTop5: ["李艺彤", "黄婷婷", "冯薪朵", "陆婷", "莫寒"],  // 史实前五（剧情对照）
+  },
+
   /* ---------------- 总决选考据数据（剧情对照用） ---------------- */
   election2015Top: [
     { rank: 1, name: "赵嘉敏", team: "SII", votes: 74393.0 },
