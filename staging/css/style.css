@@ -440,6 +440,16 @@ body {
   padding: 10px 11px;
 }
 .member-card.mc-left { opacity: 0.42; filter: grayscale(0.7); }
+.mc-portrait {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 8px;
+  margin-bottom: 7px;
+  display: block;
+  background: var(--panel-soft);
+}
 .mc-name { font-size: 15px; font-weight: 700; }
 .mc-name .mc-flag { font-size: 10px; color: var(--gold); font-weight: 400; margin-left: 4px; }
 .mc-meta { font-size: 11px; color: var(--text-faint); margin-top: 2px; }

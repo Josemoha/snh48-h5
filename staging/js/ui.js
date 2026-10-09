@@ -12,6 +12,17 @@
 
 "use strict";
 
+/* 成员立绘白名单（v0.11.11：与 Maker 移植线共用同一套素材）。
+   文件位于 assets/image/portraits/<文件名>.jpg，值=文件名（可与成员 id 不同）。 */
+const PORTRAITS = {
+  zhaojiamin: "zhaojiamin",   // 赵嘉敏
+  jujingyi: "jujingyi",       // 鞴婧祎
+  tanganqi: "tanganqi",       // 唐安琪
+  zhangyi: "zhangyi",         // 张怡
+  suzukimaria: "suzukimaria", // 铃木玛莉亚
+  yangbingyi: "yangbingyi",   // 杨冰怡（2026 线 yangbingyi26 复用）
+};
+
 const UI = {
 
   /* ---------------- 基础工具 ---------------- */
@@ -1822,11 +1833,14 @@ const UI = {
   },
 
   showMemberPicker() {
-    const c = this.card("走访成员", "选择一位成员谈心（羁绊+12 士气+3 叶盛负担-8）");
+    const c = this.card("走访成员", "选择一位成员谈心（羁绊+12 士气+3 叶盛负担-8；分团成员为巡访）");
     const grid = this.el("div", "pick-grid");
-    for (const m of Game.activeMembers(Game.st).slice().sort((a, b) => b.bond - a.bond)) {
+    /* v0.11.10：分团成员（branch）一并可选——移籍分团不中断羁绊培养 */
+    const pool = Game.st.members.filter(m => m.status === "active" || m.status === "branch");
+    for (const m of pool.slice().sort((a, b) => b.bond - a.bond)) {
       const b = this.el("button", "pick-btn", "");
-      b.innerHTML = m.name + '<span class="pb-team">' + m.team + " · 羁绊" + m.bond + "</span>";
+      const teamLabel = m.status === "branch" ? (m.branchTeam || m.team) + (m.branchLabel ? " · " + m.branchLabel : "") : m.team;
+      b.innerHTML = m.name + '<span class="pb-team">' + teamLabel + " · 羁绊" + m.bond + "</span>";
       b.onclick = () => {
         this.closeModal();
         const res = Game.doAction("visit", { memberId: m.id });
@@ -1911,6 +1925,15 @@ const UI = {
       const badgeTeam = isBranch ? m.branchTeam : m.team;   // 分团成员显示分团队徽
       const badgeText = badgeTeam === "HALL" ? "影视部" : badgeTeam;
       const card = this.el("div", "member-card" + (m.status === "left" ? " mc-left" : isBranch ? " mc-branch" : m.hall ? " mc-hall" : ""));
+      const picSrc = this.portraitSrc(m);
+      if (picSrc) {
+        const img = document.createElement("img");
+        img.className = "mc-portrait";
+        img.src = picSrc;
+        img.alt = m.name;
+        img.onerror = () => img.remove();          // 图片缺失时自动隐藏，不占位
+        card.appendChild(img);
+      }
       const nameRow = this.el("div", "mc-name", "");
       nameRow.appendChild(this.el("span", "team-badge tb-" + badgeTeam, badgeText));
       nameRow.appendChild(document.createTextNode(m.name));
@@ -1944,6 +1967,16 @@ const UI = {
       }
       list.appendChild(card);
     }
+  },
+
+  /* 成员立绘：assets/image/portraits/<id>.jpg（与 Maker 移植线同一套素材）；无立绘返回 null */
+  portraitSrc(m) {
+    const ids = [m.id];
+    if (m.id === "yangbingyi26") ids.push("yangbingyi");   // 2026 线同一年代卡共用一套立绘
+    for (const id of ids) {
+      if (PORTRAITS[id]) return "assets/image/portraits/" + PORTRAITS[id] + ".jpg";
+    }
+    return null;
   },
 
   /* ---------------- 日志页 ---------------- */

@@ -427,6 +427,7 @@ const Game = {
     /* —— 年末经营盘面（合理中位值）与 2016 总选锚点（史实：鞠婧祎夺冠） —— */
     st.money = 700; st.heat = 48; st.morale = 74; st.train = 36; st.burden = 48;
     st.geResult = { top1: "鞠婧祎", top48: [], strategy: null, bejTop7: null, gnzTop7: null };
+    st.decisions.ge2016Top1 = "鞠婧祎";   // 连霸基准 tag（快速通道按史实预填）
     st.month = 12;
     return st;
   },
@@ -496,9 +497,10 @@ const Game = {
       st.decisions.shuangmian17 = choices.shuangmian17 || "plan";
     }
 
-    /* —— 第四届总决选（2017-07）：鞠婧祎夺冠 → 荣誉殿堂开堂并升堂 —— */
+    /* —— 第四届总决选（2017-07）：鞠婧祎连霸（2016 史实第一 + 本届第一）→ 升入荣誉殿堂 —— */
     st.geResult = { top1: "鞠婧祎", top48: [], strategy: null, bejTop7: null, gnzTop7: null };
-    st.flags.hall17 = true; st.flags.jjyHall17 = true;
+    st.decisions.ge2017Top1 = "鞠婧祎";   // 连霸基准 tag（快速通道按史实预填）
+    st.flags.hall17 = true; st.flags.reignHall17 = true;
     const jjy = st.members.find(x => x.name === "鞠婧祎");
     if (jjy && jjy.status !== "left") {
       jjy.hall = true; jjy.team = "HALL"; jjy.branchTeam = null; jjy.status = "active";
@@ -545,8 +547,9 @@ const Game = {
     /* 全年人员变动快进（二十四期生 5 月入队；2026 退出走末位淘汰，此处按未执行处理） */
     this.fastSimJoinLeave(st, "2026");
 
-    /* 第六届总决选（2026-07）：杨冰怡连霸 → 升入荣誉殿堂 */
+    /* 第十三届总决选（2026-07）：杨冰怡连霸（2025 史实第一 + 本届第一）→ 升入荣誉殿堂 */
     st.geResult = { top1: "杨冰怡", top48: [], strategy: null, bejTop7: null, gnzTop7: null };
+    st.decisions.ge2026Top1 = "杨冰怡";   // 连霸基准 tag（快速通道按史实预填）
     st.flags.bingyiHall = true;
     const by = st.members.find(x => x.name === "杨冰怡");
     if (by) { by.hall = true; by.team = "HALL"; by.note = "连续两届总决选第一名 · 升入荣誉殿堂"; }
@@ -1952,11 +1955,17 @@ const Game = {
       }
       case "visit": {
         const m = st.members.find(x => x.id === payload.memberId);
-        if (!m || m.status !== "active") return null;
+        /* v0.11.10：分团成员（branch）也可走访（分团巡访）——移籍分团不中断羁绊培养，
+           此前培养的羁绊/人气在上调回本部时（2018 组阁/预备生公演）完整保留并享上调红利。 */
+        if (!m || (m.status !== "active" && m.status !== "branch")) return null;
         m.bond = this.clamp(m.bond + 12, 0, 100);
         st.morale = this.clamp(st.morale + 3, 0, 100);
         st.burden = this.clamp(st.burden - 8, 0, 100);
-        const lines = [
+        const lines = m.status === "branch" ? [
+          "你飞了一趟" + (m.branchTeam || "分团") + "，在排练厅后头和{name}聊了一下午。",
+          "你去看了一眼{name}在" + (m.branchTeam || "分团") + "的公演，散场后在后台递上了一瓶水。",
+          "巡访的间隙，你请{name}吃了顿当地宵夜，听她讲分团的日子。",
+        ] : [
           "你在排练间隙和{name}聊了很久，从舞蹈细节聊到家常。",
           "你去看了一眼{name}的公演，散场后在后台递上了一瓶水。",
           "你把{name}拉进茶水间，听她把最近的委屈倒了个干净。",
@@ -2438,45 +2447,7 @@ const Game = {
     /* ⑥ 七月：总选举结算 */
     if (st.month === 7 && !st.geDone) {
       steps.push(this.resolveGE(st));
-      /* 【荣誉殿堂】2026 线：杨冰怡连霸总选第一 → 依规则升堂，转入影视部 */
-      if (st.era === "2026" && st.geResult && st.geResult.top1 === "杨冰怡" && !st.flags.bingyiHall) {
-        st.flags.bingyiHall = true;
-        const by = st.members.find(m => m.name === "杨冰怡");
-        if (by) {
-          by.hall = true; by.team = "HALL"; by.note = "连续两届总决选第一名 · 升入荣誉殿堂";
-        }
-        st.morale = this.clamp(st.morale + 3, 0, 100);
-        st.heat = this.clamp(st.heat + 3, 0, 100);
-        steps.push({ type: "vn", title: "荣誉殿堂 · 升堂仪式", pages: STORY.hallAscension(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
-      }
-      /* 【荣誉殿堂】2017 线：鞠婧祎连霸总选第一 → 触发开设升堂制度事件并升堂；
-         未夺冠则次月（8月）宣布设立制度（m8_17_hall_announce），鞠婧祎保持在籍、不升堂。 */
-      if (st.era === "2017" && st.geResult && !st.flags.hall17) {
-        st.flags.hall17 = true;
-        const jjy17 = st.members.find(m => m.name === "鞠婧祎");
-        if (st.geResult.top1 === "鞠婧祎" && jjy17 && jjy17.status !== "left") {
-          st.flags.jjyHall17 = true;
-          jjy17.hall = true; jjy17.team = "HALL"; jjy17.branchTeam = null; jjy17.status = "active";
-          jjy17.note = "第四届总决选第一名 · 首位升入荣誉殿堂";
-          st.morale = this.clamp(st.morale + 3, 0, 100);
-          st.heat = this.clamp(st.heat + 3, 0, 100);
-          steps.push({ type: "vn", title: "荣誉殿堂 · 开堂与首位升堂", pages: STORY.hallAscend17(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
-        }
-      }
-      /* 【荣誉殿堂】2018 线（主线③）：总选第一名若为 2017 年第一（连霸）→ 当场升堂；
-         制度已设（2017），连霸是升堂的硬条件——非连霸不升堂、保持在籍。 */
-      if (st.era === "2018" && st.geResult && !st.flags.hall18) {
-        st.flags.hall18 = true;
-        const top1 = st.members.find(m => m.name === st.geResult.top1);
-        if (st.geResult.top1 && st.geResult.top1 === st.history.ge2017Top1 && top1 && top1.status !== "left" && !top1.hall) {
-          st.flags.reignHall18 = true;
-          top1.hall = true; top1.team = "HALL"; top1.branchTeam = null; top1.status = "active";
-          top1.note = "第四届、第五届总决选连霸 · 升入荣誉殿堂";
-          st.morale = this.clamp(st.morale + 3, 0, 100);
-          st.heat = this.clamp(st.heat + 3, 0, 100);
-          steps.push({ type: "vn", title: "荣誉殿堂 · 连霸升堂", pages: STORY.hallAscend18(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
-        }
-      }
+      this.applyHallReign(st, steps);   // 【荣誉殿堂】连霸升堂统一判定（各年代线通用规则）
     }
 
     /* ⑦ 十二月：金曲大赏结算（2026/2027 线若被取消则改为年末总结会）+ 年度结局 */
@@ -2514,6 +2485,37 @@ const Game = {
   },
 
   /* 总选举结算：生成排名 + 叙事 + 奖励 */
+  /* 【荣誉殿堂·通用连霸升堂（v0.11.8）】任意成员连续两年总选第一即升堂：
+     引擎按「上一年总选第一 tag」判定（resolveGE 每年登记 decisions["ge{年}Top1"]，
+     跨线交接存入 history），不再由剧情事件升堂。
+     上年基准：2017=history.ge2016Top1 / 2018=history.ge2017Top1 / 2027=history.ge2026Top1；
+     2026=杨冰怡（2025 史实第一，游戏内无 2025 数据的既定前提）；2016 无基准（2015 无游戏数据）不判定。
+     非连霸不升堂、保持在籍；升堂者金边卡（team=HALL），此后不再参加总选举。 */
+  applyHallReign(st, steps) {
+    if (!st.geResult || !st.geResult.top1) return;
+    const mark = st.era === "2026" ? "bingyiHall" : "hall" + st.era.slice(2);   // 判定已执行标记（hall17/hall18/hall27）
+    if (st.flags[mark]) return;
+    st.flags[mark] = true;
+    const prevTop1 = st.era === "2026" ? "杨冰怡"
+      : (st.history && st.history["ge" + (parseInt(st.era, 10) - 1) + "Top1"]) || null;
+    if (!prevTop1 || st.geResult.top1 !== prevTop1) return;   // 非连霸：不升堂
+    const top1 = st.members.find(m => m.name === st.geResult.top1);
+    if (!top1 || top1.status === "left" || top1.hall) return;  // 防御：不在籍/已殿堂不重复升
+    if (st.era !== "2026") st.flags["reignHall" + st.era.slice(2)] = true;
+    top1.hall = true; top1.team = "HALL"; top1.branchTeam = null; top1.status = "active";
+    top1.note = st.era === "2026" ? "连续两届总决选第一名 · 升入荣誉殿堂"
+      : st.era === "2017" ? "第三届、第四届总决选连霸 · 升入荣誉殿堂"
+      : st.era === "2018" ? "第四届、第五届总决选连霸 · 升入荣誉殿堂"
+      : "第十三届、第十四届总决选连霸 · 升入荣誉殿堂";
+    st.morale = this.clamp(st.morale + 3, 0, 100);
+    st.heat = this.clamp(st.heat + 3, 0, 100);
+    const vn = st.era === "2017" ? STORY.hallAscend17 : st.era === "2018" ? STORY.hallAscend18
+      : st.era === "2026" ? STORY.hallAscension : STORY.hallAscend27;
+    const title = st.era === "2017" ? "荣誉殿堂 · 首位升堂"
+      : st.era === "2026" ? "荣誉殿堂 · 升堂仪式" : "荣誉殿堂 · 连霸升堂";
+    steps.push({ type: "vn", title, pages: vn(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
+  },
+
   resolveGE(st) {
     st.geDone = true;
     // 策略效果
@@ -2525,14 +2527,17 @@ const Game = {
       st.morale = this.clamp(st.morale + 8, 0, 100);
     }
     // 计分排名：SNH48 在籍成员 + 分团成员（2016 官宣后参选；2017 含全部分团；2027 含WHN48 开业后成员）。
-    // 2017/2018/2027 线新增：实力（pwr）为第二大影响因子（人气第一）；赵嘉敏不参选；HALL 不参选
+    // 2017/2018/2027 线新增：实力（pwr）为第二大影响因子（人气第一）；HALL 不参选；
+    // 赵嘉敏仅 2016 年不参选（史实：本年未参加第三届总决选，无论在籍状态）——
+    // 2017+ 按在籍状态自然判定：学业线 2017-09 学成归队后自 2018 总选恢复参选，
+    // 官司暂休线 2018-06 毕业离团自然退出；2017 年 7 月总选时学业线尚未归队（rest 不在池）。
     const pwrW = (st.era === "2017" || st.era === "2018" || st.era === "2027") ? 1.1 : 0;    // 实力权重（占比第二）
     const bondW = (st.era === "2017" || st.era === "2018" || st.era === "2027") ? 0.6 : 0.8;
     const extraPool = st.era === "2027"
       ? (st.branch27 && st.branch27.open ? st.members.filter(m => m.status === "branch" && m.branchTeam === "WHN48") : [])
       : (st.branch.announce ? st.members.filter(m => m.status === "branch") : []);
     const pool = this.activeMembers(st).concat(extraPool)
-      .filter(m => m.name !== "赵嘉敏" && m.team !== "HALL");   // 荣誉殿堂/影视部成员不参选
+      .filter(m => !(st.era === "2016" && m.name === "赵嘉敏") && m.team !== "HALL");   // 荣誉殿堂/影视部成员不参选
     const ranked = pool
       .map(m => ({ m, score: m.pop * 1.5 + (m.pwr || 0) * pwrW + m.bond * bondW + st.gePlan * 0.3 + st.heat * 0.25 + (m.geBoost || 0) + this.rnd(0, 12) }))
       .sort((a, b) => b.score - a.score);
@@ -2550,6 +2555,9 @@ const Game = {
       bejTop7: st.era !== "2027" && st.branch.announce ? ranked.filter(r => r.m.status === "branch" && r.m.branchTeam === "BEJ48").slice(0, 7).map(r => r.m.name) : null,
       gnzTop7: st.era !== "2027" && st.branch.announce ? ranked.filter(r => r.m.status === "branch" && r.m.branchTeam === "GNZ48").slice(0, 7).map(r => r.m.name) : null,
     };
+    /* 【荣誉殿堂·连霸基准】每年总选第一登记为决策 tag（ge2016Top1 / ge2017Top1 / …），
+       次年总选结算据此判定连霸升堂（applyHallReign）；快速通道年份在 fastState* 里按史实预填同名 tag。 */
+    st.decisions["ge" + st.era + "Top1"] = st.geResult.top1;
     for (const m of st.members) delete m.geBoost;
 
     const money = Math.round(120 + st.heat * 0.8);
