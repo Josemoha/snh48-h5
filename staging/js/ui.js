@@ -921,16 +921,20 @@ const UI = {
       };
       /* 主线① 双团开设 */
       const b17 = st.branch17;
+      const ckgReady = b17.ckg >= 3 && !b17.ckgOpen;   // 筹备完成、按史实节奏等 10 月开业
       const dots17 = this.el("div", "quest-progress");
-      for (let i = 1; i <= 4; i++) dots17.appendChild(this.el("div", "p-dot" + (b17.ckg >= i ? " on" : "")));
+      for (let i = 1; i <= 3; i++) dots17.appendChild(this.el("div", "p-dot" + (b17.ckg >= i || ckgReady ? " on" : "")));
       const b1 = this.el("div", "");
       b1.appendChild(this.el("div", "quest-detail",
         "SHY48（沈阳）：" + (b17.shyOpen ? "✔ " + b17.shyOpenMonth + " 月开业首演" : b17.shy >= 1 ? "筹备就绪，月末开业" : "剧场筹备中（目标：1月首演）")));
       b1.appendChild(dots17);
       b1.appendChild(this.el("div", "quest-detail",
-        "CKG48（重庆）：" + (b17.ckgOpen ? "✔ " + b17.ckgOpenMonth + " 月开业首演" : "筹备阶段 " + b17.ckg + "/3（目标：10月末首演）")));
+        "CKG48（重庆）：" + (b17.ckgOpen ? "✔ " + b17.ckgOpenMonth + " 月开业首演"
+        : ckgReady ? "✔ 筹备完成——按史实节奏 10 月末开业首演，静待档期"
+        : "筹备阶段 " + b17.ckg + "/3（目标：10月末首演）")));
       box.appendChild(mkCard("主线① · 双团开设",
-        b17.shyOpen && b17.ckgOpen ? "✔ 四城灯已亮" : "进行中", b17.shyOpen && b17.ckgOpen ? "q-done" : "q-open", b1));
+        b17.shyOpen && b17.ckgOpen ? "✔ 四城灯已亮" : ckgReady ? "待开业（10月）" : "进行中",
+        b17.shyOpen && b17.ckgOpen ? "q-done" : "q-open", b1));
       /* 主线② 年度活动 */
       const b2 = this.el("div", "quest-desc",
         (st.geDone ? "总决选 ✔（第一名：" + st.geResult.top1 + "）" : "总决选 7月 · 筹备度 " + st.gePlan + "/100")
@@ -1008,9 +1012,23 @@ const UI = {
         this.el("div", "quest-detail", "舞台总监马跃每月汇报公演情况：表现优异的预备生由总监定队升格（含分团上调）——年内升格 " + p18.promoted + " / 6 人")));
       /* 主线③ 年度活动筹备 */
       const geTip = st.history.ge2017Top1 ? "（若 " + st.history.ge2017Top1 + " 连霸，将触发升堂事件）" : "";
+      const b18_3 = this.el("div", "");
+      b18_3.appendChild(this.el("div", "quest-desc",
+        (st.geDone ? "总决选 ✔（第一名：" + st.geResult.top1 + "）" : "总决选 7月 · 筹备度 " + st.gePlan + "/100")
+        + "　|　" +
+        (st.rtDone ? "金曲大赏 ✔（" + st.rtScore + "/100）" : "金曲大赏 12月 · 筹备度 " + st.rtPlan + "/100")));
+      if (!st.geDone || !st.rtDone) {
+        const bar18ge = this.el("div", "mc-bar pop"); bar18ge.innerHTML = "<i style=\"width:" + (st.geDone ? 100 : st.gePlan) + "%\"></i>";
+        b18_3.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", "总决选筹备度"), this.el("span", "", st.geDone ? "✔" : st.gePlan + "/100")]));
+        b18_3.appendChild(bar18ge);
+        const bar18rt = this.el("div", "mc-bar bond"); bar18rt.innerHTML = "<i style=\"width:" + (st.rtDone ? 100 : st.rtPlan) + "%\"></i>";
+        b18_3.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", "金曲大赏筹备度"), this.el("span", "", st.rtDone ? "✔" : st.rtPlan + "/100")]));
+        b18_3.appendChild(bar18rt);
+      }
+      b18_3.appendChild(this.el("div", "quest-detail", "总选举（7月「砥砺前行」）+ 金曲大赏（12月）" + geTip));
       box.appendChild(mkCard("主线③ · 年度活动筹备",
         st.geDone && st.rtDone ? "✔ 双活动收官" : st.geDone ? "总选已落幕" : "进行中", st.geDone && st.rtDone ? "q-done" : "q-open",
-        this.el("div", "quest-detail", "总选举（7月「砥砺前行」）+ 金曲大赏（12月）" + geTip)));
+        b18_3));
       /* 主线④ 复刻双面偶像（仅 shuangmian17=plan） */
       if (st.decisions.shuangmian17 === "plan") {
         const sm = st.sm18;
@@ -1224,8 +1242,8 @@ const UI = {
   showMariaInvitePicker(onDone) {
     this.showMultiPick({
       title: "铃木玛莉亚毕业公演 · 赴日名单",
-      sub: "东京的毕业公演——仅限 Team SII 在籍成员，被选中者羄绊+10 人气+3",
-      pool: Game.st.members.filter(m => m.status === "active" && m.team === "SII"),
+      sub: "东京的毕业公演——仅限 Team SII 在籍成员（不含玛莉亚本人），被选中者羄绊+10 人气+3",
+      pool: Game.st.members.filter(m => m.status === "active" && m.team === "SII" && m.name !== "铃木玛莉亚"),   // 排除寿星本人
       count: 5,
       confirmLabel: "名单敲定，出发东京 →",
       cardInfo: m => m.team + " · 羄绊" + m.bond + " 人气" + m.pop,
@@ -1289,7 +1307,8 @@ const UI = {
     this.showMultiPick({
       title: "北原里英毕业公演 · 赴日名单",
       sub: "北原里英效力 Team " + team + "——从该队点将五人，赴东京送她最后一程（复刻路线专属）",
-      pool: st.members.filter(m => m.status === "active" && m.team === team && m.pop != null && !m.hall),
+      pool: st.members.filter(m => m.status === "active" && m.team === team && m.pop != null && !m.hall
+        && m.name !== "北原里英"),   // 排除寿星本人——毕业公演主角不上赴日名单
       count: 5,
       confirmLabel: "名单敲定，随她赴东京 →",
       cardInfo: m => "Team " + m.team + " · 人气" + m.pop,
@@ -2158,6 +2177,8 @@ const UI = {
     /* 【「进入下一年」入口】2016→2017「本部新章」/ 2017→2018「星阵重列」/ 2026→2027「大河新篇」：
        继承年末成员卡与经营状态开启续写线（破产结局除外）。 */
     if ((st.era === "2016" || st.era === "2017" || st.era === "2026") && grade !== "bankrupt") {
+      const oldNext = document.getElementById("btn-ending-next");
+      if (oldNext) oldNext.remove();   // 防重复：上一次结局界面的残留按钮（点击会回跳旧线）先移除
       const btnNext = this.el("button", "btn btn-primary", "进入下一年 →");
       btnNext.id = "btn-ending-next";
       btnNext.onclick = () => {

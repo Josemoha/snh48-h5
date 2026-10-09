@@ -1220,6 +1220,17 @@ const Game = {
       if (m.branchTeam === "WH48") m.branchTeam = "WHN48";
       if (m.gen === "武汉48一期生") m.gen = "WHN48一期生";
     }
+    /* 【去重】同名非离团卡只保留最早一张——历史版本月末重入曾生成重复卡
+       （2018 组阁预备生栏整列重复的根因；已成长的旧卡数值更完整，留首张） */
+    if (st.members && st.members.length) {
+      const seen = {};
+      st.members = st.members.filter(m => {
+        if (m.status === "left") return true;                 // 离团卡同名共存允许（如再入团）
+        if (seen[m.name]) return false;
+        seen[m.name] = true;
+        return true;
+      });
+    }
     return st;
   },
 
@@ -1531,6 +1542,9 @@ const Game = {
       : DATA2026.joining2026;
     for (const j of joinSrc) {
       if (j.month === st.month) {
+        /* 【去重】同名成员已在册则跳过——月末流程重复跑同一月（旧档 monthStarted 缺失重入等）
+           不再生成第二张卡（曾致 2018 组阁预备生栏整列重复） */
+        if (st.members.some(x => x.name === j.name && x.status !== "left")) continue;
         if (st.era === "2018" && j.branchTeam) {
           /* 【2018】分团新期生：分团预备生简卡（无人气/羁绊，分团标签页展示） */
           st.members.push({
