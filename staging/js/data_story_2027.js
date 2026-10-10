@@ -247,16 +247,16 @@ STORY.scenes27 = {
       { s: "叶盛", cls: "speaker-yesheng", t: (st.cgt && st.cgt.closed
         ? "（翻着筹备组的手册，小声）成都那一页刚刚翻过去，武汉这年是从零开荒"
         : "（翻着筹备组的手册，小声）成都那年是「重建」，武汉这年是从零开荒") + "——两件事，一样难。总监，预算的门类我列好了，一步一步来。" },
-      { nar: true, t: "（WHN48 立项启动完成。下一步：剧场改造——需资金≥160万，投入150万。）" },
+      { nar: true, t: "（WHN48 立项启动完成。下一步：剧场改造——需资金≥220万，投入200万。）" },
     ],
   },
 
-  /* ---------- WHN48：剧场改造（1→2，需资金≥160，投入150） ---------- */
+  /* ---------- WHN48：剧场改造（1→2，需资金≥220，投入200） ---------- */
   whTheater: {
     label: "武汉 · 剧场改造工程",
     pages: st => [
       { nar: true, t: "剧场定在长江边的商圈顶层，落地窗外就是江面。筹备组在方案扉页印了一行字：「灯亮起来之前，先让江风进来。」" },
-      { s: "叶盛", cls: "speaker-yesheng", t: "改造报价一百五十万，跟当年重庆一个量级。工程队给了两套建议：要么上全套顶配设备，要么把钱省下来投给首批集训——武汉第一批孩子，还一个都没招呢。" },
+      { s: "叶盛", cls: "speaker-yesheng", t: "改造报价两百万，比当年重庆还高一个量级。工程队给了两套建议：要么上全套顶配设备，要么把钱省下来投给首批集训——武汉第一批孩子，还一个都没招呢。" },
     ],
     choices: [
       { label: "上顶配——舞台机械全套换新", hint: "热度+3：首演就要一鸣惊人",
@@ -487,9 +487,11 @@ STORY.monthly27 = {
       /* 【荣誉殿堂伏笔回收】2026 年升堂/签约的影视部成员，回剧场特别出演 */
       id: "m4_27_hall_return",
       title: "4月 · 殿堂成员的回归公演",
-      gate: st => st.members.some(m => m.hall && (m.name === "杨冰怡" || m.name === "鞠婧祎")),
+      /* 【动态数据】殿堂总选出身成员（hallIdol：升堂/殿堂偶像签约者）——不再按姓名硬编码，
+         影视部签约的纯演员（孙珍妮/陆婷玉，无 hallIdol 标记）不算在内 */
+      gate: st => st.members.some(m => m.hall && m.hallIdol),
       pages: st => {
-        const names = st.members.filter(m => m.hall && (m.name === "杨冰怡" || m.name === "鞠婧祎")).map(m => m.name);
+        const names = st.members.filter(m => m.hall && m.hallIdol).map(m => m.name);
         return [
           { nar: true, t: "四月的特别企划立项：" + names.join("、") + "——殿堂成员回剧场，办一场特别联合公演。消息放出十分钟，票务后台挤进了十万人。" },
           { s: "叶盛", cls: "speaker-yesheng", t: "（把报价单递过来）舞台制作加嘉宾行程，三十万起步。但总监，这场演出的意义不在票房——「走出去的人，还愿意回来」，这句话比什么宣传都值钱。" },
@@ -507,7 +509,7 @@ STORY.monthly27 = {
     {
       id: "m4_27_spring_camp",
       title: "4月 · 春日合宿",
-      gate: st => !st.members.some(m => m.hall && (m.name === "杨冰怡" || m.name === "鞠婧祎")),
+      gate: st => !st.members.some(m => m.hall && m.hallIdol),
       pages: st => [
         { nar: true, t: "四月的合宿基地订在了市郊。三天两夜：白天队列与体能，晚上围炉夜话——去年的恩怨、今年的目标，都在火堆边摊开了说。" },
         { s: "叶盛", cls: "speaker-yesheng", t: "（看着篝火边聊到笑成一团的孩子们）队伍的默契这种东西，练功房练不出来，得靠这样的晚上。总监，实力今年的目标是「上一个台阶」——合宿就是个不错的起点。" },
@@ -536,10 +538,16 @@ STORY.monthly27 = {
     {
       id: "m5_27_ge_kickoff",
       title: "5月 · 总决选启动",
-      pages: st => [
-        { s: "叶盛", cls: "speaker-yesheng", t: "七月底，第十四届总决选——去年杨冰怡" + (st.members.some(m => m.name === "杨冰怡" && m.hall) ? "连霸之后升入荣誉殿堂，今年的第一名，将是这条河新的面孔" : "的连霸之路还在继续，今年的看点只多不少") + "。2到6月是总选筹备期，打投组的预算别省。" },
-        { s: "王婧", cls: "speaker-wangjing", t: "提醒一句：今年是「止跌」之后的第一届总选——市场都在看，这条河回血回得怎么样。" },
-      ],
+      pages: st => {
+        /* 【动态数据】去年总选冠军取 history.ge2026Top1（玩家 2026 实绩，快速通道按史实预填）,
+           升堂状态按该成员 hall 标记分叉 */
+        const prev = st.history.ge2026Top1 || "杨冰怡";
+        const ascended = st.members.some(m => m.name === prev && m.hall);
+        return [
+          { s: "叶盛", cls: "speaker-yesheng", t: "七月底，第十四届总决选——去年" + prev + (ascended ? "连霸之后升入荣誉殿堂，今年的第一名，将是这条河新的面孔" : "的连霸之路还在继续，今年的看点只多不少") + "。2到6月是总选筹备期，打投组的预算别省。" },
+          { s: "王婧", cls: "speaker-wangjing", t: "提醒一句：今年是「止跌」之后的第一届总选——市场都在看，这条河回血回得怎么样。" },
+        ];
+      },
     },
     {
       id: "m5_27_wh_recruit",

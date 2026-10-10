@@ -216,6 +216,7 @@ body {
 .era-2026 { border-left: 4px solid var(--blue); }
 .era-2017 { border-left: 4px solid var(--gold); }
 .era-2018 { border-left: 4px solid #f6ad55; }
+.era-2019 { border-left: 4px solid #9f7aea; }
 .era-2027 { border-left: 4px solid #2dd4bf; }
 .era-card.selected {
   border-color: var(--pink);
@@ -227,6 +228,7 @@ body {
 .era-2026 .era-year { color: var(--blue); }
 .era-2017 .era-year { color: var(--gold); }
 .era-2018 .era-year { color: #f6ad55; }
+.era-2019 .era-year { color: #9f7aea; }
 .era-2027 .era-year { color: #2dd4bf; }
 .era-status.era-fast { color: var(--gold); }
 .fast-warn {
@@ -479,6 +481,7 @@ body {
 .tb-GNZ48 { color: #7fe3d2; border-color: rgba(127, 227, 210, 0.4); }   /* 分团：GNZ48 */
 .tb-CKG48 { color: #ffd166; border-color: rgba(255, 209, 102, 0.4); }   /* 分团：CKG48 */
 .tb-SHY48 { color: #9be7ff; border-color: rgba(155, 231, 255, 0.4); }   /* 分团：SHY48（2017 本部新章线） */
+.tb-TEB48 { color: #9f7aea; border-color: rgba(159, 122, 234, 0.4); }   /* 分团：TEB48（2019 双岸线，台湾） */
 .tb-CGT48 { color: #c3a6ff; border-color: rgba(195, 166, 255, 0.4); }   /* 分团：CGT48 */
 .tb-WH48  { color: #86c5ff; border-color: rgba(134, 197, 255, 0.4); }   /* 分团：WH48（2027 大河新篇线·架空） */
 .tb-PREP { color: #cfd5ee; border-color: rgba(207, 213, 238, 0.4); }    /* 本部：预备生 */
@@ -596,7 +599,11 @@ body {
 .pick-btn.on-x { border-color: #ffe08a; background: rgba(255, 224, 138, 0.14); box-shadow: 0 0 0 1px #ffe08a; }    /* 升格：Team X */
 .pick-btn.on-xii { border-color: #9ae6b4; background: rgba(154, 230, 180, 0.14); box-shadow: 0 0 0 1px #9ae6b4; }  /* 组阁：Team XII */
 .pick-btn.on-ft { border-color: #f6ad55; background: rgba(246, 173, 85, 0.14); box-shadow: 0 0 0 1px #f6ad55; }    /* 组阁：Team FT（新） */
-.pick-btn.on-drop { border-color: #fc8181; background: rgba(252, 129, 129, 0.12); box-shadow: 0 0 0 1px #fc8181; } /* 组阁：落编移籍分团 */
+.pick-btn.on-drop { border-color: #fc8181; background: rgba(252, 129, 129, 0.12); box-shadow: 0 0 0 1px #fc8181; } /* 组阁：落编移籍分团/移籍IDFT/暂不招录 */
+.pick-btn.on-bej { border-color: #ff9b8a; background: rgba(255, 155, 138, 0.14); box-shadow: 0 0 0 1px #ff9b8a; }   /* 2019 招新：BEJ48 预备生 */
+.pick-btn.on-gnz { border-color: #7fe3d2; background: rgba(127, 227, 210, 0.14); box-shadow: 0 0 0 1px #7fe3d2; }   /* 2019 招新：GNZ48 预备生 */
+.pick-btn.on-shy { border-color: #9be7ff; background: rgba(155, 231, 255, 0.14); box-shadow: 0 0 0 1px #9be7ff; }   /* 2019 招新：SHY48 预备生 */
+.pick-btn.on-ckg { border-color: #ffd166; background: rgba(255, 209, 102, 0.14); box-shadow: 0 0 0 1px #ffd166; }   /* 2019 招新：CKG48 预备生 */
 .pick-btn.on-prep { border-color: #90cdf4; background: rgba(144, 205, 244, 0.12); box-shadow: 0 0 0 1px #90cdf4; } /* 组阁：编入预备生 */
 .pick-btn.on-cap { border-color: var(--gold); background: rgba(240, 200, 110, 0.16); box-shadow: 0 0 0 1px var(--gold); }   /* 组阁：队长 */
 .pick-btn.on-vice { border-color: #a0c4e8; background: rgba(160, 196, 232, 0.14); box-shadow: 0 0 0 1px #a0c4e8; }          /* 组阁：队副 */

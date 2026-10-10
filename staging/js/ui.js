@@ -144,12 +144,23 @@ const UI = {
   stepSettle(step, next) {
     const st = Game.st;
     const c = this.card("月末结算 · " + Game.dateLabel(), "剧场的灯每晚都亮着，账本也是");
+    const d = step.detail || {};
     const rows = [
       ["经营收入（公演/商务/分团）", "+" + step.income + " 万", "sr-plus"],
-      ["固定运营支出", "-" + step.expense + " 万", "sr-minus"],
+    ];
+    /* 经济系统 v2：支出分项展示（工资随人头变动） */
+    if (d.salary != null) {
+      rows.push(["本部工资（" + d.hqCount + " 人 × 0.5 万，暂休不计）", "-" + d.salary + " 万", "sr-minus"]);
+      if (d.top7Count > 0) rows.push(["总选TOP7分成（" + d.top7Count + " 人）", "-" + d.top7 + " 万", "sr-minus"]);
+      if (d.branchCost > 0) rows.push(["分团维系·分团工资（" + d.brCount + " 人）", "-" + d.branchCost + " 万", "sr-minus"]);
+      rows.push(["固定运营支出", "-" + d.fixed + " 万", "sr-minus"]);
+    } else {
+      rows.push(["固定运营支出", "-" + step.expense + " 万", "sr-minus"]);
+    }
+    rows.push(
       ["本月净收支", (step.net >= 0 ? "+" : "") + step.net + " 万", step.net >= 0 ? "sr-plus" : "sr-minus"],
       ["账面资金", step.money + " 万", ""],
-    ];
+    );
     for (const [k, v, cls] of rows) {
       const r = this.el("div", "settle-row");
       r.appendChild(this.el("span", "", k));
@@ -228,6 +239,16 @@ const UI = {
             if (ch.pickMode === "reorg18") {
               this.closeModal();
               this.showReorg18Picker(finish);   // 组阁编制会（2018 主线①，两阶段）
+              return;
+            }
+            if (ch.pickMode === "reorg19") {
+              this.closeModal();
+              this.showReorg19Picker(finish);   // 二次组阁编制会（2019 主线②，两阶段）
+              return;
+            }
+            if (ch.pickMode === "recruit19") {
+              this.closeModal();
+              this.showRecruit19Picker(finish); // 年度招新拍板窗（2019 主线③）
               return;
             }
             if (ch.pickMode === "cgtPromote") {
@@ -423,9 +444,9 @@ const UI = {
     this.$("btn-start-game").onclick = () => this.startPrologue();
     this.$("btn-back-title").onclick = () => this.showTitle();
     this.$("input-name").value = "";
-    /* 五个开局年代：2016/2026 为完整线；2017/2018/2027 为快速通道（中途年份直入，v0.11.1） */
-    const ERAS = ["2016", "2026", "2017", "2018", "2027"];
-    const FAST = ["2017", "2018", "2027"];
+    /* 六个开局年代：2016/2026 为完整线；2017/2018/2019/2027 为快速通道（中途年份直入，v0.11.1） */
+    const ERAS = ["2016", "2026", "2017", "2018", "2019", "2027"];
+    const FAST = ["2017", "2018", "2019", "2027"];
     const cards = {};
     for (const e of ERAS) {
       cards[e] = this.$("era-card-" + e);
@@ -444,7 +465,7 @@ const UI = {
   startPrologue() {
     const name = this.$("input-name").value.trim();
     if (!name) { this.toast("先写下你的名字吧"); return; }
-    const FAST = ["2017", "2018", "2027"];
+    const FAST = ["2017", "2018", "2019", "2027"];
     if (this._pickedEra !== "2016" && this._pickedEra !== "2026" && FAST.indexOf(this._pickedEra) < 0) {
       this.toast("请选择一个开局年代"); return;
     }
@@ -518,6 +539,27 @@ const UI = {
           { v: "no", label: "今天太累了，改天再约", d: "未结识阿吉；2018 年 5 月留任概率 50%" },
         ] },
       ],
+      "2019": [
+        { key: "branchPost", title: "2016–2018 · 分团兼任（主线⑥分担对象）", def: "none", opts: [
+          { v: "none", label: "无分团兼任", d: "主线⑥为「分担叶盛」（默认）" },
+          { v: "BEJ48", label: "兼任 BEJ48（北京）", d: "主线⑥为「专注 BEJ48 事务」" },
+          { v: "GNZ48", label: "兼任 GNZ48（广州）", d: "主线⑥为「专注 GNZ48 事务」" },
+          { v: "SHY48", label: "兼任 SHY48（沈阳）", d: "含开拓者六人已随开业进驻（快速通道自动处理）" },
+          { v: "CKG48", label: "兼任 CKG48（重庆）", d: "含开拓者六人已随开业进驻（快速通道自动处理）" },
+        ] },
+        { key: "jpMode", title: "2016 年末 · 对日合作基调（决定 2019 复刻线/TEB48 选项）", def: "normal", opts: [
+          { v: "normal", label: "正常合作（原创公演路线）", d: "2019 非复刻线：王婧主持会议、无 TEB48；保分团需年末资金 1/2" },
+          { v: "replicate", label: "复刻模式（日方授权曲目）", d: "2019 复刻线：子杰主持、TEB48 提议可拍板；保分团只需年末资金 1/4（日方资助）" },
+        ] },
+        { key: "xiiKeep18", title: "2018 年 1 月 · Team XII 的去留（张怡的请求）", def: "dissolve", opts: [
+          { v: "dissolve", label: "取消 XII 编制", d: "史实路线（默认）：2018 组阁三步完成；2019 二次组阁无 XII" },
+          { v: "keep", label: "保留 XII 编制", d: "XII 参与两次编组；2019 二次组阁触发「马跃：排期爆了」文案分支" },
+        ] },
+        { key: "gejiahui17", title: "2017 年 11 月 · 葛佳慧的辞呈", def: "promise", opts: [
+          { v: "promise", label: "承诺音乐规划", d: "2018 专辑自动发行；选秀自动占位；限定团不成团默认顺延（默认）" },
+          { v: "release", label: "允许支付违约金解约", d: "葛佳慧已离团；无专辑线" },
+        ] },
+      ],
       "2027": [
         { key: "camp26Final", title: "2026 年末 · 理念阵营结算", def: "balance", opts: [
           { v: "balance", label: "平票（平衡派）", d: "王婧拍板主线一「WHN48 年内落地」（默认）" },
@@ -569,9 +611,10 @@ const UI = {
 
   showPrologue() {
     this.showScreen("screen-vn");
-    /* 按 era 取对应序章（2016 任职会议 / 2017 本部新章 / 2018 星阵重列 / 2026 临危受命 / 2027 年度决策会议） */
+    /* 按 era 取对应序章（2016 任职会议 / 2017 本部新章 / 2018 星阵重列 / 2019 双岸 / 2026 临危受命 / 2027 年度决策会议） */
     const pro = Game.st.era === "2027" ? STORY.prologue27
       : Game.st.era === "2026" ? STORY.prologue26
+      : Game.st.era === "2019" ? STORY.prologue19
       : Game.st.era === "2018" ? STORY.prologue18
       : Game.st.era === "2017" ? STORY.prologue17
       : STORY.prologue;
@@ -606,26 +649,42 @@ const UI = {
       this.playVNFull(closing, pro.sceneLabel, () => this.enterGame(true));
     };
 
-    /* 序章后的「路线抉择」（2026 线：解散/重建 CGT48；2027 线：年度会议发言）；2016 线无此环节 */
-    const showPathChoice = () => {
-      const pc = pro.pathChoice;
+    /* 序章后的「路线抉择」：支持单轮（pro.pathChoice，2026/2027 旧格式）与多轮队列
+       （pro.pathChoices，2019：TEB48 去留 + 分团撤资危机；每轮可声明 gate 整轮跳过）。
+       2016 线无此环节。 */
+    const runPathChoices = (queue) => {
+      const pc = queue && queue.length ? queue[0] : null;
       if (!pc) { startClosing(); return; }
+      const rest = queue.slice(1);
+      if (pc.gate && !pc.gate(Game.st)) { runPathChoices(rest); return; }   // 整轮 gate（2019 TEB48 仅复刻线）
       body.onclick = null;
-      footer.innerHTML = "";
-      const box = this.el("div", "vn-choices");
-      for (const c of pc.choices) {
-        if (c.gate && !c.gate(Game.st)) continue;   // 选项可声明 gate（2027 序章按阵营出发言选项）
-        const b = this.el("button", "vn-choice", c.label + "　—— " + (c.hint || ""));
-        b.onclick = (e) => {
-          e.stopPropagation();
-          if (c.tag) Game.recordDecision(c.tag, c.value !== undefined ? c.value : c.id);
-          const rt = c.apply(Game.st);
-          const resultPages = [{ nar: true, t: rt }].concat((pc.after || []).map(p => ({ ...p, t: Game.fmt(p.t) })));
-          this.playVNFull(resultPages, pro.sceneLabel, startClosing);
-        };
-        box.appendChild(b);
-      }
-      footer.appendChild(box);
+      const after = (pc.after || []).map(p => ({ ...p, t: Game.fmt(p.t) }));
+      const renderChoices = () => {
+        footer.innerHTML = "";
+        const box = this.el("div", "vn-choices");
+        let any = false;
+        for (const c of pc.choices) {
+          if (c.gate && !c.gate(Game.st)) continue;   // 单个选项也可声明 gate
+          any = true;
+          const hintTxt = typeof c.hint === "function" ? c.hint(Game.st) : (c.hint || "");
+          const b = this.el("button", "vn-choice", c.label + "　—— " + hintTxt);
+          b.onclick = (e) => {
+            e.stopPropagation();
+            if (c.tag) Game.recordDecision(c.tag, c.value !== undefined ? c.value : c.id);
+            const rt = c.apply(Game.st);
+            const resultPages = [{ nar: true, t: rt }].concat(after);
+            this.playVNFull(resultPages, pro.sceneLabel, () => runPathChoices(rest));
+          };
+          box.appendChild(b);
+        }
+        if (!any) { runPathChoices(rest); return; }   // 全部选项被 gate 掉 → 跳过本轮
+        footer.appendChild(box);
+      };
+      /* 本轮抉择的引入页（可选） */
+      if (pc.pages) {
+        const pcPages = (typeof pc.pages === "function" ? pc.pages(Game.st) : pc.pages).map(p => ({ ...p, t: Game.fmt(p.t), s: p.s ? Game.fmt(p.s) : p.s }));
+        this.playVNFull(pcPages, (typeof pc.sceneLabel === "function" ? pc.sceneLabel(Game.st) : (pc.sceneLabel || pro.sceneLabel)), renderChoices);
+      } else renderChoices();
     };
 
     const showStyleChoice = () => {
@@ -637,11 +696,7 @@ const UI = {
         b.onclick = (e) => {
           e.stopPropagation();
           Game.applyStyle(s.id);
-          if (pro.pathChoice) {
-            const pcfg = pro.pathChoice;
-            const pcPages = (typeof pcfg.pages === "function" ? pcfg.pages(Game.st) : pcfg.pages).map(p => ({ ...p, t: Game.fmt(p.t), s: p.s ? Game.fmt(p.s) : p.s }));
-            this.playVNFull(pcPages, pcfg.sceneLabel || pro.sceneLabel, showPathChoice);
-          } else startClosing();
+          runPathChoices(pro.pathChoices ? pro.pathChoices.slice() : (pro.pathChoice ? [pro.pathChoice] : []));
         };
         box.appendChild(b);
       }
@@ -860,8 +915,8 @@ const UI = {
         const b1 = this.el("div", "");
         b1.appendChild(this.el("div", "quest-detail",
           st.branch27.open ? "✔ " + st.branch27.openMonth + " 月首演亮灯（每月+25万收入）" :
-          st.branch27.stage === 0 ? "立项启动 → 剧场改造（需资金≥160万）→ 招募集训（需士气≥55）" :
-          st.branch27.stage === 1 ? "剧场改造中（需资金≥160万，投入150万）" :
+          st.branch27.stage === 0 ? "立项启动 → 剧场改造（需资金≥220万）→ 招募集训（需士气≥55）" :
+          st.branch27.stage === 1 ? "剧场改造中（需资金≥220万，投入200万）" :
           st.branch27.stage === 2 ? "招募集训中（需士气≥55）" : "筹备就绪，本月末首演亮灯！"));
         b1.appendChild(dots27);
         box.appendChild(mkCard("主线① · WHN48 年内落地",
@@ -1051,6 +1106,64 @@ const UI = {
       return;
     }
 
+    /* ============ 2019 线（双岸）：五条主线看板 ============ */
+    if (st.era === "2019") {
+      const mkCard = (name, tag, tagCls, body) => {
+        const c = this.el("div", "quest-card");
+        const head = this.el("div", "quest-head", this.el("span", "quest-name", name));
+        head.appendChild(this.el("span", "quest-tag " + tagCls, tag));
+        c.appendChild(head);
+        if (body) c.appendChild(body);
+        return c;
+      };
+      /* 主线① 二次组阁（两条线共有） */
+      const r19 = st.reorg19;
+      box.appendChild(mkCard("主线① · 二次组阁", r19.done ? "✔ 新编制公布" : "进行中", r19.done ? "q-done" : "q-open",
+        this.el("div", "quest-detail", r19.done ? "✔ 全团重排完成——本部每队13~20人，预备生≤16" : "全团重排：本部每队13~20人、预备生≤16；行动里随时可以启动编制会")));
+      /* 主线② 筹建 TEB48（仅复刻线且序章拍板推进时显示） */
+      if (st.decisions.teb19Push === "go") {
+        const t19 = st.teb19;
+        const dots19 = this.el("div", "quest-progress");
+        for (let i = 1; i <= 4; i++) dots19.appendChild(this.el("div", "p-dot" + (t19.stage >= i ? " on" : "")));
+        const bT = this.el("div", "");
+        bT.appendChild(this.el("div", "quest-detail",
+          t19.open ? "✔ " + t19.openMonth + " 月开业首演（每月+25万收入）" : "四步：台北选拔 → 剧场选址（投入200万）→ 招商 → 派遣移籍决定"));
+        bT.appendChild(dots19);
+        box.appendChild(mkCard("主线② · 筹建 TEB48",
+          t19.open ? "✔ 台北的灯亮了" : t19.done ? "待开业" : "进行中", t19.open ? "q-done" : "q-open", bT));
+      }
+      /* 主线③ 年度招新 */
+      const rc19 = st.recruit19;
+      box.appendChild(mkCard("主线③ · 年度招新", rc19.done ? "✔ 逐人拍板归位" : "待开考", rc19.done ? "q-done" : "q-open",
+        this.el("div", "quest-detail", rc19.done ? "✔ 新成员以预备生身份入池，归属已由总监拍板" : "候选池为 2019 年全部 18 位新入团成员——9 月由总监逐人拍板归属")));
+      /* 主线④ 限定团 / 外务布局 */
+      if (st.flags.unit19Formed || (st.show18 && Array.isArray(st.show18.squad) && st.show18.squad.length > 0)) {
+        box.appendChild(mkCard("主线④ · 限定团", st.flags.unit19Formed ? "✔ 已成团" : "待成团", st.flags.unit19Formed ? "q-done" : "q-open",
+          this.el("div", "quest-detail", st.flags.unit19Formed ? "✔ 实力前 3 派遣成员成团（暂休一年，不参加本年总选）——留守者获总选加成" : "总选年特例：2018 派遣成员实力前 3 成团（选秀成团在即）")));
+      } else {
+        box.appendChild(mkCard("主线④ · 借选秀余温布局外务", st.outreach19.done ? "✔ 打包签约" : "待推进", st.outreach19.done ? "q-done" : "q-open",
+          this.el("div", "quest-detail", st.outreach19.done ? "✔ 团综、代言、晚会三线并进，进账落袋" : "打包谈判综艺/代言/晚会（一次性收益 60~90 万）")));
+      }
+      /* 主线⑤ 年度活动 */
+      const b19ge = this.el("div", "quest-desc",
+        (st.geDone ? "总决选 ✔（第一名：" + st.geResult.top1 + "）" : "总决选 7月 · 筹备度 " + st.gePlan + "/100")
+        + "　|　" +
+        (st.rtDone ? "金曲大赏 ✔（" + st.rtScore + "/100）" : "金曲大赏 12月 · 筹备度 " + st.rtPlan + "/100"));
+      box.appendChild(mkCard("主线⑤ · 年度活动筹备",
+        st.geDone && st.rtDone ? "✔ 双活动收官" : st.geDone ? "总选已落幕" : "进行中", st.geDone && st.rtDone ? "q-done" : "q-open", b19ge));
+      /* 分团态势（撤资危机结果，动态文案） */
+      const brTag = st.flags.branchesClosed19 ? "善后中" : st.flags.branchesKept19 ? "已保住" : "待决";
+      const brTxt = st.flags.branchesClosed19
+        ? "沈阳、重庆已停运——成员安置与二次组阁同步进行"
+        : st.flags.branchesKept19
+        ? "沈阳、重庆保住——维稳专户资金已划拨，月收入延续"
+        : "撤资危机的处置结果，将决定沈阳、重庆的命运";
+      box.appendChild(mkCard("分团态势 · 沈阳与重庆", brTag, "q-open",
+        this.el("div", "quest-detail", brTxt)));
+      this.renderActions();
+      return;
+    }
+
     /* ============ 2016 线（原版看板） ============ */
 
     /* 主线① 分团 */
@@ -1062,7 +1175,7 @@ const UI = {
     const dots = this.el("div", "quest-progress");
     for (let i = 1; i <= 5; i++) dots.appendChild(this.el("div", "p-dot" + (st.branch.stage >= i ? " on" : "")));
     q1.appendChild(dots);
-    const stage = st.branch.stage === 0 ? "尚未启动" : (STORY.branchStages[st.branch.stage - 1].stage <= st.branch.stage ? (st.branch.stage >= 5 ? "筹备完成，静待官宣" : "已完成：" + STORY.branchStages[st.branch.stage - 1].title) : "");
+    const stage = st.branch.stage === 0 ? "尚未启动" : (st.branch.stage >= 5 ? "筹备完成，静待官宣" : (STORY.branchStages[st.branch.stage - 1].stage <= st.branch.stage ? "已完成：" + STORY.branchStages[st.branch.stage - 1].title : ""));
     q1.appendChild(this.el("div", "quest-desc",
       (st.branch.city ? "选址：" + st.branch.city + " · " : "") + stage));
     box.appendChild(q1);
@@ -1151,6 +1264,10 @@ const UI = {
     if (res.tone === "pickTeam18") { this.showSm18TeamPicker(); return; }
     /* 组阁编制会（2018）：逐人定队 + 队长队副任命，落地在 Game.applyReorg18 */
     if (res.tone === "pickReorg18") { this.showReorg18Picker(); return; }
+    /* 二次组阁编制会（2019）：逐人定队 + 队长队副任命，落地在 Game.applyReorg19 */
+    if (res.tone === "pickReorg19") { this.showReorg19Picker(); return; }
+    /* TEB48 派遣移籍决定（2019 主线①第四段）：弹 0~5 人可选点将窗 */
+    if (res.tone === "pickTeb19") { this.showTeb19Picker(); return; }
     /* 选秀派遣点将（2018）：弹十一人点将窗（葛佳慧承诺自动占位） */
     if (res.tone === "pickSquad18") { this.showShow18Picker(); return; }
     /* 行动附带剧情场景：先播放场景，结束后再弹结算/选址 */
@@ -1830,6 +1947,330 @@ const UI = {
     refresh();
   },
 
+  /* ========================================================================
+     2019 主线②二次组阁编制会（两阶段，结构同 2018）：
+     阶段一：逐人定队（本部各队 / 预备生 / 发配分团【仅保留的分团可选】/ 移籍 IDFT）
+     阶段二：队长队副任命 → Game.applyReorg19 落地
+     文案分叉（马跃排期 / FT 扶正 / FT 解散）由 Game.reorg19Narrative 计算：
+     FT 解散时 FT 移出编制目标，其成员默认发配分团（无分团则 IDFT）。 */
+  showReorg19Picker(onDone) {
+    const st = Game.st;
+    const nar = Game.reorg19Narrative(st);
+    const keptXII = !!st.flags.xiiKept18 && st.members.some(m => m.status === "active" && m.team === "XII");
+    const ftKept = nar.ftKept;
+    const TEAMS = ["SII", "NII", "HII", "X"].concat(keptXII ? ["XII"] : []).concat(ftKept ? ["FT"] : []);
+    const BR = ["BEJ48", "GNZ48"].concat(st.decisions.branch19Keep === "keep" ? ["SHY48", "CKG48"] : []);
+    const pools = Game.reorg19Pools(st);
+    const assign = {};   // id → 队伍 | "prep" | "BEJ48"…(发配分团) | "idft"
+    /* 默认值：本部正式成员留原队（FT 解散时默认发配首分团）；预备生默认留任；
+       分团移交成员默认移籍 IDFT */
+    for (const m of pools.head) {
+      if (m.team === "PREP") { assign[m.id] = "prep"; continue; }
+      if (m.team === "FT" && !ftKept) { assign[m.id] = BR.length ? BR[0] : "idft"; continue; }
+      assign[m.id] = TEAMS.indexOf(m.team) >= 0 ? m.team : "idft";
+    }
+    for (const m of pools.dissolved) assign[m.id] = "idft";
+
+    /* ---- 实时计数 ---- */
+    const rosterOf = () => {
+      const byTeam = {}; TEAMS.forEach(t => { byTeam[t] = []; });
+      for (const m of pools.head.concat(pools.dissolved)) {
+        const t = assign[m.id];
+        if (t && TEAMS.indexOf(t) >= 0) byTeam[t].push(m);
+      }
+      for (const t of TEAMS) byTeam[t].sort((a, b) => (b.pop || 0) - (a.pop || 0));
+      return byTeam;
+    };
+
+    /* ================= 阶段一：逐人定队 ================= */
+    const c = this.card("二次组阁编制会 · 逐人定队",
+      nar.text + "\n\n点击卡片循环选择去向；发配分团羁绊-6，移籍 IDFT（训练生池）羁畔-6。"
+      + "本部每队下限 13 人、上限 20 人（前 16 主力 · 其余替补）；预备生队伍至多 16 人"
+      + (keptXII ? "；XII 保留编制" : "") + (ftKept ? "；FT 保留" : "；FT 解散——成员重新排队")
+      + (pools.dissolved.length ? "；带 ★ 的为停运分团移交成员（可入本部/其余分团/预备生，或移籍 IDFT）" : ""));
+    const counter = this.el("p", "modal-text", "");
+    const grid = this.el("div", "pick-grid");
+    const confirmBtn = this.el("button", "btn btn-primary modal-close", "名册敲定，进入队长任命 →");
+    confirmBtn.disabled = true;
+
+    const refresh = () => {
+      const byTeam = rosterOf();
+      let bad = false;
+      const parts = TEAMS.map(t => {
+        const n = byTeam[t].length;
+        const sub = Math.max(0, n - 16);
+        const out = n < 13 || n > 20;
+        if (out) bad = true;
+        return "Team " + t + " " + n + " 人" + (out ? "⚠" : "✔") + (n > 16 ? "（主力16·替补" + sub + "）" : "");
+      });
+      const prepN = pools.head.concat(pools.dissolved).filter(m => assign[m.id] === "prep" && (m.team !== "PREP" || m.status === "branch")).length;
+      if (prepN > 16) bad = true;
+      const brN = pools.head.concat(pools.dissolved).filter(m => BR.indexOf(assign[m.id]) >= 0).length;
+      const idftN = pools.head.concat(pools.dissolved).filter(m => assign[m.id] === "idft").length;
+      counter.textContent = parts.join(" · ") + " · 编入预备生 " + prepN + "/16 · 发配分团 " + brN + " 人 · 移籍IDFT " + idftN + " 人"
+        + (bad ? "　——人数越界（队伍或预备生）" : "　——可以确认");
+      confirmBtn.disabled = bad;
+    };
+
+    /* 单张成员卡：点击循环选择去向 */
+    const makeBtn19 = (m, order) => {
+      const b = this.el("button", "pick-btn", "");
+      const CLS = { SII: "on-sii", NII: "on-nii", HII: "on-hii", X: "on-x", XII: "on-xii", FT: "on-ft", prep: "on-prep", idft: "on-drop" };
+      const labelOf = t => {
+        if (t === "prep") return m.team === "PREP" ? "留任预备生" : "→ 预备生（PREP）";
+        if (t === "idft") return "移籍 IDFT（训练生池）";
+        if (BR.indexOf(t) >= 0) return (m.status === "branch" && m.branchTeam === t) ? "★ 留任" + t : "→ 发配 " + t;
+        return (m.status === "active" && m.team === t) ? "留任 Team " + t : "→ Team " + t;
+      };
+      const paint = () => {
+        Object.keys(CLS).forEach(k => { if (CLS[k]) b.classList.remove(CLS[k]); });
+        const cur = assign[m.id];
+        if (CLS[cur]) b.classList.add(CLS[cur]);
+        const mark = m.status === "branch" ? "★ " : (m.team === "PREP" ? "☆ " : "");
+        b.innerHTML = mark + m.name + '<span class="pb-team">' + labelOf(cur) + " · 人气" + (m.pop || 0) + "</span>";
+      };
+      b.onclick = () => {
+        const idx = order.indexOf(assign[m.id]);
+        assign[m.id] = order[(idx + 1) % order.length];
+        paint(); refresh();
+      };
+      paint();
+      return b;
+    };
+
+    /* 本部成员：按现队分节（预备生一并参编） */
+    for (const t of ["SII", "NII", "HII", "X", "XII", "FT"]) {
+      const list = pools.head.filter(m => m.team === t);
+      if (!list.length) continue;
+      grid.appendChild(this.el("div", "pick-section", "—— Team " + t + (t === "FT" && !ftKept ? "（解散·重新排队）" : t === "XII" && !keptXII ? "（解散·全员重编）" : "") + " ——"));
+      const order = TEAMS.concat(BR, ["prep", "idft"]);
+      for (const m of list) grid.appendChild(makeBtn19(m, order));
+    }
+    {
+      const list = pools.head.filter(m => m.team === "PREP");
+      if (list.length) {
+        grid.appendChild(this.el("div", "pick-section", "—— 预备生（PREP）· 默认留任；可选入各队直接定队 ——"));
+        const order = ["prep"].concat(TEAMS, BR, ["idft"]);
+        for (const m of list) grid.appendChild(makeBtn19(m, order));
+      }
+    }
+    if (pools.dissolved.length) {
+      grid.appendChild(this.el("div", "pick-section", "—— 停运分团移交成员（★ 默认移籍 IDFT）——"));
+      const order = TEAMS.concat(BR, ["prep", "idft"]);
+      for (const m of pools.dissolved) grid.appendChild(makeBtn19(m, order));
+    }
+    confirmBtn.onclick = () => this.showReorg19Captains(TEAMS, pools, assign, nar, onDone);
+    c.appendChild(counter);
+    c.appendChild(grid);
+    c.appendChild(confirmBtn);
+    this.modal(c);   // 不给关闭按钮——编制会必须完成
+    refresh();
+  },
+
+  /* 二次组阁编制会 · 阶段二：队长队副任命（每队 1 队长必须 / 队副至多 1；现职仍在队内则预填） */
+  showReorg19Captains(TEAMS, pools, assign, nar, onDone) {
+    const st = Game.st;
+    const byTeam = {}; TEAMS.forEach(t => { byTeam[t] = []; });
+    for (const m of pools.head.concat(pools.dissolved)) {
+      const t = assign[m.id];
+      if (t && TEAMS.indexOf(t) >= 0) byTeam[t].push(m);
+    }
+    for (const t of TEAMS) byTeam[t].sort((a, b) => (b.pop || 0) - (a.pop || 0));
+    const role = {};   // id → "cap" | "vice"
+    /* 预填：现任队长/队副仍在该队 → 保留；无现职队长的队伍预填人气最高者 */
+    for (const t of TEAMS) {
+      const cap0 = byTeam[t].find(m => m.captain);
+      const vice0 = byTeam[t].find(m => m.vice);
+      if (cap0) role[cap0.id] = "cap";
+      if (vice0) role[vice0.id] = "vice";
+      if (!byTeam[t].some(m => role[m.id] === "cap")) {
+        const top = byTeam[t][0];
+        if (top) role[top.id] = "cap";
+      }
+    }
+    const c = this.card("二次组阁编制会 · 队长队副任命",
+      "点击成员卡片循环：未任 → 队长 → 队副 → 未任。每队必须任命一名队长，队副可选（结果在成员卡上显示徽标）");
+    const counter = this.el("p", "modal-text", "");
+    const grid = this.el("div", "pick-grid");
+    const confirmBtn = this.el("button", "btn btn-primary modal-close", "公布新编制名单 →");
+    confirmBtn.disabled = true;
+    const refresh = () => {
+      let bad = false;
+      const parts = TEAMS.map(t => {
+        const cap = byTeam[t].filter(m => role[m.id] === "cap").length;
+        const vice = byTeam[t].filter(m => role[m.id] === "vice").length;
+        const out = cap !== 1 || vice > 1;
+        if (out) bad = true;
+        return "Team " + t + (out ? " 队长⚠" : " ✔") + (vice ? "·副×" + vice : "");
+      });
+      counter.textContent = parts.join(" · ") + (bad ? "　——每队恰一名队长（队副至多一名）" : "　——可以公布");
+      confirmBtn.disabled = bad;
+    };
+    for (const t of TEAMS) {
+      grid.appendChild(this.el("div", "pick-section", "—— Team " + t + "（" + byTeam[t].length + " 人）——"));
+      for (const m of byTeam[t]) {
+        const b = this.el("button", "pick-btn", "");
+        const paint = () => {
+          b.classList.remove("on-cap", "on-vice");
+          const r = role[m.id];
+          if (r === "cap") b.classList.add("on-cap");
+          if (r === "vice") b.classList.add("on-vice");
+          b.innerHTML = m.name + '<span class="pb-team">' + (r === "cap" ? "队长" : r === "vice" ? "队副" : "点击任命") + " · 人气" + (m.pop || 0) + "</span>";
+        };
+        b.onclick = () => {
+          if (role[m.id]) {
+            delete role[m.id];
+          } else {
+            const hasCap = byTeam[t].some(x => role[x.id] === "cap");
+            const hasVice = byTeam[t].some(x => role[x.id] === "vice");
+            role[m.id] = !hasCap ? "cap" : (!hasVice ? "vice" : "cap");
+          }
+          const caps = byTeam[t].filter(x => role[x.id] === "cap");
+          if (caps.length > 1) { const other = caps.find(x => x.id !== m.id); if (other) delete role[other.id]; }
+          const vices = byTeam[t].filter(x => role[x.id] === "vice");
+          if (vices.length > 1) { const other = vices.find(x => x.id !== m.id); if (other) delete role[other.id]; }
+          paint(); refresh();
+        };
+        paint();
+        grid.appendChild(b);
+      }
+    }
+    confirmBtn.onclick = () => {
+      const captains = {};
+      for (const t of TEAMS) {
+        captains[t] = { captain: null, vice: null };
+        for (const m of byTeam[t]) {
+          if (role[m.id] === "cap") captains[t].captain = m.id;
+          if (role[m.id] === "vice") captains[t].vice = m.id;
+        }
+      }
+      const res = Game.applyReorg19(assign, captains);
+      if (res.tone === "blocked") { this.toast(res.text); return; }
+      this.closeModal();
+      this.renderGame();
+      /* onDone：月末链回调——公布会 VN 播完后恢复链推进（行动触发的路径无 onDone） */
+      this.playScene(res.vn, () => { this.renderGame(); if (onDone) onDone(); });
+      this.toast(res.text);
+    };
+    c.appendChild(counter);
+    c.appendChild(grid);
+    c.appendChild(confirmBtn);
+    this.modal(c);   // 不给关闭按钮——任命必须完成
+    refresh();
+  },
+
+  /* 【2019 主线③】年度招新拍板窗：候选池 DATA.recruit2019（BEJ48 七期 8 人 + GNZ48 七期 4 人）。
+     逐人循环选择：本部预备生 / 各分团预备生（仅保留的分团）/ 暂不招录。
+     默认 = 考据归属分团；落地在 Game.applyRecruit19（assign 以姓名为键）。 */
+  showRecruit19Picker(onDone) {
+    const st = Game.st;
+    const BR = ["BEJ48", "GNZ48"].concat(st.decisions.branch19Keep === "keep" ? ["SHY48", "CKG48"] : []);
+    const pool = (DATA.recruit2019 || []).filter(r => !st.members.some(x => x.name === r.name));
+    const assign = {};   // 姓名 → "PREP" | 分团id | "none"
+    for (const r of pool) assign[r.name] = r.branch && BR.indexOf(r.branch) >= 0 ? r.branch : "PREP";
+
+    const c = this.card("年度招新 · 归属拍板",
+      "十二个名额，一个一个看。点击卡片循环选择去向：本部预备生 / 各分团预备生 / 暂不招录。"
+      + "队伍归属一律为预备生——是金子，明年编制会上见。");
+    const counter = this.el("p", "modal-text", "");
+    const grid = this.el("div", "pick-grid");
+    const confirmBtn = this.el("button", "btn btn-primary modal-close", "名单公布，招新收官 →");
+    confirmBtn.disabled = true;
+
+    const refresh = () => {
+      const n = { PREP: 0 };
+      for (const t of BR) n[t] = 0;
+      let none = 0;
+      for (const r of pool) {
+        const a = assign[r.name];
+        if (a === "none") none++;
+        else if (a === "PREP") n.PREP++;
+        else if (n[a] != null) n[a]++;
+      }
+      counter.textContent = "本部预备生 " + n.PREP + " · " + BR.map(t => t + " " + n[t]).join(" · ")
+        + " · 暂不招录 " + none + "（共 " + pool.length + " 人）";
+      confirmBtn.disabled = false;
+    };
+
+    const CLS = { PREP: "on-prep", BEJ48: "on-bej", GNZ48: "on-gnz", SHY48: "on-shy", CKG48: "on-ckg", none: "on-drop" };
+    for (const r of pool) {
+      const order = ["PREP"].concat(BR, ["none"]);
+      const b = this.el("button", "pick-btn", "");
+      const labelOf = a => a === "PREP" ? "→ 本部预备生" : a === "none" ? "暂不招录" : "→ " + a + " 预备生";
+      const paint = () => {
+        Object.keys(CLS).forEach(k => { if (CLS[k]) b.classList.remove(CLS[k]); });
+        const cur = assign[r.name];
+        if (CLS[cur]) b.classList.add(CLS[cur]);
+        b.innerHTML = r.name + '<span class="pb-team">' + labelOf(cur) + " · " + r.gen + "</span>";
+      };
+      b.onclick = () => {
+        const idx = order.indexOf(assign[r.name]);
+        assign[r.name] = order[(idx + 1) % order.length];
+        paint(); refresh();
+      };
+      paint();
+      grid.appendChild(b);
+    }
+    confirmBtn.onclick = () => {
+      const res = Game.applyRecruit19(assign);
+      if (res.tone === "blocked") { this.toast(res.text); return; }
+      this.closeModal();
+      this.renderGame();
+      this.playScene(res.vn, () => { this.renderGame(); if (onDone) onDone(); });
+      this.toast(res.text);
+    };
+    c.appendChild(counter);
+    c.appendChild(grid);
+    c.appendChild(confirmBtn);
+    this.modal(c);   // 不给关闭按钮——拍板必须完成
+    refresh();
+  },
+
+  /* 【2019 主线①第四段】TEB48 派遣移籍决定窗：全团（非殿堂）点将 0~5 人，可以一个不派。
+     落地在 Game.setTeb19Squad；确认后 TEB48 开业首演。 */
+  showTeb19Picker() {
+    const st = Game.st;
+    const pool = st.members.filter(m => m.status === "active" && !m.hall && m.team !== "HALL")
+      .sort((a, b) => (b.pop || 0) - (a.pop || 0));
+    const picked = new Set();
+    const c = this.card("TEB48 · 派遣移籍决定",
+      "筹建的最后一步：是否派遣成员移籍台北，作为 TEB48 的创始骨干？全团至多 5 人——也可以一个都不派（日方出人、我们运营）。"
+      + "被派遣者：人气+6 羁绊-6，移籍 TEB48（台湾分团标签页）");
+    const counter = this.el("p", "modal-text", "");
+    const grid = this.el("div", "pick-grid");
+    const confirmBtn = this.el("button", "btn btn-primary modal-close", "拍板，开业首演 →");
+    const refresh = () => {
+      counter.textContent = "已选 " + picked.size + " / 至多 5 人" + (picked.size ? "（可不选——确认即空派）" : "（可不选——确认即空派）");
+    };
+    for (const m of pool) {
+      const b = this.el("button", "pick-btn", "");
+      const paint = () => {
+        b.classList.toggle("on", picked.has(m.id));
+        b.innerHTML = m.name + '<span class="pb-team">' + (m.team === "PREP" ? "预备生" : "Team " + m.team) + " · 人气" + (m.pop || 0) + "</span>";
+      };
+      b.onclick = () => {
+        if (picked.has(m.id)) { picked.delete(m.id); }
+        else if (picked.size < 5) { picked.add(m.id); }
+        else { this.toast("至多派遣 5 人——先取消一位再选"); return; }
+        paint(); refresh();
+      };
+      paint();
+      grid.appendChild(b);
+    }
+    confirmBtn.onclick = () => {
+      const res = Game.setTeb19Squad([...picked]);
+      this.closeModal();
+      this.renderGame();
+      this.playScene(res.vn, () => { this.renderGame(); });
+      this.toast(res.text);
+    };
+    c.appendChild(counter);
+    c.appendChild(grid);
+    c.appendChild(confirmBtn);
+    this.modal(c);   // 不给关闭按钮——拍板必须完成
+    refresh();
+  },
+
   /* 【2018 主线⑤】选秀派遣点将窗：全团（非殿堂）选 11 人；葛佳慧承诺 → 选 10 人+她自动占位 */
   showShow18Picker() {
     const st = Game.st;
@@ -1912,10 +2353,16 @@ const UI = {
     } else if (st.era === "2017") {
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"], ["PREP", "预备生"],
                ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["left", "已离团"]];
-    } else if (st.era === "2018") {
+    } else if (st.era === "2018" || st.era === "2019") {
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"], ["PREP", "预备生"],
-               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["left", "已离团"]];
-      if (st.flags.ftFormed) teams.splice(6, 0, ["FT", "FT"]);   // 2018 组阁：Team FT 成立后入列
+               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["idft", "IDFT"], ["left", "已离团"]];
+      if (st.flags.ftFormed) teams.splice(6, 0, ["FT", "FT"]);   // 组阁：Team FT 成立后入列
+      /* 2019：序章放弃分团后 SHY48/CKG48 停运——标签页按在册成员动态裁剪；TEB48 开业后入列 */
+      if (st.era === "2019") {
+        teams = teams.filter(([k]) =>
+          !(k === "SHY48" || k === "CKG48") || st.members.some(m => m.status === "branch" && m.branchTeam === k));
+        if (st.flags.teb19Open) teams.splice(teams.findIndex(([k]) => k === "HALL"), 0, ["TEB48", "TEB48"]);
+      }
     } else {
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"],
                ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["rest", "暂休"], ["left", "已离团"]];
@@ -1928,12 +2375,13 @@ const UI = {
     const list = this.$("member-list");
     list.innerHTML = "";
     let members = st.members.slice();
-    const isBranchTab = ["BEJ48", "GNZ48", "CKG48", "SHY48", "CGT48", "WHN48"].includes(this._memberFilter);
-    /* 「全部」= 全部在册（active + 暂休）；已离团、分团另有独立页签 */
+    const isBranchTab = ["BEJ48", "GNZ48", "CKG48", "SHY48", "CGT48", "WHN48", "TEB48"].includes(this._memberFilter);
+    /* 「全部」= 全部在册（active + 暂休）；已离团、IDFT、分团另有独立页签 */
     if (this._memberFilter === "all") members = members.filter(m => m.status === "active" || m.status === "rest");
     else if (isBranchTab)
       members = members.filter(m => m.status === "branch" && m.branchTeam === this._memberFilter);
     else if (this._memberFilter === "rest") members = members.filter(m => m.status === "rest");
+    else if (this._memberFilter === "idft") members = members.filter(m => m.status === "idft");
     else if (this._memberFilter === "left") members = members.filter(m => m.status === "left");
     else members = members.filter(m => m.team === this._memberFilter && m.status === "active");
 
@@ -1966,7 +2414,7 @@ const UI = {
       const metaText = (m.gen || "")
         + (isBranch ? " · " + (m.branchLabel || m.branchTeam) : "")
         + (isHall ? " · 荣誉殿堂 · 影视部" : "")
-        + (!isBranch ? (m.status === "rest" ? " · 暂休" : m.status === "left" ? " · 已离团" : "") : "")
+        + (!isBranch ? (m.status === "rest" ? " · 暂休" : m.status === "idft" ? " · IDFT" : m.status === "left" ? " · 已离团" : "") : "")
         + (!isBranch && m.note && m.status !== "active" ? " · " + m.note : "");
       card.appendChild(this.el("div", "mc-meta", metaText));
       if (simple) { list.appendChild(card); continue; }
@@ -2101,7 +2549,7 @@ const UI = {
 
     const stats = this.$("ending-stats");
     stats.innerHTML = "";
-    const styleNames = st.era === "2018"
+    const styleNames = st.era === "2018" || st.era === "2019"
       ? { steady18: "稳进派", polish18: "淬炼派", hype18: "造势派" }
       : st.era === "2027"
       ? { steady27: "守正派", polish27: "淬炼派", hype27: "造势派" }
@@ -2130,6 +2578,20 @@ const UI = {
       ["影视部焕新", st.film.done ? "✔ " + st.film.doneMonth + " 月开播" : st.film.stage >= 1 ? "推进到第 " + st.film.stage + " 阶段" : "未启动"],
       ["总决选第一名", st.geResult ? st.geResult.top1 : "—"],
       ["金曲大赏", st.rtCancelled ? "✘ 已取消" : st.rtDone ? st.rtScore + " / 100" : "—"],
+      ["全团平均实力", Game.avgPwr(st) + "（年初 " + (st.pwrBase || 0) + "）"],
+      ["年末资金", st.money + " 万"],
+      ["年末热度 / 士气", st.heat + " / " + st.morale],
+      ["管理风格", styleNames[st.startStyle] || "—"],
+    ] : st.era === "2019" ? [
+      ["年度总分", grade === "S" ? "★★★★★" : grade === "A" ? "★★★★" : grade === "B" ? "★★★" : "★★"],
+      ["二次组阁", st.reorg19.done ? "✔ 新编制落地（调队/预备生/分团/IDFT 全部归位）" : st.reorg19.stage >= 1 ? "编制会进行中" : "未启动"],
+      ["TEB48", st.decisions.teb19Push === "go"
+        ? (st.teb19.open ? "✔ " + st.teb19.openMonth + " 月开业首演（派遣移籍 " + ((st.decisions.teb19Squad || []).length) + " 人）" : "筹建到第 " + (st.teb19.stage + 1) + "/4 步")
+        : "今年未立项"],
+      ["年度招新", st.recruit19.done ? "✔ 本部 " + st.recruit19.hq + " 人 · 分团 " + st.recruit19.br + " 人（预备生入池）" : "未启动"],
+      ["限定团", st.flags.unit19Formed ? "✔ " + (st.unit19.members || []).join("、") : "未成团"],
+      ["总决选第一名", st.geResult ? st.geResult.top1 : "—"],
+      ["金曲大赏", st.rtDone ? st.rtScore + " / 100" : "—"],
       ["全团平均实力", Game.avgPwr(st) + "（年初 " + (st.pwrBase || 0) + "）"],
       ["年末资金", st.money + " 万"],
       ["年末热度 / 士气", st.heat + " / " + st.morale],
@@ -2176,13 +2638,14 @@ const UI = {
     this.$("btn-ending-title").onclick = () => this.showTitle();
     /* 【「进入下一年」入口】2016→2017「本部新章」/ 2017→2018「星阵重列」/ 2026→2027「大河新篇」：
        继承年末成员卡与经营状态开启续写线（破产结局除外）。 */
-    if ((st.era === "2016" || st.era === "2017" || st.era === "2026") && grade !== "bankrupt") {
+    if ((st.era === "2016" || st.era === "2017" || st.era === "2018" || st.era === "2026") && grade !== "bankrupt") {
       const oldNext = document.getElementById("btn-ending-next");
       if (oldNext) oldNext.remove();   // 防重复：上一次结局界面的残留按钮（点击会回跳旧线）先移除
       const btnNext = this.el("button", "btn btn-primary", "进入下一年 →");
       btnNext.id = "btn-ending-next";
       btnNext.onclick = () => {
         if (st.era === "2026") Game.carryTo2027();
+        else if (st.era === "2018") Game.carryTo2019();
         else if (st.era === "2017") Game.carryTo2018();
         else Game.carryTo2017();
         this.showPrologue();
