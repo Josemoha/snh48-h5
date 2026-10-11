@@ -370,7 +370,7 @@ STORY.monthly19 = {
         if (xii && ftList.length) {
           talk = { s: "马跃", cls: "", t: "（把两份公演排期表拍在桌上）总监，我这排期真的排不开了——XII 和 FT 两支队伍的公演、巡演、番外全挤在一起，剧场就一个。要缩减队伍，就在这次组阁里一起解决。" };
         } else if (ftList.length && ftAvg >= 40) {
-          talk = { s: "马跃", cls: "", t: "（把 FT 这一年的上座曲线推过来）总监，FT 的成员们是时候成为主力了——这支队伍的平均人气已经" + ftAvg + "，公演上座压过好几个老队。二次组阁，该给她们正名了。" };
+          talk = { s: "马跃", cls: "", t: "（把 FT 这一年的上座曲线推过来）总监，FT 这一年人气涨到了" + ftAvg + "——但多一支队就多一份排期和开销。二次组阁把 FT 收编进主力序列，她们的牌子，这次要收起来了。" };
         } else if (ftList.length) {
           talk = { s: "马跃", cls: "", t: "（把 FT 这一年的账本推过来，声音放低）总监，FT 达不到预期——平均人气只有" + ftAvg + "，剧场的灯养不起一支叫好不叫座的队伍。需要解散队伍，让孩子们重新排队。这次组阁，下手要快，也要轻。" };
         } else {
@@ -556,15 +556,18 @@ STORY.monthly19 = {
             st.heat = Math.max(0, st.heat - 2);
             return "你在暂休申请上签了字：「去吧。灯给你留着，什么时候想回来，提前一个月说。」她深深鞠了一躬。后来粉丝在她的行李箱照片里，认出了那条河的应援色。（葛佳慧暂休 士气-2 热度-2）";
           } },
-        { label: "允许离开，但按合同支付违约金", hint: "解约离团，资金+80万；士气-3 热度-2", tag: "gjmTalk19", value: "buyout",
+        { label: "允许离开，但按合同支付违约金", hint: "解约离团，资金+80万；士气-3 热度-2；她若在 HO2/BlueV，该小分队解散", tag: "gjmTalk19", value: "buyout",
           effect: st => {
             const g = st.members.find(x => x.name === "葛佳慧");
             st.flags.gjmTalk19Done = true;
+            /* 【判定】先取小分队归属再改备注（备注会被解约信息覆盖）；她在 HO2/BlueV 则离团后小分队解散 */
+            const subG = Game.memberSubUnit(st, "葛佳慧");
             if (g) { g.status = "left"; g.note = "2019-06 支付违约金解约，外出发展"; }
             st.money += 80;
             st.morale = Math.max(0, st.morale - 3);
             st.heat = Math.max(0, st.heat - 2);
-            return "「合同是合同，」你说，「违约金一分不能少。」她点头，签得很平静——钱到账那天，办公室安静得能听见空调声。孩子们私下议论了好几天：原来离开，是要付代价的。（资金+80万 士气-3 热度-2）";
+            const extra = Game.dissolveSubUnit19(st, subG);
+            return "「合同是合同，」你说，「违约金一分不能少。」她点头，签得很平静——钱到账那天，办公室安静得能听见空调声。孩子们私下议论了好几天：原来离开，是要付代价的。（资金+80万 士气-3 热度-2）" + extra;
           } },
       ],
     },
@@ -671,7 +674,7 @@ STORY.monthly19 = {
           : "（低声）让头部成员下沉分团，对那边的士气是实打实的强心针——但本部这边，也会少一根定海神针。") + "总监，这个字不好签，但值得签。" },
       ],
       choices: [
-        { label: "同意——兼任 BEJ48，重心放在分团事务", hint: "BEJ48 全员羁绊+3 人气+2，BEJ48 磨合度+6；热度+3 士气+3",
+        { label: "同意——兼任 BEJ48，重心放在分团事务", hint: "BEJ48 全员羁绊+3 人气+2，BEJ48 磨合度+6；热度+3 士气+3；她若在 HO2/BlueV，该小分队解散",
           tag: "fengXinDuo19", value: "bej",
           effect: st => {
             const m = st.members.find(x => x.name === "冯薪朵");
@@ -687,7 +690,9 @@ STORY.monthly19 = {
             st.chem["BEJ48"] = Math.min(100, st.chem["BEJ48"] + 6);
             st.heat = Math.min(100, st.heat + 3);
             st.morale = Math.min(100, st.morale + 3);
-            return "你在申请函上批了字。第二周，冯薪朵的名单出现在了 BEJ48 的公演排期上——头牌空降，北京星梦剧院的门票当晚售罄。老带新的排练每天多出两个小时，分团的孩子们说：「她都肯来，我们有什么理由不拼。」\n\n（决策已登记：fengXinDuo19=bej。BEJ48 全员羁绊+3 人气+2，BEJ48 磨合度+6；热度+3 士气+3。）";
+            /* 【判定】她若在 2018 小分队（HO2/BlueV），重心移分团后小分队解散 */
+            const extra = Game.dissolveSubUnit19(st, Game.memberSubUnit(st, "冯薪朵"));
+            return "你在申请函上批了字。第二周，冯薪朵的名单出现在了 BEJ48 的公演排期上——头牌空降，北京星梦剧院的门票当晚售罄。老带新的排练每天多出两个小时，分团的孩子们说：「她都肯来，我们有什么理由不拼。」\n\n（决策已登记：fengXinDuo19=bej。BEJ48 全员羁绊+3 人气+2，BEJ48 磨合度+6；热度+3 士气+3。）" + extra;
           } },
         { label: "婉拒——本部同样需要她，继续效力", hint: "冯薪朵羄绊+4 士气+2——定海神针不动",
           tag: "fengXinDuo19", value: "hq",
@@ -758,15 +763,18 @@ STORY.monthly19 = {
         { s: "叶盛", cls: "speaker-yesheng", t: "（低声）头部成员年底解约，粉丝那边不会平静；但强留下一个心已经不在的人，对队伍也不是好事。总监——这三条路，每一条都有代价，您定。" },
       ],
       choices: [
-        { label: "同意解约", hint: "资金+15万（少量违约金，剩余合约期限不长）；士气-2 热度-2",
+        { label: "同意解约", hint: "资金+15万（少量违约金，剩余合约期限不长）；士气-2 热度-2；她若在 HO2/BlueV，该小分队解散",
           tag: "htt19", value: "agree",
           effect: st => {
             const m = st.members.find(x => x.name === "黄婷婷");
+            /* 【判定】先取小分队归属再改备注（备注会被解约信息覆盖）；她在 HO2/BlueV 则离团后小分队解散 */
+            const subH = Game.memberSubUnit(st, "黄婷婷");
             if (m) { m.status = "left"; m.note = "2019-12 协商解约离团（支付少量违约金）"; }
             st.money += 15;
             st.morale = Math.max(0, st.morale - 2);
             st.heat = Math.max(0, st.heat - 2);
-            return "你在解约协议上签了字。违约金不多——剩下的合约期限本来就不长，她把该还的都算得清清楚楚。离团那天她发了条长长的告别微博，评论区吵翻了天，但效率却出奇地体面。（决策已登记：htt19=agree。资金+15万 士气-2 热度-2。）";
+            const extra = Game.dissolveSubUnit19(st, subH);
+            return "你在解约协议上签了字。违约金不多——剩下的合约期限本来就不长，她把该还的都算得清清楚楚。离团那天她发了条长长的告别微博，评论区吵翻了天，但效率却出奇地体面。（决策已登记：htt19=agree。资金+15万 士气-2 热度-2。）" + extra;
           } },
         { label: "拒绝请求（史实路线）", hint: "黄婷婷移入暂休（备注私自离团·合约冻结）；士气-3 热度-2",
           tag: "htt19", value: "freeze",

@@ -1072,20 +1072,18 @@ const Game = {
     };
   },
 
-  /* 【2019 主线②】二次组阁文案分叉（马跃：排期爆了 / FT 扶正 / FT 解散）：
-     返回 { text, ftKept } —— ftKept=false 时 FT 解散（移出编制目标，成员默认发配）。 */
+  /* 【2019 主线②】二次组阁文案分叉（马跃：排期爆了 / FT 账本 / 王婧 plain）：
+     史实（2019-01-19 第二次大组阁）恒定取消 Team FT——ftKept 恒为 false，
+     FT 移出编制目标，其成员默认发配分团（无分团则 IDFT）；
+     XII 是否保留仅由 2018 首次组阁的 xiiKept18 决定。 */
   reorg19Narrative(st) {
     st = st || this.st;
     const xii = !!st.flags.xiiKept18 && st.members.some(m => m.status === "active" && m.team === "XII");
     const ftList = st.members.filter(m => m.status === "active" && m.team === "FT");
     const ftAvg = ftList.length ? Math.round(ftList.reduce((a, m) => a + (m.pop || 0), 0) / ftList.length) : 0;
     if (xii && ftList.length) {
-      return { key: "both", ftKept: true,
-        text: "马跃把两份公演排期表拍在桌上：「总监，公演排不开了——XII 和 FT 两支队伍全挤在一起，要缩减队伍，就在这次组阁里一起解决。」" };
-    }
-    if (ftList.length && ftAvg >= 40) {
-      return { key: "ftUp", ftKept: true,
-        text: "马跃把 FT 这一年的上座曲线推过来：「FT 的成员们，是时候成为主力了——平均人气 " + ftAvg + "，公演上座压过好几个老队。二次组阁，该给她们正名了。」" };
+      return { key: "both", ftKept: false,
+        text: "马跃把两份公演排期表拍在桌上：「总监，公演排不开了——XII 和 FT 两支队伍全挤在一起，剧场就一个。FT 的牌子这次收起来，队伍缩减，就在这次组阁里一起解决。」" };
     }
     if (ftList.length) {
       return { key: "ftDown", ftKept: false,
@@ -1106,7 +1104,7 @@ const Game = {
   },
 
   /* 【2019 主线②】二次组阁落地（UI.showReorg19Picker 确认回调）：
-     assign   = { 成员id → "SII"|"NII"|"HII"|"X"|"XII"(保留时)|"FT"(未解散时)|"prep"|"BEJ48"|"GNZ48"|"SHY48"(保留时)|"CKG48"(保留时)|"idft" }
+     assign   = { 成员id → "SII"|"NII"|"HII"|"X"|"XII"(保留时)|"prep"|"BEJ48"|"GNZ48"|"SHY48"(保留时)|"CKG48"(保留时)|"idft" }
      captains = { 队伍 → { captain: 成员id, vice: 成员id|null } }
      规则：本部每队下限13/上限20（主力16替补4按人气自动划档）；编入预备生≤16人；
      分团目标仅限保留的分团（BEJ48/GNZ48 常驻；SHY48/CKG48 序章保住时可选）；
@@ -1114,7 +1112,7 @@ const Game = {
   applyReorg19(assign, captains) {
     const st = this.st, r = st.reorg19;
     const keptXII = !!st.flags.xiiKept18 && st.members.some(m => m.status === "active" && m.team === "XII");
-    const ftKept = r.ftKept !== false && st.members.some(m => m.status === "active" && m.team === "FT");
+    const ftKept = false;   // 史实：二次组阁恒定取消 Team FT（FT 不入编制目标，成员默认发配/IDFT）
     const TEAMS = ["SII", "NII", "HII", "X"].concat(keptXII ? ["XII"] : []).concat(ftKept ? ["FT"] : []);
     const BR = ["BEJ48", "GNZ48"].concat(st.decisions.branch19Keep === "keep" ? ["SHY48", "CKG48"] : []);
     const pools = this.reorg19Pools(st);
@@ -1906,6 +1904,24 @@ const Game = {
 
   /* 成员卡结构：{ id, name, team, gen, pop, bond, status: 'active'|'left'|'rest'|'branch',
                    branchTeam?, branchLabel?（2026 分团成员的完整队伍标注） } */
+  /* 【2018 通用】《国风美少年》内推名额落地：被选中者人气+5 羁绊+3；
+     热度+8 资金+20万 士气+2；名单记入 decisions.guofeng18（殿堂偶像任导师）。 */
+  guofeng18Pick(id) {
+    const st = this.st;
+    st.flags.guofeng18 = true;
+    const m = st.members.find(x => x.id === id);
+    if (!m || m.status === "left" || m.status === "rest" || m.hall) return { text: "该成员无法参赛。", tone: "blocked" };
+    m.pop = this.clamp(m.pop + 5, 0, 100);
+    m.bond = this.clamp(m.bond + 3, 0, 100);
+    st.heat = this.clamp(st.heat + 8, 0, 100);
+    st.money += 20;
+    st.morale = this.clamp(st.morale + 2, 0, 100);
+    this.recordDecision("guofeng18", m.name);
+    const hall = st.members.find(x => x.hall && x.status === "active");
+    this.addLog(st, st.month, "★《国风美少年》：" + (hall ? hall.name : "殿堂偶像") + " 担任导师，" + m.name + " 内推参赛（热度+8 资金+20万）。", "main");
+    return { text: "官宣当天，「殿堂偶像坐镇导师席」和「内推名单里那个名字」同时上了热搜——国风舞台的首秀，这条河没缺席。（" + m.name + " 人气+5 羁绊+3；热度+8 资金+20万 士气+2）", tone: "main" };
+  },
+
   buildRoster(st) {
     if (st.era === "2026") {
       /* 2026：本部各队完整建卡；分团成员为简卡（status='branch'，无人气/羁绊，
@@ -2302,6 +2318,38 @@ const Game = {
     this.addLog(st, st.month, "小分队 " + unit + " 名单公布（公司指定）：" + members.map(m => m.name).join("、") + "。", "main");
     this.save();
     return { text: unit + " 名单敲定：" + members.map(m => m.name).join("、") + "。小分队成军曝光（每人人气+5 羁绊+5）。", tone: "main" };
+  },
+
+  /* 【2019 通用】成员所属小分队查询（HO2/BlueV，按成员卡备注识别；不在则返回 null）。 */
+  memberSubUnit(st, name) {
+    const m = st.members.find(x => x.name === name);
+    if (!m) return null;
+    if ((m.note || "").indexOf("SNH48小分队HO2成员") >= 0) return "HO2";
+    if ((m.note || "").indexOf("SNH48小分队BlueV成员") >= 0) return "BlueV";
+    return null;
+  },
+
+  /* 【2019 通用】小分队解散（成员兼任分团/离团导致活动终止，冯薪朵兼任/葛佳慧解约/
+     黄婷婷解约路线回收）：旗标登记 flags.unitsDissolved19，全队备注追加解散记录，
+     写入年志；返回追加到事件文案末尾的提示（未在队/已解散返回空串）。 */
+  dissolveSubUnit19(st, unit) {
+    if (!unit || (st.flags.unitsDissolved19 || []).indexOf(unit) >= 0) return "";
+    st.flags.unitsDissolved19 = (st.flags.unitsDissolved19 || []).concat(unit);
+    const mark = "SNH48小分队" + unit + "成员";
+    /* 名单来源：decisions.unitsHO2/unitsBlueV（点将存名）+ 成员卡备注（打投/指定成军），取并集 */
+    const listKey = unit === "HO2" ? "unitsHO2" : "unitsBlueV";
+    const byList = ((st.decisions && st.decisions[listKey]) || []);
+    const names = [];
+    for (const m of st.members) {
+      if ((m.note || "").indexOf(mark) >= 0 || byList.indexOf(m.name) >= 0) {
+        names.push(m.name);
+        if ((m.note || "").indexOf(unit + "解散") < 0) {
+          m.note = (m.note ? m.note + "；" : "") + "2019 · 小分队" + unit + "解散（活动终止）";
+        }
+      }
+    }
+    this.addLog(st, st.month, "小分队 " + unit + " 解散（活动终止）：原成员 " + names.join("、") + "。", "main");
+    return "\n\n同日，官网挂出一行小字：小分队 " + unit + " 活动终止——" + (names.length ? "原成员（" + names.join("、") + "）的" : "") + "小分队日程全部下线。（小分队 " + unit + " 解散）";
   },
 
   /* 【2018 复刻路线专属】红白歌会·中国预赛出征名单（UI.showKohakuPicker 回调）：
@@ -3701,11 +3749,111 @@ const Game = {
       : st.era === "2018" ? STORY.rtNarrative18
       : st.era === "2017" ? STORY.rtNarrative17 : STORY.rtNarrative;
     const narPages = rtNar[tier === "great" ? "great" : "normal"];
+    /* 【2016~2019】年度金曲榜单挂载 + 人气/关系加成 */
+    const gold = this.resolveGoldSongs(st);
     return {
-      type: "rtResult", tier, score, money,
+      type: "rtResult", tier, score, money, gold,
       title: "年度金曲大赏 · 收官",
       pagesAfter: (typeof narPages === "function" ? narPages(st) : narPages).map(p => ({ ...p, t: this.fmt(p.t) })),
     };
+  },
+
+  /* 【2016~2019】金曲大赏 TOP10 榜单（DATA.goldSongs）：
+     · 2016 完全照表挂载；2017/2018 前三锁史实，4~10 歌名按史实、参演按人气生成；
+     · 2019 公布模式不同：公布前8+队歌第一——年度金曲《就差一点点》即为第一，
+       往上排名顺延，最下为年度荣耀队歌第一（按史实 BEJ48 Team B）；
+     · 生成规则：同一成员至多参加两曲（已满顺延下一位）；史实为队伍参演的名次
+       选磨合度最高的队伍（全榜队伍只能出现一次）；
+     · 加成：前三参演成员人气+4（队伍参演则全队+2）；4~5名略低（+2 / 队伍+1）；
+       共演成员相互关系提升（前三+3 / 其余+2；队伍参演则全队两两+1~2）。 */
+  goldCastText(cast) {
+    if (!cast) return "";
+    return cast.team ? cast.team : (cast.names || []).join("、");
+  },
+
+  resolveGoldSongs(st) {
+    const data = (typeof DATA !== "undefined" && DATA.goldSongs) ? DATA.goldSongs[st.era] : null;
+    if (!data || !data.list) return null;
+    const used = {};        // 成员名 → 已参加曲数（至多2）
+    const usedTeams = {};   // 队伍只能出现一次
+    const inRoster = m => m && (m.status === "active" || m.status === "branch") && !m.hall;
+    const elig = st.members.filter(m => inRoster(m) && m.team !== "PREP" && m.name);
+    const byPop = elig.slice().sort((a, b) => (b.pop || 0) - (a.pop || 0) || (a.id < b.id ? -1 : 1));
+    const pickMembers = n => {
+      const picks = [];
+      for (const m of byPop) {
+        if ((used[m.name] || 0) >= 2) continue;   // 已满两个节目 → 顺延
+        picks.push(m);
+        if (picks.length >= n) break;
+      }
+      return picks.map(m => m.name);
+    };
+    const BR_TEAMS = ["BEJ48", "GNZ48", "SHY48", "CKG48", "CGT48", "WHN48"];
+    const pickTeam = () => {
+      const cands = [];
+      for (const t of ["SII", "NII", "HII", "X", "XII", "FT"])
+        if (!usedTeams[t] && st.members.some(m => m.status === "active" && m.team === t)) cands.push(t);
+      for (const t of BR_TEAMS)
+        if (!usedTeams[t] && st.chem[t] != null && st.members.some(m => m.status === "branch" && m.branchTeam === t)) cands.push(t);
+      let best = null, bestC = -1;
+      for (const t of cands) {
+        const c = st.chem[t] != null ? st.chem[t] : 0;
+        if (c > bestC) { bestC = c; best = t; }
+      }
+      return best;
+    };
+    const list = [];
+    const casts = new Map();
+    /* 第一遍：史实锁定名次（前三/2016全榜）先登记——其成员计入“至多两曲”额度，
+       史实队伍参演也计入“队伍只出现一次”，生成时才不会超额 */
+    for (const e of data.list) {
+      if (!e.fixed) continue;
+      const cast = e.team ? { team: e.team, key: e.teamKey } : { names: e.names.slice() };
+      casts.set(e, cast);
+      if (cast.key) usedTeams[cast.key] = true;
+      if (cast.names) for (const n of cast.names) used[n] = (used[n] || 0) + 1;
+    }
+    /* 第二遍：生成名次（按人气点人；队伍参演取磨合度最高队伍） */
+    for (const e of data.list) {
+      if (e.fixed) continue;
+      let cast;
+      if (e.gen === "team") {
+        const t = pickTeam();
+        if (t) {
+          cast = { team: BR_TEAMS.indexOf(t) >= 0 ? t : "SNH48 Team " + t, key: t };
+          usedTeams[t] = true;
+        } else cast = { names: pickMembers(3) };   // 兜底：无可用队伍时按人气点三人
+      } else {
+        cast = { names: pickMembers(e.gen || 1) };
+      }
+      casts.set(e, cast);
+      if (cast.key) usedTeams[cast.key] = true;
+      if (cast.names) for (const n of cast.names) used[n] = (used[n] || 0) + 1;
+    }
+    for (const e of data.list) {
+      list.push({ rank: e.rank, song: e.song, from: e.from || "", cast: casts.get(e), tag: e.tag || "", last: !!e.last });
+    }
+    /* —— 加成：参演成员人气 + 共演关系 —— */
+    const boost = cast => {
+      const r = typeof cast._r === "number" ? cast._r : 9;
+      const top3 = r <= 3, top5 = r <= 5;
+      if (cast.team) {
+        const ms = st.members.filter(m => ((m.status === "active" && m.team === cast.key) || (m.status === "branch" && m.branchTeam === cast.key)) && !m.hall);
+        for (const m of ms) m.pop = this.clamp((m.pop || 0) + (top3 ? 2 : top5 ? 1 : 0), 0, 100);
+        const d = top3 ? 2 : 1;
+        for (let i = 0; i < ms.length; i++) for (let j = i + 1; j < ms.length; j++) this.relAdd(st, ms[i].id, ms[j].id, d);
+      } else {
+        const ms = (cast.names || []).map(n => st.members.find(m => m.name === n)).filter(inRoster);
+        for (const m of ms) m.pop = this.clamp((m.pop || 0) + (top3 ? 4 : top5 ? 2 : 0), 0, 100);
+        const d = top3 ? 3 : 2;
+        for (let i = 0; i < ms.length; i++) for (let j = i + 1; j < ms.length; j++) this.relAdd(st, ms[i].id, ms[j].id, d);
+      }
+    };
+    for (const e of list) { e.cast._r = typeof e.rank === "number" ? e.rank : 9; boost(e.cast); }
+    const top1 = list.find(e => e.rank === 1) || list[0];
+    this.addLog(st, 12, "年度金曲榜单公布——年度金曲《" + top1.song + "》（" + this.goldCastText(top1.cast) + "）。", "gold");
+    st.goldSongs = { year: st.era, list };
+    return st.goldSongs;
   },
 
   /* ============================ 年度评分与结局 ============================ */

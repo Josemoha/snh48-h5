@@ -720,6 +720,74 @@ const DATA = {
     prevChampion: "《夜蝶》李艺彤 & 黄婷婷（第二届 BEST 30，2015-12-26）",
   },
 
+  /* 金曲大赏 TOP10 挂载表（仅 2016~2019 线；来源：用户提供的史实榜单截图）。
+     规则：
+     · 2016 完全照表挂载（所有名次锁史实名单）；
+     · 2017/2018 只前三按史实挂载，4~10 歌名按史实、参演成员按人气生成
+       （同一成员至多参加两曲，已满顺延；史实为队伍参演的名次选磨合度最高的队伍，
+       队伍全榜只能出现一次）；
+     · 2019 公布模式不同：公布前8+队歌第一——年度金曲《就差一点点》即为第一，
+       往上排名顺延（耀阳组），最下为年度荣耀队歌第一（按史实 BEJ48 Team B）。
+     字段：fixed=锁史实名单；names=参演成员（史实）；team/teamKey=史实为队伍参演；
+     gen=生成名次的参演人数（数字）或 "team"（队伍参演）。 */
+  goldSongs: {
+    "2016": {
+      list: [
+        { rank: 10, song: "燃烧的道路", from: "Team NII 3rd Stage「前所未有」公演", fixed: true, names: ["黄婷婷", "赵粤"] },
+        { rank: 9,  song: "爱恨的泪",   from: "Team SII 3rd Stage「不眠之夜」公演", fixed: true, names: ["冯薪朵", "陆婷"] },
+        { rank: 8,  song: "爱的加速器", from: "Team NII 3rd Stage「前所未有」公演", fixed: true, names: ["鞠婧祎"] },
+        { rank: 7,  song: "心型病毒",   from: "Team SII 2nd Stage「永恒之光」公演", fixed: true, names: ["杨冰怡", "杨韫玉", "张丹三"] },
+        { rank: 6,  song: "再见，制服", from: "Team SII 4th Stage「勇气重生」公演", fixed: true, names: ["戴萌", "莫寒", "张语格"] },
+        { rank: 5,  song: "如果你拥抱我", from: "Team NII 2nd Stage「逆流而上」公演", fixed: true, names: ["戴萌", "邱欣怡", "黄婷婷"] },
+        { rank: 4,  song: "雨中钢琴师", from: "Team HII 2nd Stage「手牵手」公演", fixed: true, names: ["徐子轩", "李艺彤", "刘佩鑫"] },
+        { rank: 3,  song: "恋爱捉迷藏", from: "Team NII 1st Stage「剧场女神」公演", fixed: true, names: ["唐安琪"] },
+        { rank: 2,  song: "Bingo!",     from: "Team NII 4th Stage「我的太阳」公演", fixed: true, team: "SNH48 Team NII", teamKey: "NII" },
+        { rank: 1,  song: "夜蝶",       from: "Team SII/Team X 1st Stage「最后的钟声响起」公演", fixed: true, names: ["李艺彤", "黄婷婷"] },
+      ],
+    },
+    "2017": {
+      list: [
+        { rank: 10, song: "爱到累了",     from: "Team NII 4th Stage「我的太阳」公演", gen: 3 },
+        { rank: 9,  song: "狼与自尊",     from: "SNH48 EP《雨季之后》", gen: 2 },
+        { rank: 8,  song: "巧克力糖果",   from: "Team SII 5th Stage「让梦想闪耀」公演", gen: 3 },
+        { rank: 7,  song: "错过奇迹",     from: "Team SII 4th Stage「勇气重生」公演", gen: 3 },
+        { rank: 6,  song: "第一只兔子",   from: "SNH48 EP《鸣吒》", gen: "team" },
+        { rank: 5,  song: "青春闪电",     from: "Team SII 5th Stage「让梦想闪耀」公演", gen: 1 },
+        { rank: 4,  song: "木偶",         from: "Team NII 6th Stage「专属派对」公演", gen: 1 },
+        { rank: 3,  song: "我的舞台",     from: "Team SII 7th Stage「心的旅程」公演", fixed: true, team: "SNH48 Team SII", teamKey: "SII" },
+        { rank: 2,  song: "爱恨的泪",     from: "Team SII 3rd Stage「不眠之夜」公演", fixed: true, names: ["李艺彤", "黄婷婷"] },
+        { rank: 1,  song: "Don't touch", from: "Team NII 6th Stage「专属派对」公演", fixed: true, names: ["鞠婧祎", "曾艳芬", "赵粤"] },
+      ],
+    },
+    "2018": {
+      list: [
+        { rank: 10, song: "不曾后悔",           from: "出自公演《让梦想闪耀》", gen: 4 },
+        { rank: 9,  song: "再爱一回",           from: "出自公演《最后的钟声响起》", gen: 4 },
+        { rank: 8,  song: "Monster（SOLO）",    from: "出自公演《梦想的旗帜》", gen: 1 },
+        { rank: 7,  song: "9 To 9",             from: "出自公演《双面偶像》", gen: 2 },
+        { rank: 6,  song: "潜梦",               from: "出自公演《以爱之名》", gen: 3 },
+        { rank: 5,  song: "未接来电",           from: "出自公演《以爱之名》", gen: 2 },
+        { rank: 4,  song: "人间规则（SOLO）",   from: "出自公演《代号XII 2.0超感进化版》", gen: 1 },
+        { rank: 3,  song: "青涩的香蕉",         from: "出自公演《让梦想闪耀》", fixed: true, names: ["陈珂", "郑丹妮"] },
+        { rank: 2,  song: "光之轨迹（16人）",   from: "出自公演《以爱之名》", fixed: true, team: "SNH48 Team NII", teamKey: "NII" },
+        { rank: 1,  song: "春夏秋冬（UNIT）",   from: "出自公演《以爱之名》", fixed: true, names: ["苏杉杉", "王诗蒙", "冯思佳", "张丹三"] },
+      ],
+    },
+    "2019": {
+      list: [
+        { rank: 8, song: "深海之声",             from: "出自公演《命运的X号》", gen: 3 },
+        { rank: 7, song: "巧克力之吻",           from: "出自公演《偶像的黎明》", gen: 3 },
+        { rank: 6, song: "人间规则（Unit）",     from: "出自公演《代号XII 2.0超感进化版》", gen: 3 },
+        { rank: 5, song: "9 to 9",               from: "出自公演《双面偶像》", gen: 2 },
+        { rank: 4, song: "钢铁之舞（Solo）",     from: "出自公演《命运的X号》", gen: 1 },
+        { rank: 3, song: "Zen",                 from: "出自公演《三角函数》", gen: "team" },
+        { rank: 2, song: "Spy",                 from: "出自公演《B A FIGHTER》", gen: 2 },
+        { rank: 1, song: "就差一点点",           from: "出自公演《三角函数》", fixed: true, names: ["戴萌", "莫寒"], tag: "年度金曲" },
+        { rank: 9, song: "笨",                   from: "出自公演《B A FIGHTER》", fixed: true, team: "BEJ48 Team B", teamKey: "BEJ48", tag: "年度荣耀队歌", last: true },
+      ],
+    },
+  },
+
   /* 分团历史节点（主线任务节奏的史实锚点） */
   branchHistory: {
     traineeDate: "2016-01-18",   // 六期生·分团方向 47 人以培训生身份入团

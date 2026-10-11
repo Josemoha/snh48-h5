@@ -231,6 +231,11 @@ const UI = {
               this.showAsiaFest19Picker(finish);   // AKB48亚洲盛典（2019 复刻线）：曼谷远征七人名单
               return;
             }
+            if (ch.pickMode === "guofeng18") {
+              this.closeModal();
+              this.showGuofeng18Picker(finish);   // 《国风美少年》（2018）：内推名额单人点将
+              return;
+            }
             if (ch.pickMode === "ho2pick") {
               this.closeModal();
               this.showUnit18Picker("HO2", finish);
@@ -352,6 +357,17 @@ const UI = {
     const tierText = { great: "大成功 —— 全场手机灯海，年度舞台没有之一", good: "成功 —— 稳稳的收官，口碑票房双收", normal: "平淡 —— 有惊无险地唱到了最后" }[step.tier];
     const c = this.card(step.title, "舞台质量评价：" + step.score + " / 100");
     c.appendChild(this.el("p", "modal-text", tierText + "\n\n门票与周边为账面带来 " + step.money + " 万。"));
+    /* 【2016~2019】年度金曲榜单（前三锁史实；4名以外按人气生成；2019 为前8+队歌第一） */
+    const gs = step.gold || Game.st.goldSongs;
+    if (gs && gs.list) {
+      const rows = gs.list.slice().sort((a, b) => (a.last ? 1 : 0) - (b.last ? 1 : 0) || a.rank - b.rank);
+      const box = this.el("div", "modal-text");
+      box.appendChild(this.el("p", "", "—— 年度金曲榜单 ——"));
+      for (const e of rows) {
+        box.appendChild(this.el("p", "", e.rank + ".《" + e.song + "》" + Game.goldCastText(e.cast) + (e.tag ? "（" + e.tag + "）" : "")));
+      }
+      c.appendChild(box);
+    }
     const btn = this.el("button", "btn btn-primary modal-close", "落幕");
     btn.onclick = () => {
       this.closeModal();
@@ -359,6 +375,13 @@ const UI = {
     };
     c.appendChild(btn);
     this.modal(c);
+  },
+
+  /* 年度结算页——金曲榜首摘要（2016~2019） */
+  goldTopText(st) {
+    if (!st.goldSongs) return "—";
+    const t = st.goldSongs.list.find(e => e.rank === 1) || st.goldSongs.list[0];
+    return "《" + t.song + "》" + Game.goldCastText(t.cast) + (t.tag ? "（" + t.tag + "）" : "");
   },
 
   /* ---------------- 标题 / 开局 ---------------- */
@@ -1988,14 +2011,13 @@ const UI = {
      2019 主线②二次组阁编制会（两阶段，结构同 2018）：
      阶段一：逐人定队（本部各队 / 预备生 / 发配分团【仅保留的分团可选】/ 移籍 IDFT）
      阶段二：队长队副任命 → Game.applyReorg19 落地
-     文案分叉（马跃排期 / FT 扶正 / FT 解散）由 Game.reorg19Narrative 计算：
-     FT 解散时 FT 移出编制目标，其成员默认发配分团（无分团则 IDFT）。 */
+     史实：二次组阁恒定取消 Team FT（FT 不入编制目标，成员默认发配/IDFT）；
+     2018 保留了 XII 则本次也保留；推进 TEB48 且开业后，TEB48 预备生入预备生选项。 */
   showReorg19Picker(onDone) {
     const st = Game.st;
     const nar = Game.reorg19Narrative(st);
     const keptXII = !!st.flags.xiiKept18 && st.members.some(m => m.status === "active" && m.team === "XII");
-    const ftKept = nar.ftKept;
-    const TEAMS = ["SII", "NII", "HII", "X"].concat(keptXII ? ["XII"] : []).concat(ftKept ? ["FT"] : []);
+    const TEAMS = ["SII", "NII", "HII", "X"].concat(keptXII ? ["XII"] : []);
     const BR = ["BEJ48", "GNZ48"].concat(st.decisions.branch19Keep === "keep" ? ["SHY48", "CKG48"] : []);
     const pools = Game.reorg19Pools(st);
     const assign = {};   // id → 队伍 | "prep" | "BEJ48"…(发配分团) | "idft"
@@ -2003,7 +2025,7 @@ const UI = {
        分团移交成员默认移籍 IDFT */
     for (const m of pools.head) {
       if (m.team === "PREP") { assign[m.id] = "prep"; continue; }
-      if (m.team === "FT" && !ftKept) { assign[m.id] = BR.length ? BR[0] : "idft"; continue; }
+      if (m.team === "FT") { assign[m.id] = BR.length ? BR[0] : "idft"; continue; }
       assign[m.id] = TEAMS.indexOf(m.team) >= 0 ? m.team : "idft";
     }
     for (const m of pools.dissolved) assign[m.id] = "idft";
@@ -2025,7 +2047,7 @@ const UI = {
     const c = this.card("二次组阁编制会 · 逐人定队",
       nar.text + "\n\n点击卡片循环选择去向；发配分团羁绊-6，移籍 IDFT（训练生池）羁畔-6。"
       + "本部每队下限 13 人、上限 20 人（前 16 主力 · 其余替补）；预备生队伍至多 16 人"
-      + (keptXII ? "；XII 保留编制" : "") + (ftKept ? "；FT 保留" : "；FT 解散——成员重新排队")
+      + (keptXII ? "；XII 保留编制" : "") + "；FT 解散——成员重新排队"
       + (pools.dissolved.length ? "；带 ★ 的为停运分团移交成员（可入本部/其余分团/预备生，或移籍 IDFT）" : "")
       + (pools.teb && pools.teb.length ? "；◆ 为 TEB48 预备生（默认留任台北，可调往本部预备生）" : ""));
     const counter = this.el("p", "modal-text", "");
@@ -2083,7 +2105,7 @@ const UI = {
     for (const t of ["SII", "NII", "HII", "X", "XII", "FT"]) {
       const list = pools.head.filter(m => m.team === t);
       if (!list.length) continue;
-      grid.appendChild(this.el("div", "pick-section", "—— Team " + t + (t === "FT" && !ftKept ? "（解散·重新排队）" : t === "XII" && !keptXII ? "（解散·全员重编）" : "") + " ——"));
+      grid.appendChild(this.el("div", "pick-section", "—— Team " + t + (t === "FT" ? "（解散·重新排队）" : t === "XII" && !keptXII ? "（解散·全员重编）" : "") + " ——"));
       const order = TEAMS.concat(BR, ["prep", "idft"]);
       for (const m of list) grid.appendChild(makeBtn19(m, order));
     }
@@ -2358,6 +2380,27 @@ const UI = {
       cardInfo: m => (m.status === "branch" ? m.branchTeam + " · " : m.team + " · ") + "人气" + m.pop + (m.pwr != null ? " 实力" + m.pwr : ""),
       onConfirm: ids => {
         const res = Game.asiaFest19Squad(ids);
+        this.renderGame();
+        this.toast(res.text);
+        if (onDone) onDone();
+      },
+    });
+  },
+
+  /* 【2018 通用】《国风美少年》内推名额：全团在籍成员（非殿堂）单人点将；
+     生效逻辑在 engine.guofeng18Pick。 */
+  showGuofeng18Picker(onDone) {
+    const st = Game.st;
+    const pool = st.members.filter(m => (m.status === "active" || m.status === "branch") && !m.hall && m.pop != null)
+      .sort((a, b) => (b.pop || 0) - (a.pop || 0));
+    this.showMultiPick({
+      title: "《国风美少年》· 内推名额 点将1人",
+      sub: "免海选直进录制——全团在籍成员（含分团，非殿堂）皆可推；谁去，谁的国风舞台首秀就成了",
+      pool: pool, count: 1,
+      confirmLabel: "名额敲定 →",
+      cardInfo: m => (m.status === "branch" ? m.branchTeam + " · " : m.team + " · ") + "人气" + m.pop + (m.pwr != null ? " 实力" + m.pwr : ""),
+      onConfirm: ids => {
+        const res = Game.guofeng18Pick(ids[0]);
         this.renderGame();
         this.toast(res.text);
         if (onDone) onDone();
@@ -2671,6 +2714,7 @@ const UI = {
         + (st.show18.album ? " · ✔ 葛佳慧专辑已发行" : "")],
       ["总决选第一名", st.geResult ? st.geResult.top1 : "—"],
       ["金曲大赏", st.rtDone ? st.rtScore + " / 100" : "—"],
+      ["年度金曲", this.goldTopText(st)],
       ["全团平均实力", Game.avgPwr(st) + "（年初 " + (st.pwrBase || 0) + "）"],
       ["年末资金", st.money + " 万"],
       ["年末热度 / 士气", st.heat + " / " + st.morale],
@@ -2697,6 +2741,7 @@ const UI = {
       ["限定团", st.flags.unit19Formed ? "✔ " + (st.unit19.members || []).join("、") : "未成团"],
       ["总决选第一名", st.geResult ? st.geResult.top1 : "—"],
       ["金曲大赏", st.rtDone ? st.rtScore + " / 100" : "—"],
+      ["年度金曲", this.goldTopText(st)],
       ["全团平均实力", Game.avgPwr(st) + "（年初 " + (st.pwrBase || 0) + "）"],
       ["年末资金", st.money + " 万"],
       ["年末热度 / 士气", st.heat + " / " + st.morale],
@@ -2718,6 +2763,7 @@ const UI = {
         + "　|　" + (st.branch17.ckgOpen ? "✔ CKG48 " + st.branch17.ckgOpenMonth + " 月开业" : "CKG48 未开业")],
       ["总决选第一名", st.geResult ? st.geResult.top1 : "—"],
       ["金曲大赏评价", st.rtDone ? st.rtScore + " / 100" : "—"],
+      ["年度金曲", this.goldTopText(st)],
       ["原创公演", Game.origCount(st) + " / 4 套"],
       ["全团平均实力", Game.avgPwr(st) + "（年初 " + (st.pwrBase || 0) + "）"],
       ["年末资金", st.money + " 万"],
@@ -2728,6 +2774,7 @@ const UI = {
       ["分团", st.branch.announce ? "✔ " + st.branch.city + " · " + st.branch.announceMonth + "月官宣" : "未成立"],
       ["总选举第一名", st.geResult ? st.geResult.top1 : "—"],
       ["金曲大赏评价", st.rtDone ? st.rtScore + " / 100" : "—"],
+      ["年度金曲", this.goldTopText(st)],
       ["年末资金", st.money + " 万"],
       ["年末热度 / 士气", st.heat + " / " + st.morale],
       ["管理风格", styleNames[st.startStyle] || "—"],

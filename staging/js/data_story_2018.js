@@ -780,6 +780,26 @@ STORY.monthly18 = {
   /* ---------- 8月：总选次日 + 夏日巡演 ---------- */
   8: [
     {
+      /* 【2018 通用】《国风美少年》导师邀约（需有殿堂偶像在籍；快速通道默认鞠婧祎）：
+         殿堂成员受邀担任导师，节目组附赠一个选手内推名额，全团点将一人。
+         tag guofeng18（内推成员姓名），生效逻辑在 engine.guofeng18Pick。 */
+      id: "m8_18_guofeng",
+      title: "8月 · 《国风美少年》导师邀约",
+      gate: st => !st.decisions.guofeng18 && st.members.some(m => m.hall && m.status === "active"),
+      pages: st => {
+        const hall = st.members.find(m => m.hall && m.status === "active");
+        return [
+          { nar: true, t: "总选的热度还没散尽，爱奇艺的邀约函就送到了总监桌上——新综艺《国风美少年》正在组局，节目组点名邀请了刚升入荣誉殿堂的" + (hall ? hall.name : "殿堂偶像") + "担任导师。" },
+          { s: "叶盛", cls: "speaker-yesheng", t: "殿堂成员脱离了队伍排班，正愁曝光断档——综艺导师这个身份，接得漂亮。更有意思的是后面那条：节目组附赠了一个选手内推名额。" },
+          { s: "王婧", cls: "speaker-wangjing", t: "（圈出邀约函的一角）内推名额，免海选直进录制——全团的孩子都可以推。谁去，谁的国风舞台首秀就成了。总监，这个名额给谁，您定。" },
+        ];
+      },
+      choices: [
+        { label: "接下邀约，点将一人内推参赛", hint: "全团在籍成员（非殿堂）皆可点；被选中者人气+5 羄绊+3；热度+8 资金+20万 士气+2",
+          pickMode: "guofeng18" },
+      ],
+    },
+    {
       id: "m8_18_summer",
       title: "8月 · 夏日巡演",
       pages: st => [
