@@ -460,6 +460,22 @@ body {
 .mc-bar.pop i { background: var(--pink); }
 .mc-bar.bond i { background: var(--green); }
 .mc-bar-label { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-faint); margin-top: 2px; }
+/* v0.13.0 成员关系 & 队伍磨合度 */
+.team-chem {
+  grid-column: 1 / -1;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  background: var(--panel-soft);
+  padding: 10px 12px;
+}
+.team-chem .tc-top { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; }
+.team-chem .tc-top span { font-weight: 800; color: var(--gold); }
+.team-chem .tc-bar { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.09); margin-top: 7px; overflow: hidden; }
+.team-chem .tc-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--green), #a3e635); }
+.team-chem.low .tc-bar i { background: linear-gradient(90deg, var(--red), #fb923c); }
+.team-chem .tc-note { margin-top: 6px; font-size: 11px; color: var(--text-dim); }
+.team-chem.low .tc-note { color: #fca5a5; }
+.mc-rels { margin-top: 6px; font-size: 10px; color: var(--text-dim); line-height: 1.5; }
 .team-badge {
   display: inline-block;
   font-size: 10px;
@@ -494,6 +510,9 @@ body {
 .tb-HALL { color: var(--gold); border-color: rgba(245, 197, 66, 0.5); }
 .speaker-x { background: linear-gradient(135deg, #ffe08a, #f0a53c); }   /* 杨冰怡（Team X 队长·殿堂） */
 .speaker-aji { background: linear-gradient(135deg, #5eead4, #0d9488); }  /* 阿吉（2017 新媒体运营） */
+.speaker-gjh { background: linear-gradient(135deg, #f472b6, #db2777); }  /* 葛佳慧（2019 谈心） */
+.speaker-fxd { background: linear-gradient(135deg, #93c5fd, #2563eb); }  /* 冯薪朵（2019 请缨） */
+.speaker-htt { background: linear-gradient(135deg, #a5b4fc, #6366f1); }  /* 黄婷婷（2019 解约请求） */
 
 /* 结局页「进入下一年」入口按钮（2016 → 2017 本部新章） */
 #btn-ending-next { margin-top: 0; }

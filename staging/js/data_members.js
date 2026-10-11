@@ -14,6 +14,7 @@
      DATA.members      2016-01-01 在籍 116 人（id/name/team/gen/join/pop/captain/note）
      DATA.joining2016  2016 年内新入团成员（按月加入：六期生 3 月、七期生 9/10 月）
      DATA.leaving2016  2016 年内离团/暂休/移籍事件（引擎按月触发剧情）
+     DATA.leaving2019  2019 年内离团事件（2019「双岸」线，引擎按月触发）
      DATA.branchMovers 2016-04-20 移籍 BEJ48 / GNZ48 的 21 人（分团剧情核心素材）
      DATA.election2015Top / DATA.election2016  两届总决选考据数据（剧情用）
    ========================================================================== */
@@ -637,6 +638,45 @@ const DATA = {
     { name: "王见妮", branch: null,     gen: "十三期生",    join: "2019-11-29" },
     { name: "杜亚轩", branch: "BEJ48", gen: "BEJ48七期生", join: "2019-11-29" },
     { name: "熊文婕", branch: "BEJ48", gen: "BEJ48七期生", join: "2019-11-29" },
+  ],
+
+  /* ---------------- 2019 年内离团（2019「双岸」线用，v0.12.3 挂载） ----------------
+     在「2018 年末游戏内成员卡实际状态」基础上生效（引擎自动跳过已离团/暂休/
+     殿堂成员）；2018 年点将出征鹅厂选秀的成员不随本表离团（引擎特判，见
+     engine.monthStart——封闭集训与限定团线承载她们的年内在籍）。
+     type 口径沿用 leaving2018：SNH48 本部出身（含移籍分团的五期/六期生）=毕业 /
+     本部预备生=离团 / 分团自主招募成员=退团。
+     【不建卡忽略名单】下列 2019 年史实离团成员游戏内无成员卡，不挂载：
+       何梦瑶、楼澍、刘静晗、陈俊宏、余芷媛、张丹丹、毕瑞珊、胡丽芝、郭铱宁。
+     【名字勘误】4月「李瑜旋」按游戏内在册卡名 李瑜璇（CKG48 一期生）挂载。 */
+  leaving2019: [
+    { month: 1,  name: "潘燕琦", date: "2019-01", type: "毕业", story: false, note: "七期生" },
+    { month: 1,  name: "孙亚萍", date: "2019-01", type: "离团", story: false, note: "八期生（预备生）" },
+    { month: 1,  name: "刘炅然", date: "2019-01", type: "毕业", story: false, note: "三期生" },
+    { month: 2,  name: "杜秋霖", date: "2019-02", type: "退团", story: false, note: "GNZ48一期生" },
+    { month: 2,  name: "李丽满", date: "2019-02", type: "退团", story: false, note: "BEJ48五期生" },
+    { month: 4,  name: "李瑜璇", date: "2019-04", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 6,  name: "李沁洁", date: "2019-06", type: "毕业", story: false, note: "五期生" },
+    { month: 6,  name: "栾嘉仪", date: "2019-06", type: "离团", story: false, note: "十期生（预备生）" },
+    { month: 6,  name: "杨令仪", date: "2019-06", type: "离团", story: false, note: "九期生（预备生）" },
+    { month: 6,  name: "肖文铃", date: "2019-06", type: "毕业", story: false, note: "六期生" },
+    { month: 6,  name: "左嘉欣", date: "2019-06", type: "毕业", story: false, note: "六期生" },
+    { month: 6,  name: "徐晗",   date: "2019-06", type: "毕业", story: false, note: "三期生" },
+    { month: 7,  name: "李美琪", date: "2019-07", type: "离团", story: false, note: "九期生（预备生）" },
+    { month: 8,  name: "陈美君", date: "2019-08", type: "毕业", story: false, note: "五期生" },
+    { month: 8,  name: "任心怡", date: "2019-08", type: "退团", story: false, note: "BEJ48一期生" },
+    { month: 8,  name: "徐子轩", date: "2019-08", type: "毕业", story: false, note: "二期生" },
+    { month: 8,  name: "李诗彦", date: "2019-08", type: "毕业", story: false, note: "六期生" },
+    { month: 8,  name: "朱小丹", date: "2019-08", type: "离团", story: false, note: "九期生（预备生）" },
+    { month: 9,  name: "房蕾",   date: "2019-09", type: "退团", story: false, note: "BEJ48一期生" },
+    { month: 9,  name: "陈雅钰", date: "2019-09", type: "退团", story: false, note: "BEJ48一期生" },
+    { month: 9,  name: "李梓",   date: "2019-09", type: "毕业", story: false, note: "六期生" },
+    { month: 9,  name: "杨一帆", date: "2019-09", type: "退团", story: false, note: "BEJ48一期生" },
+    { month: 10, name: "赖梓惜", date: "2019-10", type: "退团", story: false, note: "SHY48一期生" },
+    { month: 10, name: "孙馨",   date: "2019-10", type: "毕业", story: false, note: "六期生" },
+    { month: 10, name: "杨鑫",   date: "2019-10", type: "退团", story: false, note: "BEJ48三期生" },
+    { month: 12, name: "谢妮",   date: "2019-12", type: "毕业", story: false, note: "三期生" },
+    { month: 12, name: "张丹三", date: "2019-12", type: "毕业", story: false, note: "四期生" },
   ],
 
   /* ---------------- 2019 年史实节点（新线锚点） ---------------- */

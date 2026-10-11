@@ -206,13 +206,35 @@ STORY.scenes19 = {
     ],
   },
 
-  /* ---------- TEB48 第④步落地 + 开业首演（→done/open） ---------- */
+  /* ---------- TEB48 第④步落地 + 开业首演（→done/open；马嘉伶不可用时直接用本场景） ---------- */
   tebOpen: {
     label: "TEB48 · 开业首演",
     pages: st => [
       { nar: true, t: "台北星梦剧院的首演之夜，剧场外的骑楼上挂起了两排灯——一排写着「AKB48」，一排写着「SNH48」。首演的安可曲，是两岸的孩子用两种语言合唱的同一首歌。" },
       { s: "子杰", cls: "speaker-wangzj", t: "（庆功宴上，难得喝了一杯）从复刻到接盘，四年。这条河终于流进了另一片海。总监——下一座星梦剧院的灯，比你我想象的都亮。（热度+6 资金+60）" },
-      { nar: true, t: "（★主线①「筹建 TEB48」达成：台北星梦剧院开业，此后每月为总账带来 25 万收入。）" },
+      { nar: true, t: "（★主线①「筹建 TEB48」达成：台北星梦剧院开业，此后每月为总账带来 25 万收入。首批 16 名成员名单已登记入册。）" },
+    ],
+  },
+
+  /* ---------- TEB48 开业 + 马嘉伶移籍请求（点将完毕、马嘉伶可用时使用本场景） ----------
+     TEB48 首批成员卡已在开业落地时建好；此处追加马嘉伶的移籍请求与拍板。 */
+  tebOpenMajia: {
+    label: "TEB48 · 开业首演",
+    pages: st => [
+      { nar: true, t: "台北星梦剧院的首演之夜，剧场外的骑楼上挂起了两排灯——一排写着「AKB48」，一排写着「SNH48」。首演的安可曲，是两岸的孩子用两种语言合唱的同一首歌。" },
+      { s: "子杰", cls: "speaker-wangzj", t: "（庆功宴上，难得喝了一杯）从复刻到接盘，四年。这条河终于流进了另一片海。总监——下一座星梦剧院的灯，比你我想象的都亮。（热度+6 资金+60）" },
+      { nar: true, t: "（★主线①「筹建 TEB48」达成：台北星梦剧院开业，此后每月为总账带来 25 万收入。首批 16 名成员名单已登记入册：正式成员阿部玛利亚（AKB48十期生兼任）、刘晓晴、林于馨、蔡亚恩、张羽翎、林易沄（总队长）、蔡伊柔、陈诗雅、柏灵；预备生林昀希、胡詠晴、杨家宜、许淳媛、张鈊乔、吕昕恩、刘曣甯。）" },
+      { nar: true, t: "庆功宴散场前，叶盛拿进了另一封信——落款不是东京总部，是一个人名：马嘉伶。" },
+      { s: "叶盛", cls: "speaker-yesheng", t: "（把信递给你，声音压低）她听说了台北建团的消息，连夜写了这封申请——自愿申请移籍 TEB48，做创始成员。台湾选拔出身，国语日文都通，她说那边比谁都需要她这样的人。总监，这个字，还是您来签。" },
+      { s: "马嘉伶", cls: "", t: "（信末的附言，字迹工整）我知道上海也有我的舞台。但台北的那间剧场亮灯的第一晚，应该有懂两边的人站在台上——请让我去。" },
+    ],
+    choices: [
+      { label: "批准移籍——她与 TEB48 首批成员一起入册", hint: "马嘉伶移籍 TEB48（在册卡移籍 / 无卡新建卡）；人气+6 羁绊-4",
+        tag: "teb19Majia", value: "agree",
+        apply: st => Game.resolveTeb19Majia(st, true) },
+      { label: "婉拒——她留在 SNH48 的舞台上", hint: "马嘉伶留在 SNH48 方面，台北首批名册上没有她",
+        tag: "teb19Majia", value: "reject",
+        apply: st => Game.resolveTeb19Majia(st, false) },
     ],
   },
 
@@ -313,6 +335,24 @@ STORY.monthly19 = {
         ];
       },
     },
+    {
+      /* 【2019 复刻线专属】AKB48亚洲盛典（1月）：史上第一次全亚洲团体大集结（曼谷）。
+         选项为 pickMode="asiafest7"，由 UI 弹出七人点将窗（除 2018 选秀派遣成员外全团可点），
+         生效逻辑在 engine.asiaFest19Squad。 */
+      id: "m1_19_asiafest",
+      title: "1月 · 来自东京的第二封信：亚洲盛典",
+      gate: st => ((st.decisions && st.decisions.jpMode) || st.jpMode) === "replicate" && !st.flags.asiaFest19,
+      pages: st => [
+        { nar: true, t: "新年第一周，一封从东京寄来的加急函件送到了总监办公室——落款是 AKS。信封里除了邀请函，还有一张七团合照的预想图：曼谷、曼谷的场馆、还有每一家团体的队徽。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（念函件）「史上第一次——AKB48 Group 亚洲盛典」，亚洲所有团体大集结，三月末，泰国曼谷。这是这个牌子二十年来头一回，把整个亚洲的舞台装进同一晚。上海，在日本这边，是第一个被点名的海外团体。" },
+        { s: "王婧", cls: "speaker-wangjing", t: "（把预想图钉在白板上）复刻路线走到第四年，这份情分是真的——门票、接待、合舞台顺序，日方全包。我们只需要定一件事：派谁去。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（小声提醒）选秀派遣的那批孩子动不了——封闭集训一天都不能断。但剩下的人里，七个名额，亚洲的镜头，谁去谁露脸。总监，名单你来定。" },
+      ],
+      choices: [
+        { label: "点将七人，奔赴曼谷", hint: "除选秀派遣成员外全团可点；被选中者羁绊+8 人气+4；热度+8 士气+3 资金-20万",
+          pickMode: "asiafest7" },
+      ],
+    },
     prepEv19,
   ],
 
@@ -391,6 +431,51 @@ STORY.monthly19 = {
   /* ---------- 5月：总选启动 ---------- */
   5: [
     {
+      /* 【2019 通用】阿吉的一年之约到期（需 2018 挽留成功 flags.ajiStay18）：
+         离行前留下两套借选秀势头的外务方案。
+         tag ajiFarewell19：out（主外：超新星运动会）/ in（主内：燃烧吧团魂）。 */
+      id: "m5_19_aji_farewell",
+      title: "5月 · 阿吉的告别",
+      gate: st => !!st.flags.ajiStay18 && !st.decisions.ajiFarewell19,
+      pages: st => [
+        { nar: true, t: "五月的第一个工作日，综艺部的灯又亮到了很晚——只是这次不是加班，是告别。阿吉把工牌摘下来，放进了纸箱最上面——去年的今天，他留下过一份辞呈；你留住了他一年。" },
+        { s: "阿吉", cls: "speaker-aji", t: "总监，一年之约，到期了。《梦想演播厅》收官、选秀开了花、爸妈那边我也安排妥了——这次，是真的要走了。\n\n（他把一个牛皮纸袋放到你桌上）临走前，留个东西给您。选秀这股热度不能白白让它凉——我拟了两套外务方案，您挑一套。" },
+        { s: "阿吉", cls: "speaker-aji", t: "方案一，主外：集团已经派了男团去参加今年度的选秀——咱们这边，就去接鹅厂的《超新星运动会》，继续把选秀的热度烧下去。方案二，主内：做一档《燃烧吧！团魂》，接档《梦想演播厅》——以队伍为核心的小圈内选秀，把去年的组阁、今年的磨合，都变成节目。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（看着纸箱）主外是往外借风——运动会赛场上的每一次冲刺都是热搜；主内是往里攒劲——队伍的默契，是拿钱买不来的。总监，阿吉的最后一案，您定。" },
+      ],
+      choices: [
+        { label: "主外：接《超新星运动会》，继续选秀热度", hint: "资金+30万 热度+10 士气-4；人气前12名成员人气+3",
+          tag: "ajiFarewell19", value: "out",
+          effect: st => {
+            st.heat = Math.min(100, st.heat + 10);
+            st.money += 30;
+            st.morale = Math.max(0, st.morale - 4);
+            const reps = st.members.filter(m => m.status === "active" && !m.hall && m.team !== "HALL")
+              .sort((a, b) => (b.pop || 0) - (a.pop || 0)).slice(0, 12);
+            for (const m of reps) m.pop = Math.min(100, m.pop + 3);
+            return "运动会的官宣连夜发出——塞纳河的女孩子们出现在了田径场和泳池边。选拔、训练、比赛，连轴转了一个月：热搜上了三回，通告费到账，就是所有人都瘦了一圈。（决策已登记：ajiFarewell19=out。资金+30万 热度+10 士气-4；人气前12名成员人气+3。）";
+          } },
+        { label: "主内：立项《燃烧吧！团魂》小圈选秀", hint: "全队伍磨合度+5 队友关系升温；士气+4 热度+6 训练度+4 资金+10万",
+          tag: "ajiFarewell19", value: "in",
+          effect: st => {
+            st.morale = Math.min(100, st.morale + 4);
+            st.heat = Math.min(100, st.heat + 6);
+            st.train = Math.min(100, st.train + 4);
+            st.money += 10;
+            Game.syncTeams(st);
+            for (const k in st.chem) {
+              st.chem[k] = Math.min(100, st.chem[k] + 5);
+              const list = Game.teamRoster(st, k).filter(m => !m.hall);
+              for (const m of list) {
+                const mates = list.filter(x => x.id !== m.id);
+                if (mates.length) Game.relAdd(st, m.id, mates[Game.rnd(0, mates.length - 1)].id, 1);
+              }
+            }
+            return "《燃烧吧！团魂》官宣：以队伍为单位的团内小圈选秀——舞台、票务、淘汰，全部队伍共担。排练室里第一次出现了互相抠动作到深夜的场面：队荣在此一举。节目上线当天，弹幕里刷得最多的一句话是：「原来她们队伍感情这么好。」\n\n（决策已登记：ajiFarewell19=in。全队伍磨合度+5 队友关系升温；士气+4 热度+6 训练度+4 资金+10万。）";
+          } },
+      ],
+    },
+    {
       id: "m5_19_ge_kick",
       title: "5月 · 总决选启动",
       pages: st => [
@@ -435,6 +520,54 @@ STORY.monthly19 = {
           effect: st => Game.formUnit19(st).text },
       ],
     },
+    {
+      /* 【2019 通用】葛佳慧的谈心：挂在限定团成团宣布之后。
+         条件：成团已签字 · 葛佳慧在籍且参加过 2018 选秀派遣 · 本事件未触发过。 */
+      id: "m6_19_gjm_talk",
+      title: "6月 · 葛佳慧的谈心",
+      gate: st => {
+        if (!st.flags.unit19Formed || st.flags.gjmTalk19Done) return false;
+        const g = st.members.find(x => x.name === "葛佳慧");
+        if (!g || g.status !== "active") return false;
+        const sq = ((st.show18 && st.show18.squad) || [])
+          .map(id => { const m = st.members.find(x => x.id === id); return m ? m.name : ""; });
+        return sq.indexOf("葛佳慧") >= 0;
+      },
+      pages: st => [
+        { nar: true, t: "成团宣布会的热闹散尽之后，办公室的门被轻轻敲响——是葛佳慧。她把一封手写的信放在你桌上，信封上没有称呼。" },
+        { s: "葛佳慧", cls: "speaker-gjh", t: "总监，这一年我一直在想一件事。选秀的舞台把我推到了全网的镜头前——也让我第一次看清了，自己和那些真正的实力派之间，隔着多远的距离。" },
+        { s: "葛佳慧", cls: "speaker-gjh", t: "您为我发过专辑、留过位置，这条河对我够好了。可正因为这样，我不想再骗自己——我想离开一段时间，出去看看，去看看外面的舞台到底是什么样的。（她的手指在信封边缘轻轻发抖）这个决定，我想先告诉您。" },
+      ],
+      choices: [
+        { label: "安抚并留下", hint: "羁绊+8 士气+3——「差距是留下来一场一场磨出来的」", tag: "gjmTalk19", value: "stay",
+          effect: st => {
+            const g = st.members.find(x => x.name === "葛佳慧");
+            st.flags.gjmTalk19Done = true;
+            if (g) { g.bond = Math.min(100, g.bond + 8); g.note = (g.note ? g.note + "；" : "") + "2019 · 谈心后被留下"; }
+            st.morale = Math.min(100, st.morale + 3);
+            return "你把信推了回去：「差距不是逃出来的，是留下来一场一场磨出来的。总选的舞台就在下个月——用成绩说话。」她怔了很久，把信撕了。走廊外，值班的叶盛悄悄松了口气。（羁绊+8 士气+3）";
+          } },
+        { label: "允许离开（暂休）", hint: "葛佳慧暂休（保留回归可能）；士气-2 热度-2", tag: "gjmTalk19", value: "rest",
+          effect: st => {
+            const g = st.members.find(x => x.name === "葛佳慧");
+            st.flags.gjmTalk19Done = true;
+            if (g) { g.status = "rest"; g.note = "2019-06 外出看世界（暂休，保留回归可能）"; }
+            st.morale = Math.max(0, st.morale - 2);
+            st.heat = Math.max(0, st.heat - 2);
+            return "你在暂休申请上签了字：「去吧。灯给你留着，什么时候想回来，提前一个月说。」她深深鞠了一躬。后来粉丝在她的行李箱照片里，认出了那条河的应援色。（葛佳慧暂休 士气-2 热度-2）";
+          } },
+        { label: "允许离开，但按合同支付违约金", hint: "解约离团，资金+80万；士气-3 热度-2", tag: "gjmTalk19", value: "buyout",
+          effect: st => {
+            const g = st.members.find(x => x.name === "葛佳慧");
+            st.flags.gjmTalk19Done = true;
+            if (g) { g.status = "left"; g.note = "2019-06 支付违约金解约，外出发展"; }
+            st.money += 80;
+            st.morale = Math.max(0, st.morale - 3);
+            st.heat = Math.max(0, st.heat - 2);
+            return "「合同是合同，」你说，「违约金一分不能少。」她点头，签得很平静——钱到账那天，办公室安静得能听见空调声。孩子们私下议论了好几天：原来离开，是要付代价的。（资金+80万 士气-3 热度-2）";
+          } },
+      ],
+    },
     prepEv19,
   ],
 
@@ -449,8 +582,31 @@ STORY.monthly19 = {
     },
   ],
 
-  /* ---------- 8月：总选次日 + 夏日巡演 ---------- */
+  /* ---------- 8月：夏日巡演 + 亚洲盛典（上海） ---------- */
   8: [
+    {
+      /* 【2019 非复刻线专属】AKB48亚洲盛典（8月）：对手把亚洲最大的舞台开到了家门口。
+         AKB48 今年取消总选，AKB48 TSH 与亚洲各团体的盛况不输总选。 */
+      id: "m8_19_asiafest_sh",
+      title: "8月 · AKB48亚洲盛典 · 上海",
+      gate: st => ((st.decisions && st.decisions.jpMode) || st.jpMode) !== "replicate" && !st.flags.asiaFest19,
+      pages: st => [
+        { nar: true, t: "八月，上海的地铁报站里多了一个新名字——AKB48亚洲盛典。这是这个牌子史上第一次全亚洲大集结，主会场就定在梅赛德斯奔驰文化中心，和总选同一个场馆。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把一手消息拍在桌上）更劲爆的是：AKB48 今年官宣取消了总选举。但您看看这阵容——AKB48 TSH 领衔，加上亚洲所有团体，两天四场，票价炒到三倍。这盛况，一点不输总选。" },
+        { s: "王婧", cls: "speaker-wangjing", t: "（看着窗外）对手把亚洲最大的舞台开到了我们家门口。是接、是避、还是借——总监，这次的题不好答。" },
+      ],
+      choices: [
+        { label: "地主加场：盛典同期连开剧场公演+周边快闪", hint: "资金+60万 热度+6 士气-5——两边的粉丝总得找地方花钱",
+          tag: "asiaFest19", value: "cash",
+          effect: st => { st.flags.asiaFest19 = true; st.money += 60; st.heat = Math.min(100, st.heat + 6); st.morale = Math.max(0, st.morale - 5); return "盛典那几天，星梦剧院门口的快闪摊从早排到晚，加场公演场场满座。成员们连轴转了一整周，累得说不出话——但账面上，是这条河今年最漂亮的一周之一。（资金+60万 热度+6 士气-5）"; } },
+        { label: "闭门练兵：不凑热闹，照常公演+全员集训", hint: "士气+5 训练度+8 全团实力+1——热闹是别人的，本事是自己的",
+          tag: "asiaFest19", value: "quiet",
+          effect: st => { st.flags.asiaFest19 = true; st.morale = Math.min(100, st.morale + 5); st.train = Math.min(100, st.train + 8); Game.gainAllPwr(st, 1); return "那两天，排练室的灯亮到最晚。有成员在练习日志里写：「他们在隔壁热闹，我们在给明年攒本事。」训练度+8，全团实力+1，士气+5。"; } },
+        { label: "曲线借势：组织骨干买票观摩取经", hint: "资金-15万：训练度+5 全团实力+1 热度+2——对手的舞台，也是最好的教材",
+          tag: "asiaFest19", value: "study",
+          effect: st => { st.flags.asiaFest19 = true; st.money -= 15; st.heat = Math.min(100, st.heat + 2); st.train = Math.min(100, st.train + 5); Game.gainAllPwr(st, 1); return "盛典没我们的席位——但买票总不用谁批准。十几个骨干混在观众席里记了两天笔记，回来当晚就开了复盘会。票房数据、编排节奏、应援组织……对手的舞台，也是最好的教材。（资金-15万 训练度+5 全团实力+1 热度+2）"; } },
+      ],
+    },
     {
       id: "m8_19_summer",
       title: "8月 · 夏日巡演",
@@ -492,6 +648,59 @@ STORY.monthly19 = {
   /* ---------- 10月：外务布局 + 大赏预算评审 ---------- */
   10: [
     {
+      /* 【2019 通用】冯薪朵的请缨（需她未参加选秀或参加选秀未成团，且本部在籍）：
+         头部成员支援分团、以老带新。
+         tag fengXinDuo19：bej（兼任BEJ48，重心在分团）/ hq（留任本部）。 */
+      id: "m10_19_feng_xinduo",
+      title: "10月 · 冯薪朵的请缨",
+      gate: st => {
+        if (st.flags.fengXinDuo19) return false;
+        const m = st.members.find(x => x.name === "冯薪朵");
+        return !!m && m.status === "active" && m.team !== "PREP" && !m.hall;
+      },
+      pages: st => [
+        { nar: true, t: "十月的一个傍晚，冯薪朵敲开了总监办公室的门。她在本部的沙发上坐下来，开门见山——这不像她，她向来是把话悶在心里的人。" },
+        { s: "冯薪朵", cls: "speaker-fxd", t: "总监，团里的账，我看得到：" + (st.flags.branchesClosed19
+          ? "沈阳和重庆停运之后，剩下的分团日子更紧了——人手被抽调、班底残缺，那边的孩子们连像样的公演都快排不开了。"
+          : st.flags.branchesKept19
+          ? "资方撤资的风波虽然压下去了，可分团那边的日子并没有好过多少——维稳专户顶得了一时，人手抽调、班底单薄，那边的孩子们连像样的公演都快凑不齐了。"
+          : "分团那边的资方撤资风波还悬着，无论最后怎么收场，人手抽调、班底单薄都是明摆着的——那边的孩子们连像样的公演都快凑不齐了。") },
+        { s: "冯薪朵", cls: "speaker-fxd", t: "我是头部成员，团里待得最久的那批人之一——这种时候，不能只站在本部的舞台上。我愿意去 BEJ48 兼任，把重心放在分团的事务上，以老带新，把那边的班底带起来。您考虑一下。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: (st.flags.branchesClosed19
+          ? "（低声）分团刚经历停运安置，这时候让头部成员下沉，对北京那边的士气是实打实的强心针——但本部这边，也会少一根定海神针。"
+          : "（低声）让头部成员下沉分团，对那边的士气是实打实的强心针——但本部这边，也会少一根定海神针。") + "总监，这个字不好签，但值得签。" },
+      ],
+      choices: [
+        { label: "同意——兼任 BEJ48，重心放在分团事务", hint: "BEJ48 全员羁绊+3 人气+2，BEJ48 磨合度+6；热度+3 士气+3",
+          tag: "fengXinDuo19", value: "bej",
+          effect: st => {
+            const m = st.members.find(x => x.name === "冯薪朵");
+            if (m) m.note = (m.note ? m.note + "；" : "") + "2019-10 兼任 BEJ48（以老带新·重心在分团事务）";
+            st.flags.fengXinDuo19 = true;
+            const bej = st.members.filter(x => x.status === "branch" && x.branchTeam === "BEJ48" && x.pop != null);
+            for (const x of bej) {
+              x.bond = Math.min(100, x.bond + 3);
+              x.pop = Math.min(100, x.pop + 2);
+            }
+            Game.syncTeams(st);
+            if (st.chem["BEJ48"] == null) { st.chem["BEJ48"] = Game.calcChem(st, "BEJ48"); }
+            st.chem["BEJ48"] = Math.min(100, st.chem["BEJ48"] + 6);
+            st.heat = Math.min(100, st.heat + 3);
+            st.morale = Math.min(100, st.morale + 3);
+            return "你在申请函上批了字。第二周，冯薪朵的名单出现在了 BEJ48 的公演排期上——头牌空降，北京星梦剧院的门票当晚售罄。老带新的排练每天多出两个小时，分团的孩子们说：「她都肯来，我们有什么理由不拼。」\n\n（决策已登记：fengXinDuo19=bej。BEJ48 全员羁绊+3 人气+2，BEJ48 磨合度+6；热度+3 士气+3。）";
+          } },
+        { label: "婉拒——本部同样需要她，继续效力", hint: "冯薪朵羄绊+4 士气+2——定海神针不动",
+          tag: "fengXinDuo19", value: "hq",
+          effect: st => {
+            const m = st.members.find(x => x.name === "冯薪朵");
+            st.flags.fengXinDuo19 = true;
+            if (m) m.bond = Math.min(100, m.bond + 4);
+            st.morale = Math.min(100, st.morale + 2);
+            return "你握了握她的手：「心意收下了，但人留在本部——分团的事，是运营的责任，不该让你一个人扛。」她点点头，眼里的光没灭。那之后，她把分团巡访提上了自己的日程——本部的舞台上，定海神针一动不动。（决策已登记：fengXinDuo19=hq。冯薪朵羄绊+4 士气+2。）";
+          } },
+      ],
+    },
+    {
       id: "m10_19_outreach",
       title: "10月 · 借风布局",
       gate: st => !st.outreach19.done,
@@ -531,10 +740,72 @@ STORY.monthly19 = {
   /* ---------- 12月：倒计时 ---------- */
   12: [
     {
+      /* 【2019 通用】黄婷婷的解约请求（需她未参加选秀或参加选秀未成团，且本部在籍）：
+         二期生觉得未被公司公平对待，请求解约。
+         tag htt19：agree（同意解约）/ freeze（拒绝：私自离团·合约冻结，史实）/
+         promise（交流待遇问题，承诺留至合约期满）。 */
+      id: "m12_19_htt",
+      title: "12月 · 黄婷婷的解约请求",
+      gate: st => {
+        if (st.decisions.htt19) return false;
+        const m = st.members.find(x => x.name === "黄婷婷");
+        return !!m && m.status === "active" && m.team !== "PREP" && !m.hall;
+      },
+      pages: st => [
+        { nar: true, t: "十二月的一个深夜，黄婷婷的经纪人替她递来了一份解约申请。第二天下午，她自己来了——没有化妆，穿着最普通的卫衣，坐在你对面，平静得像在报一道早已算完的题。" },
+        { s: "黄婷婷", cls: "speaker-htt", t: "总监，从我进团那天算起，六年了。2013年跟着二期生一起站上舞台，一期一期地看人来了又走——我见过这条河最好的时候，也见过它最难的时候。可是这两年，我越来越确定一件事：这家公司，从来没有公平地对待过我。" },
+        { s: "黄婷婷", cls: "speaker-htt", t: "资源、排班、外务——我不想去争哪个名字被多照顾了一点，我只是想说，我心里那杆秤，早就歪了。我想走。这份解约申请，您看了就知道，我的条件不高——剩下的合约，本来也不长了。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（低声）头部成员年底解约，粉丝那边不会平静；但强留下一个心已经不在的人，对队伍也不是好事。总监——这三条路，每一条都有代价，您定。" },
+      ],
+      choices: [
+        { label: "同意解约", hint: "资金+15万（少量违约金，剩余合约期限不长）；士气-2 热度-2",
+          tag: "htt19", value: "agree",
+          effect: st => {
+            const m = st.members.find(x => x.name === "黄婷婷");
+            if (m) { m.status = "left"; m.note = "2019-12 协商解约离团（支付少量违约金）"; }
+            st.money += 15;
+            st.morale = Math.max(0, st.morale - 2);
+            st.heat = Math.max(0, st.heat - 2);
+            return "你在解约协议上签了字。违约金不多——剩下的合约期限本来就不长，她把该还的都算得清清楚楚。离团那天她发了条长长的告别微博，评论区吵翻了天，但效率却出奇地体面。（决策已登记：htt19=agree。资金+15万 士气-2 热度-2。）";
+          } },
+        { label: "拒绝请求（史实路线）", hint: "黄婷婷移入暂休（备注私自离团·合约冻结）；士气-3 热度-2",
+          tag: "htt19", value: "freeze",
+          effect: st => {
+            const m = st.members.find(x => x.name === "黄婷婷");
+            if (m) { m.status = "rest"; m.note = "2019-12 私自离团，合约冻结（解约请求被驳回）"; }
+            st.morale = Math.max(0, st.morale - 3);
+            st.heat = Math.max(0, st.heat - 2);
+            return "你在解约申请上盖了「不予同意」的章。第二天起，她的名字从所有排班表上消失——没有官宣，没有解释，合约冻结，人就这么「待」了下来。公司安静了，可粉丝没有：超话里全是问号，队伍里的人看你的眼神也多了几分考究。（决策已登记：htt19=freeze。黄婷婷暂休·合约冻结 士气-3 热度-2。）";
+          } },
+        { label: "与她交流待遇问题，给出承诺", hint: "黄婷婷留任至2021年8月合约到期；羄绊+5 士气+3——留下tag「给黄婷婷的承诺」",
+          tag: "htt19", value: "promise",
+          effect: st => {
+            const m = st.members.find(x => x.name === "黄婷婷");
+            st.flags.httPromise19 = true;
+            if (m) {
+              m.bond = Math.min(100, m.bond + 5);
+              m.note = (m.note ? m.note + "；" : "") + "2019-12 待遇沟通（承诺在籍至2021-08合约到期）";
+            }
+            st.morale = Math.min(100, st.morale + 3);
+            return "你把解约申请推到一边，跟她算了一笔很细的账：过去几年她拿到过什么、被亏欠过什么——一样一样地摆到桌面上。最后你说：「合约还剩多久，我就负责到最后一天。但在这个期限内，待遇的问题，公司认账。」\n\n她沉默了很久，把申请收了回去：「行。我看着。到2021年8月之前——这笔账，我们一个月一个月地对。」\n\n（决策已登记：htt19=promise——给黄婷婷的承诺。她在籍至合约期满；羄绊+5 士气+3。）";
+          } },
+      ],
+    },
+    {
+      /* 【2019 通用】12月：新冠疫情爆发（单选项纯叙事，tag covid19 登记后留待 2020 年线回收）。 */
       id: "m12_19_yearend",
       title: "12月 · 倒计时",
       pages: st => [
-        { nar: true, t: "12月的上海，第一场雪落下来。剧场门口的灯墙映着一小片暖光——有粉丝在灯下拍照，拍完对着镜头哈了口气：" + (st.flags.teb19Open ? "「上海、台北，两边的灯都亮着。」" : st.flags.branchesKept19 ? "「今年的灯，一盏都没少。」" : "「送走了沈阳和重庆……明年会更好吧。」") + "\n\n一年走到最后一步了。你把西装外套搭上椅背——像这一年里的每一个月一样。" },
+        { nar: true, t: "12月的上海，第一场雪落下来。剧场门口的灯墙映着一小片暖光——有粉丝在灯下拍照，拍完对着镜头哈了口气。" + (st.flags.teb19Open ? "上海、台北，两边的灯都亮着。" : st.flags.branchesKept19 ? "今年的灯，一盏都没少。" : "送走了沈阳和重庆……明年会更好吧。") },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（拿着手机进来，脸色不算好看）总监，看新闻了吗——武汉那边出现了不明原因的肺炎，听说会人传人，传播速度很快。好在今年的收官演出提前做完了，金曲大赏也落了幕——今年这条河，算是赶在风浪前面靠了岸。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（放下手机，声音低了几分）可今年躲得过，明年呢？剧场、公演、巡演、总选……全都是人挤人的生意。要是疫情真的压到明年——年报，我不敢想。我先让人盯着消息，明年的预算，您心里也先有个数吧。" },
+      ],
+      choices: [
+        { label: "把疫情风险列入明年头号预案", hint: "（纯叙事 · 决策登记：covid19=warned，留待明年回收）",
+          tag: "covid19", value: "warned",
+          effect: st => {
+            return "你在台历的新一页上写下了第一行字：「疫情监测——头号风险」。窗外雪还在下，剧场门口的灯墙亮得一如既往。只是你比任何人都清楚：这一页翻过去之后的那一年，不会像往年一样好写。";
+          } },
       ],
     },
     prepEv19,

@@ -138,7 +138,7 @@ STORY.scenes18 = {
       { nar: true, t: "四家分团的总监被连夜请到上海。组阁不只是本部的事——有人要上调，有人要落编，预案必须每一家都点头。" },
       { s: "叶盛", cls: "speaker-yesheng", t: "（念完预案最后一页）上调本部的孩子，人气和羁绊都会上一个台阶——这是组阁年里才有的通道。落编移籍的孩子，集团负责安置与谈心，绝不做甩手掌柜。四家都签了字。" },
       { nar: true, t: (st.flags.xiiKept18
-        ? "（分团协调完成。下一步：Team XII 编制确认会——张怡的请求，需要你亲口回复。）"
+        ? "（分团协调完成。下一步：Team XII 编制确认会——" + (st.flags.xiiRequester18 || "张怡") + "的请求，需要你亲口回复。）"
         : "（分团协调完成。筹备收官——编制名单进入终审，组阁编制会定于 3 月末召开。）") },
     ],
   },
@@ -147,8 +147,8 @@ STORY.scenes18 = {
   reorgXII: {
     label: "组阁 · Team XII 编制确认",
     pages: st => [
-      { nar: true, t: "一月里张怡那句话，你给了她答案——XII 保留。但保留不是空话：编制、队长、定位，每一项都要落在纸面上。" },
-      { s: "张怡", cls: "", t: "（把 XII 的名册双手递过来，队徽别在胸前）谢谢总监。XII 的孩子们不是舍不得一个名字——是舍不得一起从预备生熬上来的这段路。名册在这里，怎么排，您定。我们认。" },
+      { nar: true, t: "一月里" + (st.flags.xiiRequester18 || "张怡") + "那句话，你给了她答案——XII 保留。但保留不是空话：编制、队长、定位，每一项都要落在纸面上。" },
+      { s: st.flags.xiiRequester18 || "张怡", cls: "", t: "（把 XII 的名册双手递过来，队徽别在胸前）谢谢总监。XII 的孩子们不是舍不得一个名字——是舍不得一起从预备生熬上来的这段路。名册在这里，怎么排，您定。我们认。" },
       { nar: true, t: "（XII 编制确认完成。筹备收官——编制名单进入终审，组阁编制会定于 3 月末召开。）" },
     ],
   },
@@ -327,20 +327,27 @@ STORY.monthly18 = {
          gate 加 decisions.xiiKeep18 == null：快速通道补选窗已预选去留时自动跳过；
          若玩家先于 1 月月末启动组阁行动（stage≠0），编制会弹窗会兜底补问。 */
       id: "m1_18_zhangyi",
-      title: "1月 · 张怡的请求",
-      gate: st => st.reorg18.stage === 0 && st.decisions.xiiKeep18 == null,
-      pages: st => [
-        { nar: true, t: "晚上八点，张怡在办公室门口站了很久才敲门。她是 XII 的老队长——这支全部由五期生组成的队伍，从预备生时代一路并肩走到今天。" },
-        { s: "张怡", cls: "", t: "总监，我知道组阁的规矩，我也不是来求情的。我只是想替 XII 的三十五个孩子问一句——能不能，留下 XII？\n\n我们知道自己的名字不响亮，知道这五年的成绩单不算好看。可是队徽是她们自己设计的，队歌是她们自己写的。别的队打散了还是「SII」「NII」，名字都在——XII 打散了，就什么都没有了。" },
-        { s: "叶盛", cls: "speaker-yesheng", t: "（在旁边低声）总监，我提醒一句：保留 XII，组阁就多一步编制确认——四个队的活变成五个队。但她说得也没错，有些东西打散了，是真的找不回来。" },
-      ],
+      title: st => "1月 · " + (Game.xiiRequester18(st) || { name: "张怡" }).name + "的请求",
+      gate: st => st.reorg18.stage === 0 && st.decisions.xiiKeep18 == null && !!Game.xiiRequester18(st),
+      pages: st => {
+        const rq = Game.xiiRequester18(st);
+        const n = st.members.filter(m => m.status === "active" && m.team === "XII").length;
+        const intro = rq.name === "张怡"
+          ? { nar: true, t: "晚上八点，张怡在办公室门口站了很久才敲门。她是 XII 的老队长——这支全部由五期生组成的队伍，从预备生时代一路并肩走到今天。" }
+          : { nar: true, t: "晚上八点，" + rq.name + "在办公室门口站了很久才敲门。张怡不在 XII 之后，队友们把她推了出来——这支全部由五期生组成的队伍，需要有人替她们把话说到。" };
+        return [
+          intro,
+          { s: rq.name, cls: "", t: "总监，我知道组阁的规矩，我也不是来求情的。我只是想替 XII 的 " + n + " 个孩子问一句——能不能，留下 XII？\n\n我们知道自己的名字不响亮，知道这些年的成绩单不算好看。可是队徽是她们自己设计的，队歌是她们自己写的。别的队打散了还是「SII」「NII」，名字都在——XII 打散了，就什么都没有了。" },
+          { s: "叶盛", cls: "speaker-yesheng", t: "（在旁边低声）总监，我提醒一句：保留 XII，组阁就多一步编制确认——四个队的活变成五个队。但她说得也没错，有些东西打散了，是真的找不回来。" },
+        ];
+      },
       choices: [
         { label: "「XII 保留。名字我来保，成绩你们自己挣。」", hint: "保留 XII 编制：组阁多一步编制确认；士气+4",
           tag: "xiiKeep18", value: "keep",
-          effect: st => { st.flags.xiiKept18 = true; st.morale = Math.min(100, st.morale + 4); return "张怡的眼泪当场就下来了。她起身鞠躬，鞠得很深：「XII 全队三十五个人，记总监这一天。」\n\n消息传回 XII 排练室的时候，据说整层楼都在尖叫。（决策已登记：xiiKeep18=keep——组阁将包含 XII 编制确认，多一步。）"; } },
+          effect: st => { const rq = Game.xiiRequester18(st) || { name: "张怡" }; st.flags.xiiRequester18 = rq.name; st.flags.xiiKept18 = true; st.morale = Math.min(100, st.morale + 4); return rq.name + "的眼泪当场就下来了。她起身鞠躬，鞠得很深：「XII 全队 " + st.members.filter(m => m.status === "active" && m.team === "XII").length + " 个人，记总监这一天。」\n\n消息传回 XII 排练室的时候，据说整层楼都在尖叫。（决策已登记：xiiKeep18=keep——组阁将包含 XII 编制确认，多一步。）"; } },
         { label: "「XII 的名字停在最好的时候。孩子们，往前走。」", hint: "取消 XII 编制：组阁三步完成；资金+20",
           tag: "xiiKeep18", value: "dissolve",
-          effect: st => { st.flags.xiiKept18 = false; st.money += 20; return "张怡沉默了很久，最后点了点头：「……我明白了。谢谢您没有敷衍我们，给了我一个当面听答案的机会。」\n\n她走的时候背影很直。第二天，XII 的排练室照常亮灯——只是练习结束后的闲聊，比往常安静了许多。（决策已登记：xiiKeep18=dissolve——组阁三步完成，省下的编制预算折合资金+20万。）"; } },
+          effect: st => { const rqN = (Game.xiiRequester18(st) || { name: "张怡" }).name; st.flags.xiiRequester18 = rqN; st.flags.xiiKept18 = false; st.money += 20; return rqN + "沉默了很久，最后点了点头：「……我明白了。谢谢您没有敷衍我们，给了我一个当面听答案的机会。」\n\n她走的时候背影很直。第二天，XII 的排练室照常亮灯——只是练习结束后的闲聊，比往常安静了许多。（决策已登记：xiiKeep18=dissolve——组阁三步完成，省下的编制预算折合资金+20万。）"; } },
       ],
     },
     /* 【主线②】预备生汇报公演（1月起每月挂载） */

@@ -60,6 +60,7 @@ const Game = {
     this.buildRoster(st);
     const baseBond = is26 ? 15 : 20;   // 2026 新总监初来乍到，羁绊更低
     for (const id in st.members) st.members[id].bond = baseBond;
+    this.initRelSystem(st);   // 【v0.13.0】成员关系 & 队伍磨合度初始化
 
     // 序章风格加成（styleId 也可为空，序章播完后由 applyStyle 补加）
     if (styleId) this.applyStyle(styleId);
@@ -204,6 +205,7 @@ const Game = {
     st.flags.concur17 = {};
     if (post === "BEJ48" || post === "GNZ48" || post === "SHY48" || post === "CKG48") st.flags.concur17[post] = true;
     this.st = st;
+    this.inheritRel(src, st);   // 【v0.13.0】磨合度/成员关系跨年继承
     this.addLog(st, 1, "2016 年的答卷交卷，2017「本部新章」开卷：成员卡已按年末实况登记，全团初始实力均值 " + pwrBase + "。", "main");
     this.save();
     return st;
@@ -333,6 +335,7 @@ const Game = {
     delete st.flags.p23Promoted;
     delete st.flags.cgtPromoted;
     this.st = st;
+    this.inheritRel(src, st);   // 【v0.13.0】磨合度/成员关系跨年继承
     this.addLog(st, 1, "2026 年的答卷交卷，2027「大河新篇」开卷：成员卡已按年末实况登记，全团初始实力均值 " + pwrBase + "。", "main");
     this.save();
     return st;
@@ -816,6 +819,7 @@ const Game = {
     /* 2017 一次性旗标不带入 2018 的判定流（保留在 history/decisions 中可回收） */
     delete st.flags.ckgReadyLogged;
     this.st = st;
+    this.inheritRel(src, st);   // 【v0.13.0】磨合度/成员关系跨年继承
     this.addLog(st, 1, "2017 年的答卷交卷，2018「星阵重列」开卷：成员卡已按年末实况登记（实力沿 2017 继续成长），年初实力均值 " + pwrBase + "。", "main");
     this.save();
     return st;
@@ -894,6 +898,7 @@ const Game = {
     /* 2018 一次性旗标不带入 2019 的判定流（保留在 history/decisions 中可回收） */
     delete st.flags.reorg18Done;
     this.st = st;
+    this.inheritRel(src, st);   // 【v0.13.0】磨合度/成员关系跨年继承
     this.addLog(st, 1, "2018 年的答卷交卷，2019「双岸」开卷：成员卡已按年末实况登记（实力沿 2018 继续成长），年初实力均值 " + pwrBase + "。", "main");
     this.save();
     return st;
@@ -933,7 +938,10 @@ const Game = {
   setTeb19Squad(ids) {
     const st = this.st, t = st.teb19;
     if (t.done) return { text: "TEB48 已建成。", tone: "blocked" };
-    const picked = (ids || []).map(id => st.members.find(m => m.id === id)).filter(Boolean).slice(0, 5);
+    /* 去年点将出征选秀的成员不可派遣移籍（封闭集训/限定团/总选加成线承载） */
+    const excluded = this.show18SquadNameSet(st);
+    const picked = (ids || []).map(id => st.members.find(m => m.id === id)).filter(Boolean)
+      .filter(m => !excluded.has(m.name)).slice(0, 5);
     for (const m of picked) {
       m.status = "branch"; m.team = "TEB48"; m.branchTeam = "TEB48"; m.branchLabel = "";
       m.captain = false; m.vice = false; delete m.sub;
@@ -948,14 +956,109 @@ const Game = {
     st.money += 60;
     st.heat = this.clamp(st.heat + 6, 0, 100);
     st.morale = this.clamp(st.morale + 3, 0, 100);
+    this.deployTeb19Roster(st);   // 开业即建卡：TEB48 首批正式成员 9 人 + 预备生 7 人
     this.addLog(st, st.month, "★主线①「筹建 TEB48」达成：台北星梦剧院开业首演落幕（派遣移籍 " + picked.length + " 人），此后每月为总账带来 25 万收入。", "main");
     this.save();
-    return { text: "TEB48 四步全部落地：台北星梦剧院开业！（派遣移籍 " + picked.length + " 人）", tone: "main", vn: STORY.scenes19.tebOpen };
+    return { text: "TEB48 四步全部落地：台北星梦剧院开业！（派遣移籍 " + picked.length + " 人）", tone: "main",
+      vn: this.majiaAvailable19(st) ? STORY.scenes19.tebOpenMajia : STORY.scenes19.tebOpen };
+  },
+
+  /* 【2019 主线①·追加】TEB48 首批成员建卡（开业即落地；史实 AKB48 Team TP 名单按需选录）：
+     正式成员 9 人 + 预备生 7 人。新建卡人气略高于本部今年招新预备生（招新 6~12）：
+     预备生 10~15、正式 15~21；阿部玛利亚（AKB48 十期生兼任）为全队最高。 */
+  deployTeb19Roster(st) {
+    st = st || this.st;
+    if (st.flags.teb19RosterDone) return;
+    st.flags.teb19RosterDone = true;
+    const FORMAL = [
+      { name: "阿部玛利亚", gen: "AKB48十期生", pop: 34, pwr: 15, note: "AKB48 十期生 · 兼任 TEB48 创始成员" },
+      { name: "刘晓晴" }, { name: "林于馨" }, { name: "蔡亚恩" }, { name: "张羽翎" },
+      { name: "林易沄", captain: true, note: "TEB48 总队长 · 创始成员" },
+      { name: "蔡伊柔" }, { name: "陈诗雅" }, { name: "柏灵" },
+    ];
+    const PREPS = ["林昀希", "胡詠晴", "杨家宜", "许淳媛", "张鈊乔", "吕昕恩", "刘曣甯"];
+    for (const f of FORMAL) {
+      if (st.members.some(x => x.name === f.name)) continue;
+      st.members.push({
+        id: "teb_" + f.name, name: f.name, team: "TEB48", gen: f.gen || "TEB48一期生",
+        pop: f.pop || this.rnd(15, 21), bond: 8, status: "branch", branchTeam: "TEB48", branchLabel: "正式成员",
+        pwr: f.pwr || this.rnd(8, 12), captain: !!f.captain,
+        note: f.note || "TEB48 创始成员（史实 AKB48 Team TP 选录）",
+      });
+    }
+    for (const name of PREPS) {
+      if (st.members.some(x => x.name === name)) continue;
+      st.members.push({
+        id: "teb_" + name, name: name, team: "TEB48", gen: "TEB48一期生",
+        pop: this.rnd(10, 15), bond: 6, status: "branch", branchTeam: "TEB48", branchLabel: "预备生",
+        pwr: this.rnd(5, 10), note: "TEB48 首批预备生（史实 AKB48 Team TP 选录）",
+      });
+    }
+    this.addLog(st, st.month, "TEB48 首批成员入团：正式成员 9 人（阿部玛利亚兼任领衔 · 林易沄任总队长）+ 预备生 7 人。", "good");
+  },
+
+  /* 【2019】马嘉伶移籍请求是否可用：尚未拍板，且她不在离团/暂休状态
+     （2017 复刻线在册则由在册卡移籍；不在册则随同意建卡）。 */
+  majiaAvailable19(st) {
+    st = st || this.st;
+    if (st.decisions.teb19Majia) return false;
+    const m = st.members.find(x => x.name === "马嘉伶");
+    return !m || (m.status !== "left" && m.status !== "rest");
+  },
+
+  /* 【2019 主线①·追加】马嘉伶移籍 TEB48 拍板（开业场景选项回调）：
+     同意 → 与 TEB48 首批建卡一起落地（在册卡移籍 / 无卡新建卡）；婉拒 → 她留在 AKB48 方面。 */
+  resolveTeb19Majia(st, agree) {
+    st = st || this.st;
+    if (st.decisions.teb19Majia) return "马嘉伶的去留此前已有定论。";
+    st.decisions.teb19Majia = agree ? "agree" : "reject";
+    if (!agree) {
+      this.addLog(st, st.month, "马嘉伶的移籍 TEB48 请求未被批准（留在 SNH48）。", "normal");
+      return "你在申请函上批了一个「留」字：「本部的舞台也需要她。」马嘉伶的名字没有出现在台北的首批名册里——她留在 SNH48 这边，上海的舞台照常有她；台北的灯，先由日方选拔的孩子们点起来。";
+    }
+    const m = st.members.find(x => x.name === "马嘉伶");
+    if (m) {
+      m.status = "branch"; m.team = "TEB48"; m.branchTeam = "TEB48"; m.branchLabel = "正式成员";
+      m.captain = false; m.vice = false; delete m.sub;
+      m.pop = this.clamp((m.pop || 0) + 6, 1, 100);
+      m.bond = this.clamp((m.bond || 0) - 4, 1, 100);
+      m.note = (m.note ? m.note + "；" : "") + "2019 移籍 TEB48（创始成员）";
+      this.addLog(st, st.month, "马嘉伶 移籍 TEB48（创始成员）。", "main");
+      return "你批了这份申请：「台湾的舞台，交给她最合适。」马嘉伶把自己的名字签在首批名册的第一行，与阿部玛利亚、林易沄她们并肩站上了台北星梦剧院的舞台。（人气+6 羁绊-4）";
+    }
+    st.members.push({
+      id: "teb_马嘉伶", name: "马嘉伶", team: "TEB48", gen: "AKB48台湾选拔",
+      pop: 30, bond: 12, status: "branch", branchTeam: "TEB48", branchLabel: "正式成员",
+      pwr: 14, note: "2019 移籍 TEB48 创始成员（台湾选拔出身）",
+    });
+    this.addLog(st, st.month, "马嘉伶 移籍 TEB48（创始成员建卡）。", "main");
+    return "你批了这份申请。马嘉伶——台湾选拔出身、两岸舞台都走得通的那一个——把自己的名字签在 TEB48 首批名册的第一行，与阿部玛利亚、林易沄她们并肩站上了台北星梦剧院的舞台。";
   },
 
   /* 【2019 主线②】二次组阁编制对象：
      head = 本部在籍且队伍为 SII/NII/HII/X/XII/FT/PREP 的成员（全部重编）；
      dissolved = 序章放弃分团时 SHY48/CKG48 移交成员（全部进入编制池，pop 不设门槛）。 */
+  /* 【2019 通用剧情】AKB48亚洲盛典（复刻线 · 曼谷远征）：七人出征名单落地。
+     参赛者羁绊+8 人气+4；热度+8 士气+3 资金-20万；名单记入 decisions.asiaFest19Squad。 */
+  asiaFest19Squad(ids) {
+    const st = this.st;
+    st.flags.asiaFest19 = true;
+    const names = [];
+    for (const id of ids) {
+      const m = st.members.find(x => x.id === id);
+      if (!m || m.status === "left" || m.status === "rest") continue;
+      m.bond = this.clamp(m.bond + 8, 0, 100);
+      m.pop = this.clamp(m.pop + 4, 0, 100);
+      names.push(m.name);
+    }
+    st.money -= 20;
+    st.heat = this.clamp(st.heat + 8, 0, 100);
+    st.morale = this.clamp(st.morale + 3, 0, 100);
+    this.recordDecision("asiaFest19Squad", names);
+    this.addLog(st, st.month, "★AKB48亚洲盛典（曼谷）：" + names.join("、") + " 出征——亚洲舞台大放异彩（热度+8 士气+3 资金-20万）。", "main");
+    return { text: "曼谷的舞台落幕——亚洲七团同台，这支七人小队的直拍刷屏了回国航班。（出征 " + names.length + " 人：羁绊+8 人气+4；热度+8 士气+3 资金-20万）", tone: "main" };
+  },
+
   reorg19Pools(st) {
     st = st || this.st;
     const HEAD = ["SII", "NII", "HII", "X", "XII", "FT", "PREP"];
@@ -963,6 +1066,9 @@ const Game = {
     return {
       head: st.members.filter(m => m.status === "active" && HEAD.indexOf(m.team) >= 0),
       dissolved: closed ? st.members.filter(m => m.status === "branch" && (m.branchTeam === "SHY48" || m.branchTeam === "CKG48")) : [],
+      /* TEB48 预备生：开业后可入编制会——默认留任台北，可调往本部预备生 */
+      teb: (st.teb19 && st.teb19.open)
+        ? st.members.filter(m => m.status === "branch" && m.branchTeam === "TEB48" && m.branchLabel === "预备生") : [],
     };
   },
 
@@ -1013,21 +1119,22 @@ const Game = {
     const BR = ["BEJ48", "GNZ48"].concat(st.decisions.branch19Keep === "keep" ? ["SHY48", "CKG48"] : []);
     const pools = this.reorg19Pools(st);
     assign = assign || {}; captains = captains || {};
-    const all = pools.head.concat(pools.dissolved);
+    const all = pools.head.concat(pools.dissolved).concat(pools.teb || []);
 
     /* 第一遍：计数校验（未指定的本部成员视为留在原队；预备生默认留任；
-       分团移交成员默认 idft；FT 解散时 FT 成员默认发配分团/IDFT） */
+       分团移交成员默认 idft；TEB48 预备生默认留任台北；FT 解散时 FT 成员默认发配） */
     const cnt = {}; TEAMS.forEach(t => { cnt[t] = 0; });
     let preps = 0;
     const targetOf = m => {
       let t = assign[m.id] != null ? assign[m.id] : null;
       if (t == null) {
         if (m.team === "PREP") t = "prep";
-        else if (m.status === "branch") t = "idft";
+        else if (m.status === "branch") t = (m.branchTeam === "TEB48") ? "TEB48" : "idft";
         else if (m.team === "FT" && !ftKept) t = BR.length ? BR[0] : "idft";
         else t = TEAMS.indexOf(m.team) >= 0 ? m.team : "idft";
       }
       if (t === "prep" || t === "idft") return t;
+      if (t === "TEB48" && st.teb19 && st.teb19.open) return t;
       if (BR.indexOf(t) >= 0) return t;
       if (TEAMS.indexOf(t) < 0) return null;
       if (t === "XII" && !keptXII) return null;
@@ -1069,16 +1176,26 @@ const Game = {
       if (t === "prep") {
         if (m.team === "PREP" && m.status === "active") continue;   // 预备生留任
         if (m.status === "branch") {
+          if (m.branchTeam === "TEB48") {
+            /* TEB48 预备生 → 本部预备生：跨海上调（轻于分团解散安置红利） */
+            m.status = "active"; m.team = "PREP"; m.branchTeam = null; m.branchLabel = null;
+            m.pop = this.clamp((m.pop || 0) + this.rnd(4, 8), 1, 100);
+            m.bond = this.clamp((m.bond || 0) + 6, 1, 100);
+            m.note = "2019二次组阁 · 自TEB48调入本部预备生";
+            upped.push(m.name);
+          } else {
           /* 分团移交成员 → 本部预备生：视为上调（享红利） */
           m.status = "active"; m.team = "PREP"; m.branchTeam = null; m.branchLabel = null;
           m.pop = this.clamp((m.pop || 0) + this.rnd(8, 14), 1, 100);
           m.bond = this.clamp((m.bond || 0) + 12, 1, 100);
           m.note = "2019二次组阁 · 自分团上调预备生";
           upped.push(m.name);
+          }
         } else {
           m.team = "PREP"; m.branchTeam = null; m.branchLabel = null;
           m.captain = false; m.vice = false; delete m.sub;
           m.bond = this.clamp((m.bond || 0) - 4, 1, 100);
+          m.prepDown = st.era;   // 降格考察年 tag：本年度不参与汇报公演升格
           m.note = "2019二次组阁 · 编入预备生";
           prepped.push(m.name);
         }
@@ -1088,12 +1205,16 @@ const Game = {
         m.bond = this.clamp((m.bond || 0) - 6, 1, 100);
         m.note = "2019二次组阁 · 移籍IDFT训练生池";
         idft.push(m.name);
+      } else if (t === "TEB48") {
+        /* TEB48 预备生留任台北：无变化（UI 仅对 TEB48 预备生提供该目标） */
+        continue;
       } else if (BR.indexOf(t) >= 0) {
         if (m.status === "branch" && m.branchTeam === t) continue;   // 留任原分团
         if (m.status === "branch") {
           /* 分团移交成员 → 其余分团 */
           m.branchTeam = t; m.team = t; m.branchLabel = "";
           m.bond = this.clamp((m.bond || 0) - 4, 1, 100);
+          m.prepDown = st.era;   // 发配/改派考察年 tag：本年度不参与汇报公演升格
           m.note = "2019二次组阁 · 移籍" + t;
           toBr.push(m.name);
         } else {
@@ -1101,6 +1222,7 @@ const Game = {
           m.status = "branch"; m.team = t; m.branchTeam = t; m.branchLabel = "";
           m.captain = false; m.vice = false; delete m.sub;
           m.bond = this.clamp((m.bond || 0) - 6, 1, 100);
+          m.prepDown = st.era;   // 发配考察年 tag：本年度不参与汇报公演升格
           m.note = "2019二次组阁 · 发配" + t;
           toBr.push(m.name);
         }
@@ -1203,6 +1325,33 @@ const Game = {
       tone: "main",
       vn: STORY.scenes19.recruitDone19,
     };
+  },
+
+  /* 【2019】去年点将出征鹅厂选秀的成员姓名集合（st.show18.squad 为主，
+     history.showSquad2018 兑底）：她们在封闭集训/限定团/总选加成线上，
+     不参与 TEB48 派遣移籍点将。 */
+  show18SquadNameSet(st) {
+    st = st || this.st;
+    const set = new Set();
+    const ids = [];
+    if (st.show18 && Array.isArray(st.show18.squad)) ids.push(...st.show18.squad);
+    if (st.history && Array.isArray(st.history.showSquad2018)) ids.push(...st.history.showSquad2018);
+    for (const id of ids) {
+      const m = st.members.find(x => x.id === id);
+      if (m) set.add(m.name);
+    }
+    return set;
+  },
+
+  /* 【2018 主线①】1月「XII 去留」请求人：默认张怡（XII 老队长）；
+     若她因玩家操作不在 XII（移籍/离队等），则由在册 XII 成员中与总监羁绊最高者代表请求。
+     XII 已无在册成员时返回 null（事件跳过，编制会门口补问兜底）。 */
+  xiiRequester18(st) {
+    st = st || this.st;
+    const xii = st.members.filter(m => m.status === "active" && m.team === "XII");
+    if (!xii.length) return null;
+    return xii.find(m => m.name === "张怡")
+      || xii.slice().sort((a, b) => (b.bond || 0) - (a.bond || 0) || (a.name < b.name ? -1 : 1))[0];
   },
 
   /* 【2019 主线④】限定团人选（确定性）：2018 派遣成员按实力降序，前 3 成团；
@@ -1417,6 +1566,7 @@ const Game = {
         m.team = "PREP"; m.branchTeam = null; m.branchLabel = null;
         m.captain = false; m.vice = false; delete m.sub;
         m.bond = this.clamp((m.bond || 0) - 4, 1, 100);
+        m.prepDown = st.era;   // 降格考察年 tag：本年度不参与汇报公演升格
         m.note = "2018组阁 · 编入预备生";
         prepped.push(m.name);
         this.addLog(st, st.month, m.name + " 组阁编入预备生（羁绊-4）。", "normal");
@@ -1425,6 +1575,7 @@ const Game = {
         m.status = "branch"; m.team = bt; m.branchTeam = bt; m.branchLabel = "";
         m.captain = false; m.vice = false; delete m.sub;
         m.bond = this.clamp((m.bond || 0) - 8, 1, 100);
+        m.prepDown = st.era;   // 降格/发配考察年 tag：本年度不参与汇报公演升格
         m.note = "2018组阁落编 · 移籍" + bt;
         dropped.push(m.name);
         this.addLog(st, st.month, m.name + " 组阁落编，移籍" + bt + "（羁绊-8）。", "normal");
@@ -1600,11 +1751,28 @@ const Game = {
     return { text: "专辑上线当晚，评论区最高赞写着：「说过的舞台，真的给了。」", tone: "main", vn: STORY.scenes18.albumOut };
   },
 
+  /* 【预备生汇报公演】本年度组阁中刚被降格/发配的成员不参与升格候选：
+     ① 正式队 → 预备生（编入预备生）；② 本部/分团 → 分团（落编移籍、发配分团、
+     移交改派分团）——刚被编制会重新安置的孩子需要一整年重新证明自己。
+     双口径识别：新档读 prepDown 年份 tag（applyReorg18/19 落笔时写入）；
+     旧档无 tag，用成员卡 note 前缀年份 + 降格/发配关键词兑底。
+     注：分团成员转预备生属于上调红利通道，不视为降格、不受此限。 */
+  isPrepDownThisYear(m, st) {
+    st = st || this.st;
+    if (!m) return false;
+    const inScope = m.team === "PREP" || m.status === "branch";
+    if (!inScope) return false;
+    if (m.prepDown === st.era) return true;
+    if (typeof m.note !== "string" || m.note.indexOf(st.era) !== 0) return false;
+    return ["编入预备生", "落编", "发配", "移籍"].some(k => m.note.indexOf(k) >= 0);
+  },
+
   /* 【2018 主线②】预备生汇报公演：月度事件回调——表现优异者升格（含分团预备生上调本部） */
   promotePrep18(id, team) {
     const st = this.st;
     const m = st.members.find(x => x.id === id);
     if (!m) return { text: "未找到该成员。", tone: "blocked" };
+    if (this.isPrepDownThisYear(m, st)) return { text: m.name + " 本年度刚经组阁降入预备生/分团，暂不参与汇报公演升格。", tone: "blocked" };
     const fromBranch = m.status === "branch";
     m.team = team; m.branchTeam = null; m.branchLabel = null;
     m.status = "active";
@@ -1622,11 +1790,12 @@ const Game = {
   },
 
   /* 【2018 主线②】预备生汇报公演候选：本部 PREP + 分团预备生。
+     本年度组阁中刚被降格/发配的成员不列入（isPrepDownThisYear）。
      确定性排序（pwr×2 + 人气 + 羁绊×0.5 加权）取前 3——pages 与裁决 effect 两次调用
      必须指向同一位成员，故不用随机。 */
   prepStageCandidates(st) {
     const pool = st.members.filter(m => (m.team === "PREP" || (m.status === "branch" && (m.branchLabel === "预备生" || m.branchLabel === "")))
-      && m.status !== "left" && m.name);
+      && m.status !== "left" && m.name && !this.isPrepDownThisYear(m, st));
     return pool.slice().sort((a, b) =>
       ((b.pwr || 0) * 2 + (b.pop || 0) + (b.bond || 0) * 0.5) - ((a.pwr || 0) * 2 + (a.pop || 0) + (a.bond || 0) * 0.5)
       || (a.name < b.name ? -1 : 1)).slice(0, 3);
@@ -1761,6 +1930,180 @@ const Game = {
     }));
   },
 
+  /* ========================================================================
+     成员关系 & 队伍磨合度系统（v0.13.0 · 全线通用）
+     --------------------------------------------------------------------------
+     【队伍磨合度】st.chem（key = 本部队名 / "PREP" / 分团名）+ st.chemStable（稳定月数）：
+       · 初始值由队伍成员的【人气·实力均匀度】决定——成员越接近，初始磨合越高；
+       · 队伍连续三个月未发生人员变动（退团除外）后，每月磨合度 +1（稳定加成）；
+       · 任何人员变动（预备生升格 / 移籍 / 组阁 / 新人入队 / 暂休与归队等）都会
+         重算该队磨合度初始值并清零稳定加成；队伍人员退团不重算、不加成不清零。
+       · 变动检测采用「队伍成员指纹」对比（syncTeams）：所有改队伍的代码路径
+         （组阁 / 移籍 / 升格 / 招新 / 淘汰……）无需逐一埋点，月末统一结算。
+     【成员关系】挂在成员卡上（m.rels[对方id]，双向同步），0-100：
+       · 初始值：同队队友 52，其他成员 40（略高）；预备生时期不计成员关系；
+       · 两名成员在同一队伍效力每满半年，关系 +1；
+       · 在磨合度 <40 的低磨合队伍效力，每月每人随机与一位队友关系 -1（轻微磨损）。
+       关系数据随 members 数组跨年继承自动保留；磨合度由 inheritRel 沿用。
+     ========================================================================== */
+
+  REL_BASE_OTHER: 40,    // 成员关系初始值：非同队
+  REL_BASE_TEAM: 52,     // 成员关系初始值：同队队友（略高）
+  REL_CHEM_LOW: 40,      // 低磨合度阈值（低于此值触发每月关系磨损）
+
+  /* 成员当前所属队伍 key（本部队名 / PREP / 分团名；殿堂·暂休·离团·IDFT 无队伍） */
+  teamKeyOf(m) {
+    if (!m || m.hall) return null;
+    if (m.status === "active") return m.team || null;
+    if (m.status === "branch") return m.branchTeam || null;
+    return null;
+  },
+
+  teamRoster(st, key) {
+    return st.members.filter(m => this.teamKeyOf(m) === key);
+  },
+
+  /* 磨合度初始值：成员人气/实力越均匀（离散度越低），初始磨合越高。
+     无实力系统的年代线（2016/2026）只按人气均匀度计。 */
+  calcChem(st, key) {
+    const list = this.teamRoster(st, key);
+    if (list.length < 2) return 60;
+    const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+    const mad = a => mean(a.map(v => Math.abs(v - mean(a))));
+    const popDev = mad(list.map(m => m.pop || 0));
+    const pwrList = list.map(m => m.pwr).filter(v => v != null);
+    const pwrDev = pwrList.length >= 2 ? mad(pwrList) : null;
+    const chem = 88 - popDev * 1.1 - (pwrDev != null ? pwrDev * 0.8 : 0);
+    return Math.round(this.clamp(chem, 15, 90));
+  },
+
+  /* 人员变动检测：对比每支队伍的成员指纹。
+     纯退团（无新增、离开者全部 status='left'）只更新指纹——磨合度与稳定加成保留；
+     其余变动重算磨合度初始值并清零稳定计数。 */
+  syncTeams(st) {
+    if (!st.chem) st.chem = {};
+    if (!st.chemStable) st.chemStable = {};
+    if (!st.chemFp) st.chemFp = {};
+    const keys = new Set();
+    for (const m of st.members) { const k = this.teamKeyOf(m); if (k) keys.add(k); }
+    for (const k of keys) {
+      const fp = this.teamRoster(st, k).map(m => m.id).sort().join(",");
+      const old = st.chemFp[k];
+      if (old === fp) continue;
+      st.chemFp[k] = fp;
+      if (old != null) {
+        const oldSet = old ? old.split(",") : [];
+        const newSet = fp ? fp.split(",") : [];
+        const added = newSet.filter(id => oldSet.indexOf(id) < 0);
+        const removed = oldSet.filter(id => newSet.indexOf(id) < 0);
+        const onlyLeft = added.length === 0 && removed.length > 0 && removed.every(id => {
+          const m = st.members.find(x => x.id === id);
+          return m && m.status === "left";
+        });
+        if (onlyLeft) continue;   // 纯退团：不重算、不清加成
+      }
+      st.chem[k] = this.calcChem(st, k);
+      st.chemStable[k] = 0;
+    }
+  },
+
+  /* 遍历同队（非预备生、非殿堂）成员两两组合 */
+  eachTeamPair(st, fn) {
+    const groups = {};
+    for (const m of st.members) {
+      const k = this.teamKeyOf(m);
+      if (!k || k === "PREP") continue;   // 预备生时期不计成员关系
+      (groups[k] = groups[k] || []).push(m);
+    }
+    for (const k in groups) {
+      const list = groups[k];
+      for (let i = 0; i < list.length; i++)
+        for (let j = i + 1; j < list.length; j++)
+          fn(list[i], list[j], k);
+    }
+  },
+
+  relKey(a, b) { return a < b ? a + "|" + b : b + "|" + a; },
+
+  /* 读取关系值（懒初始化：同队队友 52 / 其他成员 40） */
+  relGet(st, aId, bId) {
+    const ma = st.members.find(m => m.id === aId);
+    const mb = st.members.find(m => m.id === bId);
+    if (!ma || !mb) return null;
+    const k = this.relKey(aId, bId);
+    if (!ma.rels) ma.rels = {};
+    if (ma.rels[k] == null) {
+      const ka = this.teamKeyOf(ma), kb = this.teamKeyOf(mb);
+      ma.rels[k] = (ka && ka === kb) ? this.REL_BASE_TEAM : this.REL_BASE_OTHER;
+      if (!mb.rels) mb.rels = {};
+      mb.rels[k] = ma.rels[k];
+    }
+    return ma.rels[k];
+  },
+
+  relAdd(st, aId, bId, d) {
+    const v = this.relGet(st, aId, bId);
+    if (v == null) return;
+    const nv = this.clamp(v + d, 0, 100);
+    const k = this.relKey(aId, bId);
+    const ma = st.members.find(m => m.id === aId);
+    const mb = st.members.find(m => m.id === bId);
+    if (ma) { if (!ma.rels) ma.rels = {}; ma.rels[k] = nv; }
+    if (mb) { if (!mb.rels) mb.rels = {}; mb.rels[k] = nv; }
+  },
+
+  /* 初始化 / 旧档追补（新开局、读档共用；跨年继承走 inheritRel） */
+  initRelSystem(st) {
+    if (!st.chem) st.chem = {};
+    if (!st.chemStable) st.chemStable = {};
+    if (!st.chemFp) st.chemFp = {};
+    if (st.relMonths == null) st.relMonths = 0;
+    this.syncTeams(st);
+    /* 首次启用：预置同队队友初始关系（略高于其他成员） */
+    if (!st.relSeeded) {
+      this.eachTeamPair(st, (a, b) => { this.relGet(st, a.id, b.id); });
+      st.relSeeded = true;
+    }
+  },
+
+  /* 跨年继承：磨合度/稳定计数沿用（成员卡上的关系随 members 数组自动保留）；
+     年初编制若有变动，syncTeams 会自动重算受影响队伍 */
+  inheritRel(src, st) {
+    st.chem = src.chem ? Object.assign({}, src.chem) : {};
+    st.chemStable = src.chemStable ? Object.assign({}, src.chemStable) : {};
+    st.chemFp = src.chemFp ? Object.assign({}, src.chemFp) : {};
+    st.relMonths = src.relMonths || 0;
+    st.relSeeded = !!src.relSeeded;
+    this.syncTeams(st);
+  },
+
+  /* 月度推进（endMonth 调用）：稳定加成 / 半年关系增长 / 低磨合磨损 */
+  tickRelations(st) {
+    this.initRelSystem(st);
+    this.syncTeams(st);
+    /* ① 稳定加成：连续三个月无人员变动（退团除外）→ 每月磨合 +1 */
+    for (const k in st.chem) {
+      st.chemStable[k] = (st.chemStable[k] || 0) + 1;
+      if (st.chemStable[k] >= 3) st.chem[k] = Math.min(100, st.chem[k] + 1);
+    }
+    /* ② 成员关系：同队效力每满半年 +1（预备生不计） */
+    st.relMonths = (st.relMonths || 0) + 1;
+    if (st.relMonths >= 6) {
+      st.relMonths = 0;
+      this.eachTeamPair(st, (a, b) => { this.relAdd(st, a.id, b.id, 1); });
+    }
+    /* ③ 低磨合队伍：每月每人随机与一位队友关系 -1（轻微磨损） */
+    for (const k in st.chem) {
+      if (st.chem[k] == null || st.chem[k] >= this.REL_CHEM_LOW || k === "PREP") continue;
+      const list = this.teamRoster(st, k);
+      for (const m of list) {
+        const mates = list.filter(x => x.id !== m.id);
+        if (!mates.length) continue;
+        this.relAdd(st, m.id, mates[this.rnd(0, mates.length - 1)].id, -1);
+      }
+    }
+  },
+
   /* ============================ 存档 ============================ */
 
   save() {
@@ -1810,6 +2153,8 @@ const Game = {
         return true;
       });
     }
+    /* 【v0.13.0】旧档追补：初始化成员关系 & 队伍磨合度（首次读档时预置同队初始关系） */
+    this.initRelSystem(st);
     return st;
   },
 
@@ -2152,11 +2497,12 @@ const Game = {
       }
     }
 
-    // ② 离团/移籍生效（2016/2017/2018/2027 线；2026 线的人员退出走末位淘汰事件）
+    // ② 离团/移籍生效（2016/2017/2018/2019/2027 线；2026 线的人员退出走末位淘汰事件）
     //    移籍分团（type 以「移籍」开头）→ status='branch'；兼任（type 以「兼任」开头）→ 保留在籍仅备注
     const leaveSrc = st.era === "2026" ? []
       : st.era === "2027" ? (DATA2026.leaving2027 || [])
-      : st.era === "2019" ? []   // 【2019】不挂载静态离团表：退出由二次组阁/IDFT 移籍承载（主线②）
+      : st.era === "2019" ? (DATA.leaving2019 || [])   // 【2019】史实离团表挂载（v0.12.3）：
+                                                       // 二次组阁/IDFT 移籍照旧由主线②承载，本表只负责散点离团
       : st.era === "2018" ? DATA.leaving2018
       : st.era === "2017" ? DATA.leaving2017 : DATA.leaving2016;
     for (const lv of leaveSrc) {
@@ -2166,6 +2512,11 @@ const Game = {
       if (!m0 || m0.status === "left" || m0.status === "rest") continue;
       /* 荣誉殿堂成员不再走离团表（与 2026 杨冰怡口径一致） */
       if (m0.hall) continue;
+      /* 【2019】去年点将出征鹅厂选秀的成员不随史实表离团——封闭集训/限定团线
+         承载她们的年内在籍（6月成团者已转暂休，上面 rest 已跳过；未成团派遣
+         成员留在队里等 7 月总选加成结算）。 */
+      if (st.era === "2019" && st.show18 && Array.isArray(st.show18.squad) &&
+          st.show18.squad.some(id => { const sm = st.members.find(x => x.id === id); return sm && sm.name === lv.name; })) continue;
       /* 复刻路线：与日方关系良好，铃木玛莉亚的兼任延续至明年（不退团） */
       if (lv.name === "铃木玛莉亚" && this.isReplicate(st)) {
         this.addLog(st, st.month, "AKB48方面确认：铃木玛莉亚的兼任将延续到明年。", "good");
@@ -2202,7 +2553,7 @@ const Game = {
   /* ============================ 行动定义 ============================ */
 
   /* 返回本月可用行动（含可用性检查），UI 据此渲染按钮 */
-  listActions() {
+  listActionsCore() {
     const st = this.st;
 
     /* ============ 2026 线：行动①为「推进CGT48重建」或「安置CGT48前成员」（解散路线） ============ */
@@ -2465,6 +2816,19 @@ const Game = {
     ];
   },
 
+  /* 【v0.13.1】全线通用：在各年代线行动列表末尾追加「队伍团建」 */
+  listActions() {
+    const st = this.st;
+    const acts = this.listActionsCore();
+    const ok = st.money >= 15;
+    acts.push({
+      id: "teamBld", name: "队伍团建",
+      desc: "为指定队伍安排团建：磨合度+6 士气+2 队友关系小幅升温（耗资15万）",
+      disabled: !ok, disabledTip: ok ? "" : "资金不足（需≥15万）",
+    });
+    return acts;
+  },
+
   /* 执行行动（payload 供 visit 使用）。返回 {text, tone} 给 UI 提示与记日志 */
   doAction(id, payload) {
     const st = this.st;
@@ -2472,6 +2836,26 @@ const Game = {
     let res = { text: "", tone: "normal" };
 
     switch (id) {
+      case "teamBld": {
+        /* 【v0.13.1】队伍团建（全线通用）：先弹队伍选择窗（早退不耗AP），选定后落地 */
+        if (!payload || !payload.team) return { text: "", tone: "pickTeamBld" };
+        const tbKey = payload.team;
+        const tbRoster = this.teamRoster(st, tbKey);
+        if (!tbRoster.length) return { text: "该队伍当前没有在册成员。", tone: "blocked" };
+        if (st.money < 15) return { text: "资金不足（队伍团建需15万）。", tone: "blocked" };
+        st.money -= 15;
+        if (st.chem[tbKey] == null) { st.chem[tbKey] = this.calcChem(st, tbKey); st.chemStable[tbKey] = st.chemStable[tbKey] || 0; }
+        st.chem[tbKey] = Math.min(100, st.chem[tbKey] + 6);
+        st.morale = this.clamp(st.morale + 2, 0, 100);
+        /* 团建升温：每人随机与一位队友关系+1（殿堂/影视部成员不参与队伍排班，跳过） */
+        const tbList = tbRoster.filter(m => !m.hall);
+        for (const m of tbList) {
+          const mates = tbList.filter(x => x.id !== m.id);
+          if (mates.length) this.relAdd(st, m.id, mates[this.rnd(0, mates.length - 1)].id, 1);
+        }
+        res = { text: tbKey + " 团建圆满结束——磨合度+6（现 " + st.chem[tbKey] + "），队内气氛明显升温（士气+2）。", tone: "good" };
+        break;
+      }
       case "branch": {
         // 引擎层门控（与按钮 disabled 双保险；不满足时不消耗行动点）
         const blocked = this.branchBlockReason();
@@ -3023,6 +3407,12 @@ const Game = {
     }
     if (st.morale < 40) this.addLog(st, st.month, "全团士气低迷，成员的笑变少了……", "bad");
 
+    /* ③' 成员关系 & 队伍磨合度月度推进（v0.13.0 · 全线通用）：
+       稳定加成（连续三个月无人员变动 → 每月磨合+1）/ 半年同队关系+1 /
+       低磨合队伍（<40）每月随机磨损队友关系。人员变动（升格/移籍/组阁/招新等）
+       由 syncTeams 按队伍成员指纹自动识别——重算磨合初始值并取消稳定加成。 */
+    this.tickRelations(st);
+
     /* ④ 官宣判定（2016 线：4月起，筹备完成即官宣；4月官宣有加成） */
     if (st.era === "2016" && !st.branch.announce && st.branch.stage >= 5 && st.month >= 4) {
       st.branch.announce = true;
@@ -3170,7 +3560,7 @@ const Game = {
          恰好覆盖了全部月份，所以从未触发过这个潜伏 bug） */
     const pages = typeof ev.pages === "function" ? ev.pages(st) : (ev.pages || [{ nar: true, t: ev.text || "" }]);
     return {
-      type: "vn", title: ev.title,
+      type: "vn", title: typeof ev.title === "function" ? ev.title(st) : ev.title,
       pages: pages.map(p => ({ ...p, t: this.fmt(p.t) })),
       after: (ev.after || []).map(p => ({ ...p, t: this.fmt(p.t) })),   // 选项结算后追加的公共剧情
       choices: ev.choices ? ev.choices.map(c => ({
