@@ -618,6 +618,9 @@ body {
 .pick-btn.on-x { border-color: #ffe08a; background: rgba(255, 224, 138, 0.14); box-shadow: 0 0 0 1px #ffe08a; }    /* 升格：Team X */
 .pick-btn.on-xii { border-color: #9ae6b4; background: rgba(154, 230, 180, 0.14); box-shadow: 0 0 0 1px #9ae6b4; }  /* 组阁：Team XII */
 .pick-btn.on-ft { border-color: #f6ad55; background: rgba(246, 173, 85, 0.14); box-shadow: 0 0 0 1px #f6ad55; }    /* 组阁：Team FT（新） */
+.pick-btn.on-g { border-color: #68d391; background: rgba(104, 211, 145, 0.14); box-shadow: 0 0 0 1px #68d391; }      /* GNZ48重组：Team G */
+.pick-btn.on-niii { border-color: #63b3ed; background: rgba(99, 179, 237, 0.14); box-shadow: 0 0 0 1px #63b3ed; }    /* GNZ48重组：Team NIII */
+.pick-btn.on-z { border-color: #ed64a6; background: rgba(237, 100, 166, 0.14); box-shadow: 0 0 0 1px #ed64a6; }      /* GNZ48重组：Team Z */
 .pick-btn.on-drop { border-color: #fc8181; background: rgba(252, 129, 129, 0.12); box-shadow: 0 0 0 1px #fc8181; } /* 组阁：落编移籍分团/移籍IDFT/暂不招录 */
 .pick-btn.on-bej { border-color: #ff9b8a; background: rgba(255, 155, 138, 0.14); box-shadow: 0 0 0 1px #ff9b8a; }   /* 2019 招新：BEJ48 预备生 */
 .pick-btn.on-gnz { border-color: #7fe3d2; background: rgba(127, 227, 210, 0.14); box-shadow: 0 0 0 1px #7fe3d2; }   /* 2019 招新：GNZ48 预备生 */

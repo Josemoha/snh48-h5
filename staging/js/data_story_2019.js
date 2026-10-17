@@ -9,7 +9,10 @@
    · 全年 18 人入团：BEJ48 六期 1（01-03）+ 本部十二期 4（09-14）+ GNZ48 七期 3（09-15/10-26）
      + BEJ48 七期 7（09-28/10-25/11-29 三批）+ 本部十三期 3（11-17/11-29）
      仅有的新入团成员——本部全年零招新，与「招生放慢」的剧情设定互为表里；
-   · 2019-07-27 第六届总决选（史实李艺彤蝉联）。
+   · 2019-01-19 第六届金曲大赏（史实李艺彤蝉联）；
+   · 2019-01-19 小分队 DEMOON 于第六届金曲大赏官宣成军（选拔由粉丝投票产生，
+     七人：徐子轩/吴哲晗/杨冰怡/张怡/袁一琦/张丹三/张琼予）——游戏中按 2018
+     小分队事件同款处理，挂在 2 月：粉丝打投（史实名单挂载）或官方钦点（玩家点将）。
 
    ----------------------------------------------------------------------------
    【进入方式】本线不从标题页直接开局——由 2018 线结局界面的「进入下一年」入口
@@ -61,8 +64,11 @@
        未编入本部、亦未分配到其余分团的成员，移籍 IDFT。
 
    决策标签（st.decisions）：teb19Push（go/hold）/ teb19Squad（派遣移籍名单，存姓名）/
-     branch19Keep（keep/giveup）/ geStrategy / summerMode19 / recruit19（招新归属表，存id）/
-     rtWarn19（9月大赏评审表态）。
+     branch19Keep（keep/giveup）/ branchFlag19（孟波保旗，仅 giveup 线：单选项承载 tag，
+     实际值在 apply 内按 branchPost 同 2020 年线口径落定为分团名 SHY48/CKG48——
+     队伍解散、旗号保留，二次组阁时该团至多 16 人留任为旗号预备生队伍，无剧场收入）/ geStrategy / summerMode19 / recruit19（招新归属表，存id）/
+     rtWarn19（9月大赏评审表态）/ demoon19（DEMOON 选人方式：vote=粉丝打投·史实名单 /
+     pick=官方钦点·玩家点将）/ unitsDemoon（DEMOON 成军名单，存姓名）。
    旗标（st.flags）：teb19Open（TEB48 开业）/ branchesKept19 / branchesClosed19 /
      reorg19Done / unit19Formed / teb19Debut / outreach19Done。
    ========================================================================== */
@@ -139,7 +145,7 @@ STORY.prologue19 = {
               ? "东京方面的资助承诺当天走完了流程——复刻路线四年的合作情分，在这一刻变成了真金白银。你把去年年末资金的四分之一划进了分团维稳专户：" + cost + " 万。沈阳与重庆的资方拿到了定心丸，撤资意向书撤回。\n\n（决策已登记：branch19Keep=keep。资金-" + cost + "万（去年年末的1/4，日方资助分摊）；SHY48/CKG48 保住，月收入延续。士气+3。）"
               : "没有东京的钱，你只能动自己的账。你把去年年末资金的一半——" + cost + " 万——划进了分团维稳专户，董事会会议室安静了很久。王婧最终在纪要上补了一句：「总监担了。」\n\n（决策已登记：branch19Keep=keep。资金-" + cost + "万（去年年末的1/2，无外部资助）；SHY48/CKG48 保住，月收入延续。）");
           } },
-        { label: "「放弃分团。孩子们，一个都不会被落下。」", hint: "SHY48/CKG48 停运：两团成员进入二次组阁池——未入本部/其余分团者移籍 IDFT 训练生池",
+        { label: "「放弃分团。孩子们，一个都不会被落下。」", hint: "SHY48/CKG48 停运：两团成员进入二次组阁池——未入本部/其余分团者移籍 IDFT 训练生池（签字后，孟波或有话要说）",
           tag: "branch19Keep", value: "giveup",
           apply: st => {
             let n = 0;
@@ -149,6 +155,27 @@ STORY.prologue19 = {
             st.flags.branchesClosed19 = true;
             if (st.branch17) { st.branch17.shyOpen = false; st.branch17.ckgOpen = false; }
             return "你在撤资意向书的回执上落了笔：「同意。条件——所有在册成员，由集团全数接收。」\n\n沈阳与重庆的剧场灯，会在今年春天次第熄灭；但两团" + n + "名在册成员一个不少地回到了上海名册上——二次组阁的编制会，会给每个人一个去处；一时给不出去处的，进入集团新设的训练生池 IDFT。\n\n（决策已登记：branch19Keep=giveup。SHY48/CKG48 停运（月收入终止）；两团成员进入二次组阁池，未编入者移籍 IDFT。资金无消耗。）";
+          } },
+      ],
+    },
+    /* —— 第三轮：孟波的请求（仅放弃分团线）：签字同意停运后，孟波请求保留他所在的
+       分团的旗号（同 2020 年线 mengbo20 口径：branchPost=CKG48 → 保 SHY48；
+       否则保 CKG48）。队伍解散、旗号保留，二次组阁时该团至多 16 人留任为
+       旗号预备生队伍；无剧场收入，其余成员由总监安置（本部/其余分团/IDFT）。 —— */
+    {
+      gate: st => st.decisions.branch19Keep === "giveup",
+      title: "孟波的请求 · 分团的旗号",
+      choices: [
+        /* 单选项：孟总亲自出资，集团没有理由拒绝——选项仅承载 tag，
+           实际保留哪家旗号在 apply 内按 branchPost 同 2020 年线口径落定：
+           branchPost=CKG48 → 保 SHY48，否则保 CKG48。 */
+        { label: "「同意。牌子留着——十六个孩子，交给你带。」",
+          hint: st => "孟波个人出资，保住 " + (st.decisions.branchPost === "CKG48" ? "SHY48" : "CKG48") + " 的旗号——队伍解散，仅留任16人（二次组阁时安排）；其余成员由你安置；无剧场收入",
+          tag: "branchFlag19", value: "agree",
+          apply: st => {
+            const br = st.decisions.branchPost === "CKG48" ? "SHY48" : "CKG48";
+            st.decisions.branchFlag19 = br;
+            return "散会还没走出会议室，孟波把合同扫描件发了过来：「" + br + " 这块牌子是我看着立起来的。队伍我养不起——旗号，我出钱保。十六个孩子，留给我；其余的，拜托总监了。」\n\n你在合同上签了字——孟总亲自出资，集团没有理由拒绝。\n\n（决策已登记：branchFlag19=" + br + "。" + br + " 解散队伍、保留旗号——二次组阁时该团至多 16 人留任为旗号预备生队伍（无剧场收入）；其余成员由总监安置。）";
           } },
       ],
     },
@@ -281,42 +308,30 @@ STORY.hallAscend19 = st => [
    三、月度脚本事件（monthly19）
    ======================================================================== */
 
-/* 【共享】预备生汇报公演（2018 制度延续，候选与升格沿用引擎 prepStageCandidates/promotePrep18） */
+/* 【共享】预备生汇报公演（2018 制度延续，候选与升格沿用引擎 prepStageCandidates/promotePrepStage）
+   每 4 个月一次（4/8/12月），每场升格 2 人，pickMode="prepStagePromote" 逐人定队。 */
 const prepEv19 = {
   id: "m_prep_stage19",
   title: "预备生汇报公演",
-  gate: s => Game.prepStageCandidates(s).length > 0,
+  gate: s => s.month % 4 === 0 && Game.prepStageCandidates(s).length > 0,   // 每 4 个月一次（4/8/12月）
   pages: s => {
-    const star = Game.prepStageCandidates(s)[0];
-    const fromBranch = star.status === "branch";
+    const stars = Game.prepStageCandidates(s).slice(0, 2);
+    const names = stars.map(m => m.name + "（" + (m.status === "branch" ? (m.branchTeam || "分团") + "预备生" : "预备生") + "）").join("、");
+    const fromBranch = stars.some(m => m.status === "branch");
     return [
-      { nar: true, t: "每月一次的预备生汇报公演如期开演——这项制度走完了它的第二年，轮换池里的孩子换了一茬又一茬。舞台总监马跃在本子上圈了一个名字——" + star.name + "（" + (fromBranch ? (star.branchTeam || "分团") + "预备生" : "预备生") + "）。" },
-      { s: "马跃", cls: "", t: "（演出结束，拿着记录本来找你）总监，这个孩子的进步是断层的：站姿、走位、开口都不说了——她缺的不是能力，是一个正式的位置。怎么安排，您定。" },
+      { nar: true, t: "每四个月一次的预备生汇报公演如期开演——这项制度走完了它的第二年，轮换池里的孩子换了一茬又一茬。舞台总监马跃在本子上圈了两个名字——" + names + "。" },
+      { s: "马跃", cls: "", t: "（演出结束，拿着记录本来找你）总监，这两个孩子的进步是断层的：站姿、走位、开口都不说了——她们缺的不是能力，是一个正式的位置。怎么安排，您定。" },
       { nar: true, t: (fromBranch
-        ? "（她来自" + (star.branchTeam || "分团") + "——上调本部后，人气与羁绊都会上一个台阶。）"
+        ? "（其中有人来自分团——上调本部后，人气与羁绊都会上一个台阶。）"
         : "（预备生升格入队后，人气与羁绊将获得提升。）") },
     ];
   },
   choices: [
-    { label: "升格入 Team SII", hint: "人气与羁绊提升（分团上调加成更多）",
-      tag: "prepStage19", value: "SII",
-      effect: st => { const m = Game.prepStageCandidates(st)[0]; return Game.promotePrep18(m.id, "SII").text; } },
-    { label: "升格入 Team NII", hint: "人气与羁绊提升",
-      tag: "prepStage19", value: "NII",
-      effect: st => { const m = Game.prepStageCandidates(st)[0]; return Game.promotePrep18(m.id, "NII").text; } },
-    { label: "升格入 Team HII", hint: "人气与羁绊提升",
-      tag: "prepStage19", value: "HII",
-      effect: st => { const m = Game.prepStageCandidates(st)[0]; return Game.promotePrep18(m.id, "HII").text; } },
-    { label: "升格入 Team X", hint: "人气与羁绊提升",
-      tag: "prepStage19", value: "X",
-      effect: st => { const m = Game.prepStageCandidates(st)[0]; return Game.promotePrep18(m.id, "X").text; } },
-    { label: "升格入 Team FT", hint: "人气与羁绊提升",
-      tag: "prepStage19", value: "FT",
-      gate: st => !!st.flags.ftFormed && st.members.some(m => m.status === "active" && m.team === "FT"),
-      effect: st => { const m = Game.prepStageCandidates(st)[0]; return Game.promotePrep18(m.id, "FT").text; } },
-    { label: "继续留任预备生观察", hint: "暂不升格（下月再议）",
+    { label: "宣布升格名单，为两人定队", hint: "逐人选择 SII / NII / HII / X（人气与羁绊提升，分团上调加成更多）",
+      pickMode: "prepStagePromote" },
+    { label: "两人均继续留任预备生观察", hint: "本场暂不升格（下次公演再议）",
       tag: "prepStage19", value: "stay",
-      effect: () => "你在汇报表上写下「继续观察」。马跃点点头：「下个月她要是还这么稳，您可就不好说了。」" },
+      effect: () => "你在汇报表上写下「继续观察」。马跃点点头：「下次公演她们要是还这么稳，您可就不好说了。」" },
   ],
 };
 
@@ -356,7 +371,7 @@ STORY.monthly19 = {
     prepEv19,
   ],
 
-  /* ---------- 2月：组阁专班 + 危机余波 ---------- */
+  /* ---------- 2月：组阁专班 + DEMOON 成军 + 危机余波 ---------- */
   2: [
     {
       id: "m2_19_reorg_kick",
@@ -382,6 +397,64 @@ STORY.monthly19 = {
           { s: "叶盛", cls: "speaker-yesheng", t: "（提醒）本部每队上限二十人、下限十三人，预备生队伍至多十六人；名额实在放不下的——发配分团，或者进 IDFT 训练生池。行动里随时可以启动编制会。" },
         ];
       },
+    },
+    {
+      /* 【2019 通用·小分队】金曲大赏上公布了企划「DEMOON」，2月正式成军。
+         tag demoon19：vote（粉丝打投——热度+4 士气+2，按史实名单挂载成军）/
+                       pick（官方钦点——链式解锁七人点将窗，成员由玩家指定）。
+         史实名单（snh48wiki 档案考据，2019-01-19 第六届金曲大赏官宣，粉丝投票选出）：
+         DEMOON = 徐子轩、吴哲晗、杨冰怡、张怡、袁一琦、张丹三、张琼予。
+         （史实成员不在本时间线在册名单中时，名单照常公示，数值挂载自动跳过。） */
+      id: "m2_19_demoon",
+      title: "2月 · 小分队 DEMOON",
+      gate: st => !st.decisions.demoon19,
+      pages: st => [
+        { nar: true, t: "年末的金曲大赏压轴环节，大屏上闪过一段暗色系的预告片——七个剪影、一枚月蚀标志，没有名字，只有一行小字：「DEMOON，即将蚀月而出」。一个月过去，企划的细节终于摆上了你的桌面：七人编制，走酷飒暗黑的舞台路线，和小分队 7SENSES 的甜美系打差异战。" },
+        { s: "王婧", cls: "speaker-wangjing", t: "（把企划书推到桌中央）7SENSES 证明了小分队这条路走得通，DEMOON 是第二条腿——风格完全反过来，抢的就是另一批观众。选人方式，集团让你拍板：粉丝打投，还是官方钦定。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（低声补充）打投就是让粉丝把名字一张张顶上来——成军夜的热搜就是现成的官宣素材；官方钦定则稳，七个人选谁不选谁，这份权衡权在您手里。七个位置，请您定规矩。" },
+      ],
+      choices: [
+        { label: "方案一：粉丝打投定名单", hint: "热度+4 士气+2；DEMOON 七人按粉丝投票结果（史实名单）成军",
+          tag: "demoon19", value: "vote",
+          effect: st => {
+            const DEMOON = ["徐子轩", "吴哲晗", "杨冰怡", "张怡", "袁一琦", "张丹三", "张琼予"];
+            st.decisions.unitsDemoon = DEMOON.slice();
+            const inRoster = [];
+            for (const n of DEMOON) {
+              const m = st.members.find(x => x.name === n);
+              if (m && m.status !== "left") {
+                inRoster.push(n);
+                m.pop = Math.min(100, (m.pop || 0) + 3);
+                m.bond = Math.min(100, (m.bond || 0) + 3);
+                m.note = (m.note ? m.note + "；" : "") + "SNH48小分队DEMOON成员（粉丝打投成军）";
+              }
+            }
+            st.heat = Math.min(100, st.heat + 4);
+            st.morale = Math.min(100, st.morale + 2);
+            const missing = DEMOON.filter(n => inRoster.indexOf(n) < 0);
+            return "打投通道开启，粉圈连夜刷起了话题——月蚀应援色的话题挂了一周，七天后，DEMOON 的名单随投票结果一并公布：" + DEMOON.join("、") + "。官宣微博转发破十万，评论区有人写道：「月蚀了，新天象来了。」"
+              + (missing.length ? "\n\n（其中" + missing.join("、") + "不在本时间线的在册名册上——名单照史实的投票结果公示，数值挂载自动跳过。）" : "")
+              + "\n\n（决策已登记：demoon19=vote。热度+4 士气+2，七人小分队成军——粉丝的选择，和史实写在了同一行。）";
+          } },
+        { label: "方案二：官方钦点定名单", hint: "热度+2；七个位置由你亲自点将（选中者人气+5 羁绊+5）",
+          tag: "demoon19", value: "pick",
+          effect: st => { st.heat = Math.min(100, st.heat + 2);
+            return "你在方案二上落了笔：「DEMOON 的名单，公司来定。」企划组连夜搭起评审流程——七个位置，酷飒路线需要的是另一种镜头脸，名单由总监亲自圈定。（决策已登记：demoon19=pick。热度+2——接下来，该点将了。）"; } },
+      ],
+    },
+    {
+      /* 【小分队·官方钦点】DEMOON 七人点将（链式解锁：demoon19=pick 后触发；pickMode="demoonpick"） */
+      id: "m2_19_demoon_pick",
+      title: "2月 · DEMOON 名单",
+      gate: st => st.decisions.demoon19 === "pick" && !st.decisions.unitsDemoon,
+      pages: st => [
+        { nar: true, t: "DEMOON——七人小分队，走酷飒暗黑的舞台路线：眼妆、黑色打服、电子摇滚编曲，和 7SENSES 的甜美系站在天平的两端。七个位置，七种锋利。" },
+        { s: "王婧", cls: "speaker-wangjing", t: "（看名单）企划组的意见是：这个团不挑最红的，挑最「像 DEMOON」的——台风、眼神、扛得住暗色系舞台的气场。总监，名单在你笔下。" },
+      ],
+      choices: [
+        { label: "圈定 DEMOON 七人名单", hint: "选中七人：人气+5 羁绊+5（小分队成军曝光）",
+          pickMode: "demoonpick" },
+      ],
     },
     prepEv19,
   ],
@@ -730,8 +803,40 @@ STORY.monthly19 = {
     prepEv19,
   ],
 
-  /* ---------- 11月：大赏投票 ---------- */
+  /* ---------- 11月：双选秀邀约 + 大赏投票 ---------- */
   11: [
+    {
+      /* 【2019 通用】双选秀邀约：鹅厂选秀第三季（女团季）与爱奇艺选秀第二季同年开战，
+         各给 7 个正式名额。除成团成员（2018 限定团，status="rest"）外全团可点。
+         ① 两家都参加：pickMode="show19both" → 两批链式七人点将窗；
+         ② 只参加其中之一：pickMode="show19one" → UI.showShow19OnePicker（平台二选一 + 七人点将）；
+         ③ 今年先不参加。生效逻辑在 engine.show19Squad / engine.show19Finalize。 */
+      id: "m11_19_dualshow",
+      title: "11月 · 双选秀邀约",
+      gate: st => !st.decisions.show19Plan,
+      pages: st => [
+        { nar: true, t: "十一月，两份邀约几乎同时摆上了总监的办公桌——红色的和绿色的，两家平台一左一右，像两条对吹的风口。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "鹅厂的选秀第三季官宣了——这次是女团季。官方给了我们七个正式名额，话里话外的意思是：希望我们继续参加。去年那批孩子的成色，平台记着呢。" },
+        { s: "王婧", cls: "speaker-wangjing", t: "（把第二份文件放在桌上）爱奇艺那边也递了函——他们的选秀第二季，同样邀请我们，同样七个名额。两家平台同年同季对打，我们两边都成了他们想要的「牌面」。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "两家都接，就是十四个名额、两班封闭集训连轴转——热度和产能都是顶的，但团里的人手会绷得很紧。只接一家，稳；一家不接，全力守剧场。总监，怎么接，您定。" },
+      ],
+      choices: [
+        { label: "两家都参加——分两批点将，每批七人", hint: "除成团成员外全团可点；被选中者羁绊+6 人气+4；热度+12 士气+2 资金+40万（两班集训连轴，人手紧绷）",
+          pickMode: "show19both" },
+        { label: "只参加其中之一——点将七人", hint: "平台由总监定；被选中者羁绊+6 人气+4；热度+7 士气+2 资金+20万",
+          pickMode: "show19one" },
+        { label: "今年先不参加了——让孩子们守好剧场", hint: "热度-4 士气+2；本部在籍成员羁绊+2（公演排期回归常态）",
+          tag: "show19Plan", value: "skip",
+          effect: st => {
+            st.heat = Math.max(0, st.heat - 4);
+            st.morale = Math.min(100, st.morale + 2);
+            const act = st.members.filter(x => x.status === "active" && x.pop != null);
+            for (const x of act) x.bond = Math.min(100, x.bond + 2);
+            Game.addLog(st, st.month, "婉拒双选秀邀约：全员回防剧场，公演排期回归常态（热度-4 士气+2 本部羁绊+2）。", "normal");
+            return "你在两份邀约函上都写下了「今年先不参加」。回函发出去的第二天，公演排期表重新贴满了排练室——十九点开演的场次，一个都不缺席。有粉丝在剧场门口写道：「镜头是别人的，剧场是我们的。」\n\n（决策已登记：show19Plan=skip。热度-4 士气+2；本部在籍成员羁绊+2。）";
+          } },
+      ],
+    },
     {
       id: "m11_19_rt_vote",
       title: "11月 · 金曲大赏投票开启",

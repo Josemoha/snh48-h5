@@ -3,6 +3,9 @@
    ----------------------------------------------------------------------------
    【数据来源】snh48wiki.top（SNH48中文维基）成员档案页 / 期生时间线 / 离团时间线 /
               历届总决选页，关键日期经两处以上交叉验证（调研于 2026-09-17）。
+              【考据规则】Agent 不联网考据（实测访问 snh48wiki 易失败/漏失）；史实细节
+              由用户手动查证后给出口径，更新时按用户口径挂载并修正相关注释——
+              详见项目根目录 AGENTS.md「考据规则」。
               另参考：百度百科（总决选条目）、SNH48 官网活动页、中国日报/凤凰网
               （BEJ48/GNZ48 成立报道）。
    【同人声明】名单与日期仅作同人游戏考据用途；人气值(pop)是游戏性设定（以
@@ -15,6 +18,7 @@
      DATA.joining2016  2016 年内新入团成员（按月加入：六期生 3 月、七期生 9/10 月）
      DATA.leaving2016  2016 年内离团/暂休/移籍事件（引擎按月触发剧情）
      DATA.leaving2019  2019 年内离团事件（2019「双岸」线，引擎按月触发）
+     DATA.leaving2020  2020 年内离团事件（2020「共渡」线，引擎按月触发）
      DATA.branchMovers 2016-04-20 移籍 BEJ48 / GNZ48 的 21 人（分团剧情核心素材）
      DATA.election2015Top / DATA.election2016  两届总决选考据数据（剧情用）
    ========================================================================== */
@@ -376,8 +380,9 @@ const DATA = {
   /* ---------------- SHY48 / CKG48 成立名单（2017「本部新章」线，开业时建卡） ----------------
      考据：branch_gen_timeline.txt（snh48wiki.top 各期生公布时间线）——
      · SHY48 一期生：2017-01-07 公布首批 18 人（次批 02-19 公布 16 人，不建卡）；
-     · CKG48 一期生：2017-10-27 公布 33 人（与游戏内「首批三十三人集训」锚点一致）；
-       其中孟玥与 2016 年已毕业的 SNH48 NII 孟玥重名，为避免成员卡重名不重复建卡。
+     · CKG48 一期生：2017-10-27 公布 33 人（与游戏内「首批三十三人集训」锚点一致），
+       全量建卡；其中孟玥与 2016 年已毕业的 SNH48 NII 一期生孟玥重名——
+       按用户口径（2026 补）同样建卡（id 前缀 bf17_ 区分，同名去重只挡非离团在册成员）。
      engine.deployPioneers 在对应分团开业时按本表建卡（branchLabel 预备生）。 */
    branchFoundingRoster: {
      SHY48: [
@@ -387,14 +392,16 @@ const DATA = {
      CKG48: [
        "柏欣妤", "李恩锐", "李姗姗", "李泽亚", "雷宇霄", "毛译晗", "谯玉珍", "冉蔚", "田倩兰",
        "陶菀瑞", "伍寒琪", "王梦竹", "王娱博", "曾佳", "周源", "左欣", "艾芷亦", "邓倩",
-       "樊曦月", "郝婧怡", "韩林芹", "黄琬璎", "林舒晴", "李瑜璇", "石勤", "田祯臻", "吴晶晶",
+       "樊曦月", "郝婧怡", "韩林芹", "黄琬璎", "林舒晴", "李瑜璇", "孟玥", "石勤", "田祯臻", "吴晶晶",
        "吴学雨", "夏文倩", "章宇阳", "郑阳莹", "赵泽慧",
      ].map(n => ({ name: n, branchLabel: "预备生", gen: "CKG48一期生" })),
    },
 
   /* ---------------- 2017 年内新加入（2017「本部新章」线用） ----------------
-     史实：八期生 2017 年分批入团（4/28 首批 5 人，此后 5、6、9 月陆续追加，全年 12 人）。
+     史实：八期生 2017 年分批入团（4/28 首批 5 人，此后 5、6、9、10 月陆续追加，全年 13 人）。
      游戏内：team 暂挂 PREP（预备生），gen「八期生」，pop 由引擎按新人生成。
+     【分团挂载】张羽涵：SHY48 二期生（2017-04-29 公布）——挂 branchTeam="SHY48"，
+     引擎在 SHY48 已开业时建分团预备生简卡（与 2018 分团新期生同口径）。
      【考据注】贺苏堃同为八期生（2017.09.06 公布），出于对逝者的尊重，
      游戏内不建卡、不涉及任何相关事件。
      【考据来源】snh48wiki.top 期生时间线快照（tmp/research/timeline.txt）。 */
@@ -411,6 +418,8 @@ const DATA = {
     { month: 9, name: "王奕",   team: "PREP", gen: "八期生", join: "2017-09-08" },
     { month: 9, name: "熊沁娴", team: "PREP", gen: "八期生", join: "2017-09-08" },
     { month: 9, name: "葛佳慧", team: "PREP", gen: "八期生", join: "2017-09-10" },
+    { month: 10, name: "马凡", team: "PREP", gen: "八期生", join: "2017-10" },   // 2020-01 离团（leaving2020 挂载）
+    { month: 4, name: "张羽涵", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },   // 2020-01 退团（leaving2020 挂载）
   ],
 
   /* ---------------- 2017 年内离团 / 移籍 / 兼任变动（2017「本部新章」线用） ----------------
@@ -679,6 +688,67 @@ const DATA = {
     { month: 12, name: "张丹三", date: "2019-12", type: "毕业", story: false, note: "四期生" },
   ],
 
+  /* ---------------- 2020 年内离团（2020「共渡」线用，v0.13.9 挂载） ----------------
+     在「2019 年末游戏内成员卡实际状态」基础上生效（引擎自动跳过已离团/暂休/
+     殿堂成员与无卡成员）。type 口径沿用 leaving2019：SNH48 本部出身=毕业 /
+     本部预备生=离团 / 分团自主招募成员=退团。
+     考据（snh48wiki.top 离团时间线）：
+     · 马凡：本部八期生（2017-10 入团 · 预备生），2020-01 离团；
+     · 张羽涵：SHY48 二期生（2017-04 入团），2020-01 退团；
+     · 孟玥：CKG48 一期生（2017-10 入团），2020-02 退团（按用户口径挂载 2020-02）——
+       与 2016 年已毕业的 SNH48 NII 一期生孟玥重名，两张卡并存（CKG 卡按用户口径补建）；
+       branchTeam 限定命中 CKG 卡，CKG48 未开业（无卡）则自动跳过。
+     若两人游戏内无卡（2017 线八期生建卡在 joining2017；SHY48 未开业则张羽涵
+     不入册），离团自动跳过。 */
+  leaving2020: [
+    { month: 1,  name: "马凡",   date: "2020-01", type: "离团", story: false, note: "八期生（预备生）" },
+    { month: 1,  name: "张羽涵", branchTeam: "SHY48", date: "2020-01", type: "退团", story: false, note: "SHY48二期生" },
+    { month: 2,  name: "孟玥",   branchTeam: "CKG48", date: "2020-02", type: "退团", story: false, note: "CKG48一期生" },
+  ],
+
+  /* ---------------- 2020 年史实入团表（2020「共渡」线，引擎按月建卡） ----------------
+     考据：snh48wiki.top 期生时间线（疫情年：1~3月仅 GNZ48 七期 1 人，云招新从4月起恢复）。
+     分团新期生（GNZ48/BEJ48/CKG48）挂 branchTeam：引擎建分团预备生简卡（同 2018 口径）。
+     【名字勘误】BEJ48 八期 王丹妮：报名名王若诗蓝，后更名王丹妮（备注登记）。 */
+   joining2020: [
+     { month: 1,  name: "莫昕",     branchTeam: "GNZ48", gen: "GNZ48 七期生", join: "2020-01-01" },
+     { month: 4,  name: "王丹妮",   branchTeam: "BEJ48", gen: "BEJ48 八期生", join: "2020-04-20", note: "曾用名王若诗蓝" },
+     { month: 4,  name: "张睿怡",   branchTeam: "BEJ48", gen: "BEJ48 八期生", join: "2020-04-20" },
+     { month: 6,  name: "石竹君",   branchTeam: "GNZ48", gen: "GNZ48 八期生", join: "2020-06-13" },
+     { month: 6,  name: "杨若惜",   branchTeam: "GNZ48", gen: "GNZ48 八期生", join: "2020-06-13" },
+     { month: 6,  name: "张书瑀",   branchTeam: "GNZ48", gen: "GNZ48 八期生", join: "2020-06-13" },
+     { month: 6,  name: "梁晶金",   branchTeam: "CKG48", gen: "CKG48 四期生", join: "2020-06-27" },
+     { month: 6,  name: "涂秀文",   branchTeam: "CKG48", gen: "CKG48 四期生", join: "2020-06-27" },
+     { month: 6,  name: "余芸萱",   branchTeam: "CKG48", gen: "CKG48 四期生", join: "2020-06-27" },
+     { month: 8,  name: "陈妮亚",   branchTeam: "CKG48", gen: "CKG48 四期生", join: "2020-08-29" },
+     { month: 8,  name: "黄歆源",   branchTeam: "CKG48", gen: "CKG48 四期生", join: "2020-08-29" },
+     { month: 8,  name: "潘璐",     branchTeam: "CKG48", gen: "CKG48 四期生", join: "2020-08-29" },
+     { month: 10, name: "吕曼菲",   branchTeam: "GNZ48", gen: "GNZ48 八期生", join: "2020-10-01" },
+     { month: 10, name: "谢慧先",   branchTeam: "GNZ48", gen: "GNZ48 八期生", join: "2020-10-01" },
+     { month: 10, name: "邓歆玥",   team: "PREP", gen: "十四期生", join: "2020-10-02" },
+     { month: 10, name: "李星彦",   team: "PREP", gen: "十四期生", join: "2020-10-02" },
+     { month: 10, name: "曲晨语",   team: "PREP", gen: "十四期生", join: "2020-10-02" },
+     { month: 10, name: "闫娜",     team: "PREP", gen: "十四期生", join: "2020-10-02" },
+     { month: 10, name: "卞楚娴",   team: "PREP", gen: "十四期生", join: "2020-10-03" },
+     { month: 10, name: "冯雨停",   team: "PREP", gen: "十四期生", join: "2020-10-03" },
+     { month: 10, name: "刘晨雪",   team: "PREP", gen: "十四期生", join: "2020-10-03" },
+     { month: 10, name: "陆叶卉",   team: "PREP", gen: "十四期生", join: "2020-10-03" },
+     { month: 11, name: "陈蓁蓁",   branchTeam: "BEJ48", gen: "BEJ48 九期生", join: "2020-11-22" },
+     { month: 11, name: "范璐元",   branchTeam: "BEJ48", gen: "BEJ48 九期生", join: "2020-11-22" },
+     { month: 11, name: "黄宣绮",   branchTeam: "BEJ48", gen: "BEJ48 九期生", join: "2020-11-22" },
+     { month: 11, name: "黄怡慈",   branchTeam: "BEJ48", gen: "BEJ48 九期生", join: "2020-11-22" },
+     { month: 11, name: "黄妍菲",   branchTeam: "BEJ48", gen: "BEJ48 九期生", join: "2020-11-22" },
+     { month: 11, name: "胡雪迎",   branchTeam: "BEJ48", gen: "BEJ48 九期生", join: "2020-11-22" },
+     { month: 11, name: "唐晨葳",   branchTeam: "BEJ48", gen: "BEJ48 九期生", join: "2020-11-22" },
+     { month: 11, name: "张宸祎",   branchTeam: "BEJ48", gen: "BEJ48 九期生", join: "2020-11-22" },
+     { month: 11, name: "赵嘉丽",   branchTeam: "BEJ48", gen: "BEJ48 九期生", join: "2020-11-22" },
+     { month: 12, name: "姜欣瑶",   branchTeam: "GNZ48", gen: "GNZ48 九期生", join: "2020-12-31" },
+     { month: 12, name: "江雨航",   branchTeam: "GNZ48", gen: "GNZ48 九期生", join: "2020-12-31" },
+     { month: 12, name: "吕思琪",   branchTeam: "GNZ48", gen: "GNZ48 九期生", join: "2020-12-31" },
+     { month: 12, name: "王琰",     branchTeam: "GNZ48", gen: "GNZ48 九期生", join: "2020-12-31" },
+     { month: 12, name: "郑奕雯",   branchTeam: "GNZ48", gen: "GNZ48 九期生", join: "2020-12-31" },
+   ],
+
   /* ---------------- 2019 年史实节点（新线锚点） ---------------- */
   history2019: {
     reorgDate: "2019-01-19",        // 第二次全团大组阁（Team XII 解散；IDFT 同日成立的史实节点）
@@ -720,7 +790,7 @@ const DATA = {
     prevChampion: "《夜蝶》李艺彤 & 黄婷婷（第二届 BEST 30，2015-12-26）",
   },
 
-  /* 金曲大赏 TOP10 挂载表（仅 2016~2019 线；来源：用户提供的史实榜单截图）。
+  /* 金曲大赏 TOP10 挂载表（2016~2020 线；2016~2019 来源：用户提供的史实榜单截图）。
      规则：
      · 2016 完全照表挂载（所有名次锁史实名单）；
      · 2017/2018 只前三按史实挂载，4~10 歌名按史实、参演成员按人气生成
@@ -728,6 +798,10 @@ const DATA = {
        队伍全榜只能出现一次）；
      · 2019 公布模式不同：公布前8+队歌第一——年度金曲《就差一点点》即为第一，
        往上排名顺延（耀阳组），最下为年度荣耀队歌第一（按史实 BEJ48 Team B）。
+     · 2020 按用户口径挂载（AGENTS.md 考据规则，2026-10-17 提供）：荣耀队歌《honor》
+       Team HII；前三锁史实名单；4~10 名仅歌名与人数口径，参演成员按人气生成
+       （原名单未提供具体姓名，待用户补充后可改 fixed 挂载）；线下停办，
+       12月线上直播收费，收益减半（引擎 resolveRT 口径）。
      字段：fixed=锁史实名单；names=参演成员（史实）；team/teamKey=史实为队伍参演；
      gen=生成名次的参演人数（数字）或 "team"（队伍参演）。 */
   goldSongs: {
@@ -784,6 +858,21 @@ const DATA = {
         { rank: 2, song: "Spy",                 from: "出自公演《B A FIGHTER》", gen: 2 },
         { rank: 1, song: "就差一点点",           from: "出自公演《三角函数》", fixed: true, names: ["戴萌", "莫寒"], tag: "年度金曲" },
         { rank: 9, song: "笨",                   from: "出自公演《B A FIGHTER》", fixed: true, team: "BEJ48 Team B", teamKey: "BEJ48", tag: "年度荣耀队歌", last: true },
+      ],
+    },
+    "2020": {
+      list: [
+        { rank: 10, song: "feeling you",  from: "", gen: 1 },
+        { rank: 9,  song: "重生计划",     from: "", gen: "team" },
+        { rank: 8,  song: "无声的探戈",   from: "", gen: 2 },
+        { rank: 7,  song: "like i do",    from: "", gen: 1 },
+        { rank: 6,  song: "恋爱告急",     from: "", gen: 1 },
+        { rank: 5,  song: "my boy",       from: "", gen: 2 },
+        { rank: 4,  song: "hold me tight", from: "", gen: 2 },
+        { rank: 3,  song: "低烧",         from: "", fixed: true, names: ["陈倩楠", "苏杉杉"] },
+        { rank: 2,  song: "就差一点点",   from: "", fixed: true, names: ["谢蕾蕾", "张琼予"] },
+        { rank: 1,  song: "爱未央",       from: "", fixed: true, names: ["陈珂", "郑丹妮"], tag: "年度金曲" },
+        { rank: 11, song: "honor",        from: "", fixed: true, team: "SNH48 Team HII", teamKey: "HII", tag: "年度荣耀队歌", last: true },
       ],
     },
   },

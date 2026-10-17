@@ -76,6 +76,7 @@ const Game = {
     const st = this.st;
     const pro = st.era === "2027" ? STORY.prologue27
       : st.era === "2026" ? STORY.prologue26
+      : st.era === "2020" ? STORY.prologue20
       : st.era === "2019" ? STORY.prologue19
       : st.era === "2018" ? STORY.prologue18
       : st.era === "2017" ? STORY.prologue17
@@ -106,6 +107,20 @@ const Game = {
   origCount(st) {
     if (!st.orig) return 0;
     return ["SII", "NII", "HII", "X"].filter(t => st.orig[t]).length;
+  },
+
+  /* 【XII 编制口径·用户规则 2026-10-17】保留 XII（flags.xiiKept18）且仍有在册 XII 成员时，
+     XII 视同正常本部队伍：凡涉及本部队伍去向的点将/编制/安置/升格窗口与校验，
+     一律经 keptXiiInRoster / headTeams 动态拼入 XII，不得硬编码「本部四队」。 */
+  keptXiiInRoster(st) {
+    st = st || this.st;
+    return !!st.flags.xiiKept18 && st.members.some(m => m.status === "active" && m.team === "XII");
+  },
+
+  /* 本部可作去向的队伍清单（XII 保留时含 XII；FT 是否可选由调用方按成立状态追加） */
+  headTeams(st) {
+    st = st || this.st;
+    return ["SII", "NII", "HII", "X"].concat(this.keptXiiInRoster(st) ? ["XII"] : []);
   },
 
   /* ========================================================================
@@ -219,7 +234,9 @@ const Game = {
       st.flags["founded_" + post] = true;
       let n = 0;
       for (const r of ((DATA.branchFoundingRoster && DATA.branchFoundingRoster[post]) || [])) {
-        if (st.members.some(x => x.name === r.name)) continue;
+        /* 同名去重只针对非离团在册成员——如 CKG48 一期生孟玥与 2016 年已毕业的
+           本部 NII 一期生孟玥重名，前者照常建卡（id 前缀 bf17_ 区分） */
+        if (st.members.some(x => x.name === r.name && x.status !== "left")) continue;
         st.members.push({
           id: "bf17_" + r.name, name: r.name, team: post, gen: r.gen || "",
           pop: 0, bond: 0, status: "branch", branchTeam: post, branchLabel: r.branchLabel || "",
@@ -1059,6 +1076,48 @@ const Game = {
     return { text: "曼谷的舞台落幕——亚洲七团同台，这支七人小队的直拍刷屏了回国航班。（出征 " + names.length + " 人：羁绊+8 人气+4；热度+8 士气+3 资金-20万）", tone: "main" };
   },
 
+  /* 【2019 通用剧情】11月双选秀邀约（鹅厂选秀第三季·女团 / 爱奇艺选秀第二季，各 7 名额）。
+     show19Squad(key, ids)：单批派遣名单落地——key="T"鹅厂 / "I"爱奇艺；
+     参赛者羁绊+6 人气+4，名单记入 decisions.show19TSquad / show19ISquad。
+     成团成员（2018 限定团，status="rest"）不参与点将。 */
+  show19Squad(key, ids) {
+    const st = this.st;
+    const label = key === "T" ? "鹅厂选秀第三季" : "爱奇艺选秀第二季";
+    const names = [];
+    for (const id of ids) {
+      const m = st.members.find(x => x.id === id);
+      if (!m || m.status === "left" || m.status === "rest") continue;
+      m.bond = this.clamp(m.bond + 6, 0, 100);
+      m.pop = this.clamp(m.pop + 4, 0, 100);
+      m.note = (m.note ? m.note + "；" : "") + "2019-11 派遣·" + label;
+      names.push(m.name);
+    }
+    this.recordDecision(key === "T" ? "show19TSquad" : "show19ISquad", names);
+    return { label, names, ids: ids.slice() };
+  },
+  /* show19Finalize：全部点将完成后统一结算（mode="both"/"one"）。
+     both：热度+12 士气+2 资金+40万（两班集训连轴，产能拉满）；
+     one ：热度+7 士气+2 资金+20万。决策记入 decisions.show19Plan。 */
+  show19Finalize(mode, a, b) {
+    const st = this.st;
+    if (mode === "both") {
+      st.money += 40;
+      st.heat = this.clamp(st.heat + 12, 0, 100);
+      st.morale = this.clamp(st.morale + 2, 0, 100);
+      this.recordDecision("show19Plan", "both");
+      const all = (a.names || []).concat(b.names || []);
+      this.addLog(st, st.month, "★双选秀同年出征（鹅厂第三季+爱奇艺第二季，共 " + all.length + " 人）：两班集训连轴转，热度与产能同时拉满（热度+12 士气+2 资金+40万）。", "main");
+      return { text: "两份派遣名单同日官宣——「丝芭系」一年之内两次登上选秀头条。鹅厂：" + (a.names || []).join("、") + "；爱奇艺：" + (b.names || []).join("、") + "。\n\n两班封闭集训连轴开营，排练室的灯，凌晨三点都没熄过。（共派遣 " + all.length + " 人：羁绊+6 人气+4；热度+12 士气+2 资金+40万）", tone: "main" };
+    }
+    const key = a, picked = b;
+    st.money += 20;
+    st.heat = this.clamp(st.heat + 7, 0, 100);
+    st.morale = this.clamp(st.morale + 2, 0, 100);
+    this.recordDecision("show19Plan", key === "T" ? "tencent" : "iqiyi");
+    this.addLog(st, st.month, "★单平台选秀出征（" + picked.label + "，共 " + picked.names.length + " 人）：集中资源押注一家（热度+7 士气+2 资金+20万）。", "main");
+    return { text: "你只在一份邀约函上盖了章。" + picked.label + "的派遣名单官宣：" + picked.names.join("、") + "。\n\n集中兵力的好处立竿见影——七个人的集训，每一项都练到了极致。（共派遣 " + picked.names.length + " 人：羁绊+6 人气+4；热度+7 士气+2 资金+20万）", tone: "main" };
+  },
+
   reorg19Pools(st) {
     st = st || this.st;
     const HEAD = ["SII", "NII", "HII", "X", "XII", "FT", "PREP"];
@@ -1113,8 +1172,10 @@ const Game = {
     const st = this.st, r = st.reorg19;
     const keptXII = !!st.flags.xiiKept18 && st.members.some(m => m.status === "active" && m.team === "XII");
     const ftKept = false;   // 史实：二次组阁恒定取消 Team FT（FT 不入编制目标，成员默认发配/IDFT）
+    /* 孟波保旗（仅 giveup 线）：该分团旗号保留，至多 16 人留任为旗号预备生队伍（无剧场收入） */
+    const flag19 = (st.decisions.branch19Keep === "giveup" && st.decisions.branchFlag19) ? st.decisions.branchFlag19 : null;
     const TEAMS = ["SII", "NII", "HII", "X"].concat(keptXII ? ["XII"] : []).concat(ftKept ? ["FT"] : []);
-    const BR = ["BEJ48", "GNZ48"].concat(st.decisions.branch19Keep === "keep" ? ["SHY48", "CKG48"] : []);
+    const BR = ["BEJ48", "GNZ48"].concat(st.decisions.branch19Keep === "keep" ? ["SHY48", "CKG48"] : []).concat(flag19 ? [flag19] : []);
     const pools = this.reorg19Pools(st);
     assign = assign || {}; captains = captains || {};
     const all = pools.head.concat(pools.dissolved).concat(pools.teb || []);
@@ -1127,7 +1188,7 @@ const Game = {
       let t = assign[m.id] != null ? assign[m.id] : null;
       if (t == null) {
         if (m.team === "PREP") t = "prep";
-        else if (m.status === "branch") t = (m.branchTeam === "TEB48") ? "TEB48" : "idft";
+        else if (m.status === "branch") t = (m.branchTeam === "TEB48") ? "TEB48" : (flag19 && m.branchTeam === flag19 ? flag19 : "idft");
         else if (m.team === "FT" && !ftKept) t = BR.length ? BR[0] : "idft";
         else t = TEAMS.indexOf(m.team) >= 0 ? m.team : "idft";
       }
@@ -1146,6 +1207,10 @@ const Game = {
       else if (TEAMS.indexOf(t) >= 0) cnt[t]++;
     }
     if (preps > 16) return { text: "编入预备生 " + preps + " 人越界——预备生队伍至多 16 人。", tone: "blocked" };
+    if (flag19) {
+      const flagN = all.filter(m => targetOf(m) === flag19).length;
+      if (flagN > 16) return { text: flag19 + " 留任 " + flagN + " 人越界——保留旗号至多留任 16 人。", tone: "blocked" };
+    }
     for (const t of TEAMS) {
       if (cnt[t] < 13 || cnt[t] > 20) {
         return { text: "Team " + t + " 编制 " + cnt[t] + " 人越界——本部每队下限 13 人、上限 20 人。", tone: "blocked" };
@@ -1168,7 +1233,7 @@ const Game = {
     }
 
     /* 第三遍：落地 */
-    const moved = [], prepped = [], toBr = [], idft = [], upped = [];
+    const moved = [], prepped = [], toBr = [], idft = [], upped = [], flagStay = [];
     for (const m of all) {
       const t = targetOf(m);
       if (t === "prep") {
@@ -1207,7 +1272,15 @@ const Game = {
         /* TEB48 预备生留任台北：无变化（UI 仅对 TEB48 预备生提供该目标） */
         continue;
       } else if (BR.indexOf(t) >= 0) {
-        if (m.status === "branch" && m.branchTeam === t) continue;   // 留任原分团
+        if (m.status === "branch" && m.branchTeam === t) {
+          if (t === flag19) {
+            /* 孟波保旗：旗号留任成员转为旗号预备生队伍（无剧场收入） */
+            m.branchLabel = "预备生";
+            m.note = (m.note ? m.note + "；" : "") + "2019撤资 · 旗号留任（" + t + "）";
+            flagStay.push(m.name);
+          }
+          continue;   // 留任原分团
+        }
         if (m.status === "branch") {
           /* 分团移交成员 → 其余分团 */
           m.branchTeam = t; m.team = t; m.branchLabel = "";
@@ -1267,7 +1340,7 @@ const Game = {
     st.flags.reorg19Done = true;
     st.morale = this.clamp(st.morale + 4, 0, 100);
     st.heat = this.clamp(st.heat + 4, 0, 100);
-    this.addLog(st, st.month, "★主线②「二次组阁」达成：新编制名单公布（调队 " + moved.length + " 人 · 预备生 " + prepped.length + " 人 · 发配分团 " + toBr.length + " 人 · 移籍IDFT " + idft.length + " 人 · 分团上调 " + upped.length + " 人" + (ftKept ? " · FT 保留" : " · FT 解散") + (keptXII ? " · XII 保留" : "") + "）。", "main");
+    this.addLog(st, st.month, "★主线②「二次组阁」达成：新编制名单公布（调队 " + moved.length + " 人 · 预备生 " + prepped.length + " 人 · 发配分团 " + toBr.length + " 人 · 移籍IDFT " + idft.length + " 人 · 分团上调 " + upped.length + " 人" + (flagStay.length ? " · " + flag19 + " 旗号留任 " + flagStay.length + " 人" : "") + (ftKept ? " · FT 保留" : " · FT 解散") + (keptXII ? " · XII 保留" : "") + "）。", "main");
     this.save();
     return {
       text: "二次组阁编制会落幕：调队 " + moved.length + " 人 · 预备生 " + prepped.length + " 人 · 发配分团 " + toBr.length + " 人 · 移籍IDFT " + idft.length + " 人 · 分团上调 " + upped.length + " 人。",
@@ -1398,6 +1471,56 @@ const Game = {
       text: "限定团成团名单公布：" + sel.debut.map(m => m.name).join("、") + "——暂休一年，随团活动。未成团的派遣成员（" + sel.bonus.length + " 人）获得总选加成+8。（热度+8 士气+2）",
       tone: "main",
       vn: STORY.scenes19.unitScene,
+    };
+  },
+
+  /* 【2020·8月事件】2019 双选秀限定团人选（确定性）：鹅厂/爱奇艺各取一人出道——
+     各自派遣名单（decisions.show19TSquad/show19ISquad，存姓名）按实力降序取第一名
+     （同 unit19Selection 口径：pwr 降序 → pop 降序 → 姓名）；
+     2020 年起允许葛佳慧成团（若她仍在籍且被派遣且是应当出道的人选，则正常出道）；
+     仅计在籍（非 left/rest/idft、非殿堂）成员。只派遣了一方则只有一个出道名额。 */
+  unit20Selection(st) {
+    st = st || this.st;
+    const eligible = names => (names || [])
+      .map(n => st.members.find(m => m.name === n))
+      .filter(m => m && m.status !== "left" && m.status !== "rest" && m.status !== "idft" && !m.hall)
+      .sort((a, b) => (b.pwr || 0) - (a.pwr || 0) || (b.pop || 0) - (a.pop || 0) || (a.name < b.name ? -1 : 1));
+    const pick = names => eligible(names)[0] || null;
+    const debut = [];
+    const t = pick(st.decisions && st.decisions.show19TSquad); if (t) debut.push(t);
+    const i = pick(st.decisions && st.decisions.show19ISquad); if (i && debut.indexOf(i) < 0) debut.push(i);
+    const all = eligible((st.decisions && st.decisions.show19TSquad || []).concat((st.decisions && st.decisions.show19ISquad) || []));
+    const bonus = all.filter(m => debut.indexOf(m) < 0);
+    return { debut: debut, bonus: bonus };
+  },
+
+  /* 【2020·8月事件】2019 双选秀限定团成团落地：出道者划入暂休一年（不参加本年总选）；
+     未成团的派遣成员登记总选加成（geBoost+8）——本年 8 月线上总选结算时回收
+     （月度链在总选结算前下发，同月生效）。 */
+  formUnit20(st) {
+    st = st || this.st;
+    if (st.flags.unit20Formed) return { text: "限定团已经成团。", tone: "blocked" };
+    const sel = this.unit20Selection(st);
+    if (!sel.debut.length) return { text: "2019 年没有可供成团的派遣成员。", tone: "blocked" };
+    st.unit20 = st.unit20 || { formed: false, members: [] };
+    for (const m of sel.debut) {
+      m.status = "rest";
+      m.note = (m.note ? m.note + "；" : "") + "跟随限定团活动（暂休一年，不参加本年总选）";
+      st.unit20.members.push(m.name);
+    }
+    for (const m of sel.bonus) {
+      m.geBoost = (m.geBoost || 0) + 8;   // 本年 8 月线上总选结算回收（同月：月度链先于总选结算）
+      m.note = (m.note ? m.note + "；" : "") + "2020限定团落选 · 总选加成+8（8月线上总选兑现）";
+    }
+    st.unit20.formed = true;
+    st.flags.unit20Formed = true;
+    st.heat = this.clamp(st.heat + 8, 0, 100);
+    st.morale = this.clamp(st.morale + 2, 0, 100);
+    this.addLog(st, st.month, "★限定团成团：" + sel.debut.map(m => m.name).join("、") + "（暂休一年）；未成团派遣成员 " + sel.bonus.length + " 人获总选加成（本月线上总选兑现）。", "main");
+    this.save();
+    return {
+      text: "限定团成团名单公布：" + sel.debut.map(m => m.name).join("、") + "——暂休一年，随团活动。未成团的派遣成员（" + sel.bonus.length + " 人）获得总选加成+8——月底总选线上开榜，这份加成当场兑现。（热度+8 士气+2）",
+      tone: "main",
     };
   },
 
@@ -1749,6 +1872,325 @@ const Game = {
     return { text: "专辑上线当晚，评论区最高赞写着：「说过的舞台，真的给了。」", tone: "main", vn: STORY.scenes18.albumOut };
   },
 
+  /* ============================ 2020「共渡」线：疫情年 ============================
+     由 2019 线结局「进入下一年」进入（carryTo2020）。
+     经济特则（settle）：1~3 月收益停止、支出减半；4 月起支出恢复、收益减半。
+     聚集类月度行动（剧场公演/队伍团建）1~3 月停办；云公演体系落地后替代公演。
+     五条主线：①安置 CKG48/SHY48 成员（去年保住分团时）②防疫与返工 ③云公演
+     ④与日方和平分手（仅复刻/日本模式）⑤一期生合约安置。 */
+  carryTo2020() {
+    const src = this.st;
+    const members = src.members;
+    const snapshot = members.map(m => ({
+      name: m.name, team: m.team, status: m.status, branchTeam: m.branchTeam || null,
+      pop: m.pop != null ? m.pop : null, bond: m.bond != null ? m.bond : null, hall: !!m.hall,
+    }));
+    const pwrBase = this.avgPwr(src);
+    const st = {
+      saveVersion: this.SAVE_VERSION,
+      playerName: src.playerName,
+      era: "2020",
+      month: 1,
+      ap: 3,
+      money: src.money,
+      heat: src.heat,
+      morale: src.morale,
+      train: src.train,
+      burden: src.burden,
+      debt: 0,
+      members: members,
+      log: [],
+      flags: Object.assign({}, src.flags),
+      decisions: Object.assign({}, src.decisions),
+      branch: src.branch,
+      branch17: src.branch17,
+      orig: src.orig,
+      prep18: src.prep18 || { sys: true, promoted: 0 },
+      show18: src.show18,
+      sm18: src.sm18,
+      teb19: src.teb19,
+      /* 2020 新主线状态 */
+      covid20: { stage: 0, done: false },                          // 主线②：防疫与返工
+      reorg20: { stage: 0, done: false },                          // 主线①：分团安置（去年保住分团时）
+      cloud20: { stage: 0, done: false, held: 0 },                 // 主线③：云公演
+      teb20: { done: false },                                      // 主线④：与日方和平分手（仅复刻线）
+      gen1: { done: false },                                       // 主线⑤：一期生合约
+      pwrBase: pwrBase,
+      gePlan: 0, geDone: false, geResult: null,
+      rtPlan: 0, rtDone: false, rtScore: 0,
+      history: Object.assign({}, src.history, {
+        roster2019: snapshot,
+        money2019: src.money,
+      }),
+    };
+    delete st.flags.monthStarted;
+    delete st.flags.freePromo;
+    /* 2019 一次性旗标不带入 2020 的判定流（保留在 history/decisions 中可回收） */
+    delete st.flags.reorg19Done;
+    delete st.flags.unit19Formed;
+    delete st.flags.teb19RosterDone;
+    this.st = st;
+    this.inheritRel(src, st);
+    this.addLog(st, 1, "2019 年交卷，2020「共渡」开卷：疫情全国化，剧场停摆——1~3 月收益停止、支出减半；聚集类行动停办。年初实力均值 " + pwrBase + "。", "main");
+    this.save();
+    return st;
+  },
+
+  /* 【2020】保留旗号的分团（序章决策汇总）：孟波出资保住的旗号 + 兼任总监自费保留的旗号 */
+  keptBranchFlags20(st) {
+    st = st || this.st;
+    const kept = [];
+    if (st.decisions.mengbo20 === "CKG48" || st.decisions.mengbo20 === "SHY48") kept.push(st.decisions.mengbo20);
+    if (st.decisions.self20Flag === "keep" && st.decisions.branchPost === "SHY48") kept.push("SHY48");
+    return kept;
+  },
+
+  /* 【2020 主线②】防疫与返工：两段推进 */
+  advanceCovid20() {
+    const st = this.st, c = st.covid20;
+    if (c.done) return { text: "防疫与返工体系已建成，各队伍按新制度运转中。", tone: "blocked" };
+    if (c.stage === 0) {
+      if (st.money < 20) return { text: "资金不足（防疫物资采购需20万）。", tone: "blocked" };
+      st.money -= 20; c.stage = 1;
+      st.morale = this.clamp(st.morale + 4, 0, 100);
+      return { text: "防疫部署完成：物资采购到位，《疫情期运营管理办法》成文。（资金-20万 士气+4）", tone: "main", vn: STORY.scenes20.covidPlan };
+    }
+    if (c.stage === 1) {
+      c.done = true; st.flags.covid20Done = true;
+      st.morale = this.clamp(st.morale + 3, 0, 100);
+      st.heat = this.clamp(st.heat + 2, 0, 100);
+      st.burden = this.clamp(st.burden - 10, 0, 100);
+      this.addLog(st, st.month, "★主线②「防疫与返工」达成：分批错峰返工落地，全年防疫台账建档。", "main");
+      this.save();
+      return { text: "防疫与返工安排全部落地：全团分三批错峰返工，零感染零事故。（士气+3 热度+2 负担-10）", tone: "main", vn: STORY.scenes20.rework };
+    }
+    return { text: "", tone: "none" };
+  },
+
+  /* 【2020 主线③】云公演：三段推进（策划案→技术测试→首场试播） */
+  advanceCloud20() {
+    const st = this.st, c = st.cloud20;
+    if (c.done) { c.held += 1; return { text: "", tone: "none" }; }
+    if (c.stage === 0) {
+      c.stage = 1;
+      return { text: "云公演策划案定稿：机位、推流、线上打投与弹幕应援体系全部立项。", tone: "main", vn: STORY.scenes20.cloudPlan };
+    }
+    if (c.stage === 1) {
+      if (st.money < 20) return { text: "资金不足（技术与设备调试需20万）。", tone: "blocked" };
+      st.money -= 20; c.stage = 2;
+      return { text: "全流程彩排完成，推流稳定。（资金-20万）", tone: "main", vn: STORY.scenes20.cloudTest };
+    }
+    if (c.stage === 2) {
+      c.done = true; c.held = 1; st.flags.cloud20Done = true;
+      st.heat = this.clamp(st.heat + 6, 0, 100);
+      st.morale = this.clamp(st.morale + 4, 0, 100);
+      this.addLog(st, st.month, "★主线③「云公演」达成：首场试播落幕——此后「剧场公演」行动替换为「云公演」（线上开演）。", "main");
+      this.save();
+      return { text: "首场云公演试播成功：几十万人同时在线，弹幕像雪一样落下来。（热度+6 士气+4）", tone: "main", vn: STORY.scenes20.cloudLive };
+    }
+    return { text: "", tone: "none" };
+  },
+
+  /* 【2020 主线①】分团安置（CKG48/SHY48，去年保住分团时）：转交 UI 逐人定队窗。
+     只能上调本部（SII/NII/HII/X，每队13~20同组阁）；保留旗号的分团可留任16人；
+     其余移入 IDFT。落地在 applyReorg20。 */
+  advanceReorg20() {
+    const st = this.st, r = st.reorg20;
+    if (r.done) return { text: "分团安置已完成，名单早已归档。", tone: "blocked" };
+    if (!st.members.some(m => m.status === "branch" && (m.branchTeam === "SHY48" || m.branchTeam === "CKG48")))
+      return { text: "当前没有待安置的 CKG48/SHY48 成员。", tone: "blocked" };
+    r.stage = 1;
+    return { text: "安置名单会议开始：每个人的去向，由总监逐人拍板。", tone: "pickReorg20" };
+  },
+
+  /* 【2020 主线①】分团安置落地（UI.showReorg20Picker 确认回调）：
+     assign = { 成员id → "SII"|"NII"|"HII"|"X"|"XII"(保留时)|"stay"|"idft" }。
+     stay 仅对保留旗号的分团开放（每团≤16人，无队伍编制 → 统一挂分团名，用户口径）；
+     本部每队 13~20 人（现有人数+新上调；XII 保留时视同正常本部队伍，见 headTeams 口径）；idft 移入训练生池。（矲绊-6）。
+     完成后分团剧场关停（月收入终止）。 */
+  applyReorg20(assign) {
+    const st = this.st, r = st.reorg20;
+    const pool = st.members.filter(m => m.status === "branch" && (m.branchTeam === "SHY48" || m.branchTeam === "CKG48"));
+    if (!pool.length) return { text: "当前没有待安置的 CKG48/SHY48 成员。", tone: "blocked" };
+    const TEAMS = this.headTeams(st);   // XII 保留时含 XII（用户规则：不得硬编码本部四队）
+    const KEPT = this.keptBranchFlags20(st);
+    assign = assign || {};
+    /* 校验：全员分配、stay 限保留旗号且≤16人、本部每队13~20 */
+    const cnt = {}; TEAMS.forEach(t => { cnt[t] = st.members.filter(m => m.status === "active" && m.team === t && !m.hall).length; });
+    const stayCnt = { SHY48: 0, CKG48: 0 };
+    let idftN = 0;
+    for (const m of pool) {
+      const t = assign[m.id];
+      if (t == null) return { text: "还有成员未分配去向（本部各队 / 留任旗号 / IDFT）。" };
+      if (t === "stay") {
+        if (KEPT.indexOf(m.branchTeam) < 0) return { text: m.branchTeam + " 的旗号已解散——其成员不能选择留任。" };
+        stayCnt[m.branchTeam]++;
+        if (stayCnt[m.branchTeam] > 16) return { text: m.branchTeam + " 留任 " + stayCnt[m.branchTeam] + " 人越界——保留旗号至多留任 16 人。" };
+      } else if (t === "idft") idftN++;
+      else if (TEAMS.indexOf(t) >= 0) { cnt[t]++; if (cnt[t] > 20) return { text: "Team " + t + " 编制 " + cnt[t] + " 人越界——本部每队上限 20 人。" }; }
+      else return { text: "编制表无效（含未知去向）。" };
+    }
+    for (const t of TEAMS) if (cnt[t] < 13) return { text: "Team " + t + " 编制仅 " + cnt[t] + " 人——本部每队下限 13 人，请补足。" };
+    /* 落地 */
+    const upped = [], stayed = [], idft = [];
+    for (const m of pool) {
+      const t = assign[m.id];
+      if (t === "stay") {
+        m.branchLabel = m.branchTeam;   // 无队伍编制 → 统一挂分团名（用户口径，不叫预备生）
+        m.note = "2020疫情 · 旗号留任（" + m.branchTeam + "）";
+        m.bond = this.clamp((m.bond || 0) + 2, 1, 100);
+        stayed.push(m.name);
+      } else if (t === "idft") {
+        m.status = "idft"; m.team = "IDFT"; m.branchTeam = null; m.branchLabel = null;
+        m.captain = false; m.vice = false; delete m.sub;
+        m.bond = this.clamp((m.bond || 0) - 6, 1, 100);
+        m.note = "2020疫情 · 分团解散移籍IDFT";
+        idft.push(m.name);
+      } else {
+        m.status = "active"; m.team = t; m.branchTeam = null; m.branchLabel = null;
+        m.pop = this.clamp((m.pop || 0) + this.rnd(8, 14), 1, 100);
+        m.bond = this.clamp((m.bond || 0) + 12, 1, 100);
+        m.note = "2020疫情 · 自分团上调本部 Team " + t;
+        upped.push(m.name);
+      }
+    }
+    r.done = true; r.stage = 2; st.flags.reorg20Done = true;
+    /* 分团剧场关停：月收入终止（保留旗号＝仅保留队伍名号与留任成员，无剧场收入） */
+    if (st.branch17) { st.branch17.shyOpen = false; st.branch17.ckgOpen = false; }
+    const text = "★主线①「安置分团成员」达成：上调本部 " + upped.length + " 人 · 旗号留任 " + stayed.length + " 人 · 移籍 IDFT " + idft.length + " 人。分团剧场正式关停，月收入终止。";
+    this.addLog(st, st.month, text, "main");
+    this.save();
+    return { text: text, tone: "main", vn: STORY.scenes20.reorgDone20 };
+  },
+
+  /* 【2020 主线④】与日方和平分手（仅复刻线）：
+     TEB48 已建成 → 先安置其成员（pickTeb20：上调本部四队或「返回日本」）；
+     未建成 → 婉拒接手的叙事事件。分手后 TEB48 月收入终止。 */
+  advanceTeb20() {
+    const st = this.st, t = st.teb20;
+    if (t.done) return { text: "与日方的分手事宜已经办妥。", tone: "blocked" };
+    t.done = true; st.flags.teb20Done = true;
+    if (st.teb19 && st.teb19.open) {
+      st.teb19.open = false;   // 台北星梦剧院交还日方：月收入终止（安置窗确认后生效）
+      return { text: "东京会谈日程已定——先安置台北的孩子们。", tone: "pickTeb20" };
+    }
+    st.burden = this.clamp(st.burden + 5, 0, 100);
+    this.addLog(st, st.month, "★主线④「和平分手」达成：以财政压力为由婉拒接手 TEB48，并借此与日方谈妥和平分手。", "main");
+    this.save();
+    return { text: "你以财政压力为由正式婉拒了 TEB48 接手提案，并借此与日方谈妥和平分手——从此这条河按自己的规矩走。（叶盛负担+5）", tone: "main", vn: STORY.scenes20.tebNoTeb };
+  },
+
+  /* 【2020 主线④】TEB48 成员安置落地（UI.showTeb20Picker 确认回调）：
+     assign = { 成员id → "SII"|"NII"|"HII"|"X"|"XII"(保留时)|"japan" }；japan = 离团备注返回日本。
+     本部每队 13~20 人（XII 保留时视同正常本部队伍，见 headTeams 口径）。 */
+  applyTeb20(assign) {
+    const st = this.st;
+    const pool = st.members.filter(m => m.status === "branch" && m.branchTeam === "TEB48");
+    if (!pool.length) return { text: "当前没有待安置的 TEB48 成员。", tone: "blocked" };
+    const TEAMS = this.headTeams(st);   // XII 保留时含 XII（用户规则：不得硬编码本部四队）
+    assign = assign || {};
+    const cnt = {}; TEAMS.forEach(t2 => { cnt[t2] = st.members.filter(m => m.status === "active" && m.team === t2 && !m.hall).length; });
+    for (const m of pool) {
+      const t2 = assign[m.id];
+      if (t2 == null) return { text: "还有成员未分配去向（本部各队 / 返回日本）。" };
+      if (TEAMS.indexOf(t2) >= 0) { cnt[t2]++; if (cnt[t2] > 20) return { text: "Team " + t2 + " 编制 " + cnt[t2] + " 人越界——本部每队上限 20 人。" }; }
+      else if (t2 !== "japan") return { text: "编制表无效（含未知去向）。" };
+    }
+    for (const t2 of TEAMS) if (cnt[t2] < 13) return { text: "Team " + t2 + " 编制仅 " + cnt[t2] + " 人——本部每队下限 13 人，请补足。" };
+    const upped = [], home = [];
+    for (const m of pool) {
+      const t2 = assign[m.id];
+      if (t2 === "japan") {
+        m.status = "left"; m.team = "TEB48"; m.branchTeam = null; m.branchLabel = null;
+        m.note = "2020和平分手 · 返回日本";
+        home.push(m.name);
+      } else {
+        m.status = "active"; m.team = t2; m.branchTeam = null; m.branchLabel = null;
+        m.pop = this.clamp((m.pop || 0) + this.rnd(6, 12), 1, 100);
+        m.bond = this.clamp((m.bond || 0) + 10, 1, 100);
+        m.note = "2020和平分手 · 自TEB48上调本部 Team " + t2;
+        upped.push(m.name);
+      }
+    }
+    const text = "★主线④「和平分手」达成：TEB48 交还日方——上调本部 " + upped.length + " 人 · 返回日本 " + home.length + " 人。两岸的合作时代落幕。";
+    this.addLog(st, st.month, text, "main");
+    this.save();
+    return { text: text, tone: "main", vn: STORY.scenes20.tebFarewell };
+  },
+
+  /* 【2020 主线⑤】一期生合约安置（UI.showGen1Picker 确认回调）：
+     assign = { 成员id → "renew"|"grad"|"staff" }。
+     renew = 说服续约（矲绊+6 人气+2）；grad = 合约期满毕业（离团）；
+     staff = 转为工作人员（不再计发工资、不参与队伍排班）。 */
+  applyGen1(assign) {
+    const st = this.st;
+    const pool = st.members.filter(m => m.gen === "一期生" && (m.status === "active" || m.status === "rest")
+      && !(m.name === "赵嘉敏" && st.decisions.zhaoMin === "study"));
+    if (!pool.length) return { text: "当前没有合约到期的一期生。", tone: "blocked" };
+    assign = assign || {};
+    for (const m of pool) {
+      const t = assign[m.id];
+      if (t !== "renew" && t !== "grad" && t !== "staff") return { text: "还有一期生未拍板去留（续约 / 毕业 / 工作人员）。" };
+    }
+    const by = { renew: [], grad: [], staff: [] };
+    for (const m of pool) {
+      const t = assign[m.id];
+      if (t === "renew") {
+        m.bond = this.clamp((m.bond || 0) + 6, 1, 100);
+        m.pop = this.clamp((m.pop || 0) + 2, 0, 100);
+        m.note = "2020 · 一期生合约续签";
+        by.renew.push(m.name);
+      } else if (t === "grad") {
+        m.status = "left"; m.captain = false; m.vice = false; delete m.sub;
+        m.note = "2020 · 一期生合约期满毕业";
+        by.grad.push(m.name);
+      } else {
+        m.status = "staff"; m.captain = false; m.vice = false; delete m.sub;
+        m.note = "2020 · 一期生转任工作人员";
+        by.staff.push(m.name);
+      }
+    }
+    st.gen1.done = true; st.flags.gen1Done = true;
+    const text = "★主线⑤「一期生合约安置」达成：续约 " + by.renew.length + " 人 · 毕业 " + by.grad.length + " 人 · 转任工作人员 " + by.staff.length + " 人。半部历史的册页，轻轻合上了。";
+    this.addLog(st, st.month, text, "main");
+    this.save();
+    return { text: text, tone: "main" };
+  },
+
+  /* 【2020】年度评分：安置(25)+防疫返工(15)+云公演(20)+一期生(15)+分手(10，仅复刻线)
+     + 实力成长(10)+热度/4(≤10)+士气/10(≤5)+资金/60(≤5) − 赤字10 → S≥85 / A≥65 / B≥50 / C */
+  computeGrade20(st) {
+    st = st || this.st;
+    let score = 0;
+    // ① 分团安置（25）：仅去年保住分团时计入
+    if (st.decisions.branch19Keep === "keep") {
+      if (st.reorg20.done) score += 25;
+      else if (st.reorg20.stage >= 1) score += 8;
+    } else score += 15;   // 去年已善后：直接计安置分
+    // ② 防疫与返工（15）
+    if (st.covid20.done) score += 15;
+    else if (st.covid20.stage >= 1) score += 6;
+    // ③ 云公演（20）
+    if (st.cloud20.done) score += st.cloud20.held >= 3 ? 20 : 12;
+    else if (st.cloud20.stage >= 1) score += 6;
+    // ④ 一期生合约（15）
+    if (st.gen1.done) score += 15;
+    // ⑤ 和平分手（10，仅复刻线）
+    if (this.isReplicate(st) && st.teb20.done) score += 10;
+    // ⑥ 成员实力成长（10）
+    score += this.clamp(Math.round((this.avgPwr(st) - (st.pwrBase || 0)) * 2), 0, 10);
+    // ⑦ 资源面
+    score += Math.min(10, Math.round(st.heat / 4));
+    score += Math.min(5, Math.round(st.morale / 10));
+    score += Math.min(5, Math.floor(st.money / 60));
+    if (st.debt >= 1) score -= 10;
+
+    if (score >= 85) return "S";
+    if (score >= 65) return "A";
+    if (score >= 50) return "B";
+    return "C";
+  },
+
   /* 【预备生汇报公演】本年度组阁中刚被降格/发配的成员不参与升格候选：
      ① 正式队 → 预备生（编入预备生）；② 本部/分团 → 分团（落编移籍、发配分团、
      移交改派分团）——刚被编制会重新安置的孩子需要一整年重新证明自己。
@@ -1787,12 +2229,32 @@ const Game = {
     return { text: m.name + " 升格入 " + team + (fromBranch ? "——分团上调本部，人气与羁绊都上了一级。" : "。"), tone: "main" };
   },
 
-  /* 【2018 主线②】预备生汇报公演候选：本部 PREP + 分团预备生。
+  /* 【2018/2019 主线②】预备生汇报公演批量升格：assign = { [memberId]: team }。
+     候选取 prepStageCandidates 加权前 2 位（每次公演升格 2 人）；
+     逐人走 promotePrep18（分团上调/本部升格加成与计数逻辑不变）。
+     去向经 headTeams 口径：XII 保留时 XII 亦可作为升格目标。 */
+  promotePrepStage(assign) {
+    const st = this.st;
+    const targets = this.prepStageCandidates(st).slice(0, 2);
+    if (!targets.length) return { text: "当前没有待升格的预备生。", tone: "blocked" };
+    const TEAM = this.headTeams(st).concat(["FT"]);
+    const tNames = "SII / NII / HII / X" + (this.keptXiiInRoster(st) ? " / XII" : "") + (st.flags.ftFormed ? " / FT" : "");
+    for (const m of targets) {
+      const t = assign ? assign[m.id] : null;
+      if (!t || TEAM.indexOf(t) < 0) return { text: "还有成员未分配队伍（" + tNames + "）。" };
+    }
+    const texts = targets.map(m => this.promotePrep18(m.id, assign[m.id]).text);
+    this.save();
+    return { text: texts.join(""), tone: "main" };
+  },
+
+  /* 【2018 主线②】预备生汇报公演候选：本部 PREP + 分团预备生（含旗号留任挂分团名的成员——
+     两者同为分团预备生口径，仅建卡新期生挂「预备生」、留任成员挂分团名以作区分）。
      本年度组阁中刚被降格/发配的成员不列入（isPrepDownThisYear）。
      确定性排序（pwr×2 + 人气 + 羁绊×0.5 加权）取前 3——pages 与裁决 effect 两次调用
      必须指向同一位成员，故不用随机。 */
   prepStageCandidates(st) {
-    const pool = st.members.filter(m => (m.team === "PREP" || (m.status === "branch" && (m.branchLabel === "预备生" || m.branchLabel === "")))
+    const pool = st.members.filter(m => (m.team === "PREP" || (m.status === "branch" && (m.branchLabel === "预备生" || m.branchLabel === "" || m.branchLabel === m.branchTeam)))
       && m.status !== "left" && m.name && !this.isPrepDownThisYear(m, st));
     return pool.slice().sort((a, b) =>
       ((b.pwr || 0) * 2 + (b.pop || 0) + (b.bond || 0) * 0.5) - ((a.pwr || 0) * 2 + (a.pop || 0) + (a.bond || 0) * 0.5)
@@ -2320,12 +2782,31 @@ const Game = {
     return { text: unit + " 名单敲定：" + members.map(m => m.name).join("、") + "。小分队成军曝光（每人人气+5 羁绊+5）。", tone: "main" };
   },
 
-  /* 【2019 通用】成员所属小分队查询（HO2/BlueV，按成员卡备注识别；不在则返回 null）。 */
+  /* 【2019 通用】小分队成军·官方钦点（UI 点将回调，pickMode demoonpick）：
+     DEMOON 七人；选中者小分队成军曝光（人气+5 羁绊+5，成员卡备注），名单存姓名
+     （decisions.unitsDemoon）供后续剧情回收（memberSubUnit/dissolveSubUnit19）。 */
+  setDemoon19(ids) {
+    const st = this.st;
+    const members = (ids || []).map(id => st.members.find(m => m.id === id)).filter(Boolean);
+    if (members.length !== 7) return { text: "名单无效（DEMOON 需 7 人）。", tone: "blocked" };
+    st.decisions.unitsDemoon = members.map(m => m.name);
+    for (const m of members) {
+      m.pop = this.clamp((m.pop || 0) + 5, 0, 100);
+      m.bond = this.clamp((m.bond || 0) + 5, 0, 100);
+      m.note = (m.note ? m.note + "；" : "") + "SNH48小分队DEMOON成员（官方钦点成军）";
+    }
+    this.addLog(st, st.month, "小分队 DEMOON 名单公布（官方钦点）：" + members.map(m => m.name).join("、") + "。", "main");
+    this.save();
+    return { text: "DEMOON 名单敲定：" + members.map(m => m.name).join("、") + "。小分队成军曝光（每人人气+5 羁绊+5）。", tone: "main" };
+  },
+
+  /* 【2019 通用】成员所属小分队查询（HO2/BlueV/DEMOON，按成员卡备注识别；不在则返回 null）。 */
   memberSubUnit(st, name) {
     const m = st.members.find(x => x.name === name);
     if (!m) return null;
     if ((m.note || "").indexOf("SNH48小分队HO2成员") >= 0) return "HO2";
     if ((m.note || "").indexOf("SNH48小分队BlueV成员") >= 0) return "BlueV";
+    if ((m.note || "").indexOf("SNH48小分队DEMOON成员") >= 0) return "DEMOON";
     return null;
   },
 
@@ -2336,8 +2817,8 @@ const Game = {
     if (!unit || (st.flags.unitsDissolved19 || []).indexOf(unit) >= 0) return "";
     st.flags.unitsDissolved19 = (st.flags.unitsDissolved19 || []).concat(unit);
     const mark = "SNH48小分队" + unit + "成员";
-    /* 名单来源：decisions.unitsHO2/unitsBlueV（点将存名）+ 成员卡备注（打投/指定成军），取并集 */
-    const listKey = unit === "HO2" ? "unitsHO2" : "unitsBlueV";
+    /* 名单来源：decisions.unitsHO2/unitsBlueV/unitsDemoon（点将存名）+ 成员卡备注（打投/钦点成军），取并集 */
+    const listKey = unit === "HO2" ? "unitsHO2" : unit === "DEMOON" ? "unitsDemoon" : "unitsBlueV";
     const byList = ((st.decisions && st.decisions[listKey]) || []);
     const names = [];
     for (const m of st.members) {
@@ -2350,6 +2831,296 @@ const Game = {
     }
     this.addLog(st, st.month, "小分队 " + unit + " 解散（活动终止）：原成员 " + names.join("、") + "。", "main");
     return "\n\n同日，官网挂出一行小字：小分队 " + unit + " 活动终止——" + (names.length ? "原成员（" + names.join("、") + "）的" : "") + "小分队日程全部下线。（小分队 " + unit + " 解散）";
+  },
+
+  /* 【2020 通用·小分队补员】可补员小分队查询：HO2（2人）/BlueV（5人）/DEMOON（7人）。
+     口径：粉丝一票票投出/钦点的原成员不可替换——只统计仍在籍（active）的原成员，
+     空缺可补足至编制上限；2019 已解散（flags.unitsDissolved19）或无在籍成员的小分队
+     不在补员范围。返回 [{ unit, cur:[在籍原成员名], vac:空缺数 }]。 */
+  unitFill20Info(st) {
+    const CAP = { HO2: 2, BlueV: 5, DEMOON: 7 };
+    const dissolved = st.flags.unitsDissolved19 || [];
+    const out = [];
+    for (const unit of ["HO2", "BlueV", "DEMOON"]) {
+      if (dissolved.indexOf(unit) >= 0) continue;
+      const mark = "SNH48小分队" + unit + "成员";
+      const listKey = unit === "HO2" ? "unitsHO2" : unit === "DEMOON" ? "unitsDemoon" : "unitsBlueV";
+      const byList = st.decisions[listKey] || [];
+      const cur = st.members.filter(m => m.status === "active" &&
+        (((m.note || "").indexOf(mark) >= 0 && (m.note || "").indexOf(unit + "解散") < 0) || byList.indexOf(m.name) >= 0));
+      const vac = CAP[unit] - cur.length;
+      if (cur.length > 0 && vac > 0) out.push({ unit: unit, cur: cur.map(m => m.name), vac: vac });
+    }
+    return out;
+  },
+
+  /* 【2020 通用·小分队补员】落地（UI.showUnitFill20Picker 链式点将回调，pickMode="unitFill20"）：
+     assign = { unit → [新成员id…] }；逐队校验人数与资格（本部在籍/非殿堂/未属其他小分队）；
+     生效：补员成员人气+3 羁绊+4（云固粉曝光），备注登记；名单并入 decisions.units* 供后续回收；
+     全团热度+4 士气+2；旗标 flags.unitFill20Done / 决策标签 unitFill20=fill。 */
+  applyUnitFill20(assign) {
+    const st = this.st;
+    if (st.flags.unitFill20Done) return { text: "小分队补员已经收官。", tone: "blocked" };
+    const info = this.unitFill20Info(st);
+    assign = assign || {};
+    const added = {};
+    for (const it of info) {
+      const members = (assign[it.unit] || []).map(id => st.members.find(m => m.id === id)).filter(Boolean);
+      if (members.length !== it.vac) return { text: it.unit + " 补员名单无效（需 " + it.vac + " 人）。", tone: "blocked" };
+      for (const m of members) {
+        if (m.status !== "active" || m.hall || this.memberSubUnit(st, m.name))
+          return { text: m.name + " 不可入队（需本部在籍、非荣誉殿堂、未属其他小分队）。", tone: "blocked" };
+      }
+      added[it.unit] = members;
+    }
+    for (const unit in added) {
+      const key = unit === "HO2" ? "unitsHO2" : unit === "DEMOON" ? "unitsDemoon" : "unitsBlueV";
+      for (const m of added[unit]) {
+        m.pop = this.clamp((m.pop || 0) + 3, 0, 100);
+        m.bond = this.clamp((m.bond || 0) + 4, 0, 100);
+        m.note = (m.note ? m.note + "；" : "") + "SNH48小分队" + unit + "成员（2020疫情补员·云固粉）";
+        if ((st.decisions[key] || []).indexOf(m.name) < 0) st.decisions[key] = (st.decisions[key] || []).concat(m.name);
+      }
+      this.addLog(st, st.month, "小分队 " + unit + " 补员名单公布：" + added[unit].map(m => m.name).join("、") + "（原成员保留）。", "main");
+    }
+    st.heat = this.clamp(st.heat + 4, 0, 100);
+    st.morale = this.clamp(st.morale + 2, 0, 100);
+    st.flags.unitFill20Done = true;
+    st.decisions.unitFill20 = "fill";
+    this.save();
+    const lines = info.map(it => it.unit + " 补员 " + it.vac + " 人：" + added[it.unit].map(m => m.name).join("、") + "（原成员 " + it.cur.join("、") + " 保留）");
+    return { text: "小分队补员收官——名单照旧、人心照齐：\n" + lines.join("\n") + "\n\n（决策已登记：unitFill20=fill。补员成员每人人气+3 羉绊+4；热度+4 士气+2。）", tone: "main" };
+  },
+
+  /* 【2020·9月事件①】电商女团浪彩少女AW9（按用户口径挂载，2020-09 史实锚点）：
+     ① 史实正式成员九人自动挂载（陆婷/莫寒/戴萌/苏杉杉/钱蓓婷/刘增艳/张雨鑫/张怡/刘倩倩），
+        不在籍（离团/暂休/IDFT 等）者跳过，不得虚构；分团在册者兼任不调动；
+     ② 总监钦点九位预备役（UI.showAW9Picker，pickMode="aw9pick"）：
+        全团在册（本部/分团 active/branch）、非殿堂、未属 AW9 者皆可选。
+     名单存姓名（decisions.unitsAW9 / unitsAW9R）供后续回收；旗标 flags.aw9Formed。 */
+  AW9_HIST: ["陆婷", "莫寒", "戴萌", "苏杉杉", "钱蓓婷", "刘增艳", "张雨鑫", "张怡", "刘倩倩"],
+
+  setAW9Reserve(ids) {
+    const st = this.st;
+    if (st.flags.aw9Formed) return { text: "浪彩少女AW9 已经成团。", tone: "blocked" };
+    /* ① 史实正式成员挂载（不在籍跳过） */
+    const joined = [], skipped = [];
+    for (const name of this.AW9_HIST) {
+      const m = st.members.find(x => x.name === name);
+      if (m && (m.status === "active" || m.status === "branch") && (m.note || "").indexOf("浪彩少女AW9") < 0) {
+        m.pop = this.clamp((m.pop || 0) + 4, 0, 100);
+        m.bond = this.clamp((m.bond || 0) + 4, 0, 100);
+        m.note = (m.note ? m.note + "；" : "") + "电商女团浪彩少女AW9成员（2020-09 史实锚点挂载" + (m.status === "branch" ? "·兼任" : "") + "）";
+        joined.push(name);
+      } else skipped.push(name);
+    }
+    st.decisions.unitsAW9 = joined;
+    /* ② 总监钦点九位预备役 */
+    const reserve = (ids || []).map(id => st.members.find(m => m.id === id)).filter(Boolean);
+    if (reserve.length !== 9) return { text: "预备役名单无效（需 9 人）。", tone: "blocked" };
+    for (const m of reserve) {
+      if (!(m.status === "active" || m.status === "branch") || m.hall || (m.note || "").indexOf("浪彩少女AW9") >= 0)
+        return { text: m.name + " 不可入预备役（需在册、非荣誉殿堂、未属 AW9）。", tone: "blocked" };
+    }
+    for (const m of reserve) {
+      m.pop = this.clamp((m.pop || 0) + 3, 0, 100);
+      m.bond = this.clamp((m.bond || 0) + 3, 0, 100);
+      m.note = (m.note ? m.note + "；" : "") + "浪彩少女AW9预备役（2020-09 总监钦点）";
+    }
+    st.decisions.unitsAW9R = reserve.map(m => m.name);
+    st.flags.aw9Formed = true;
+    st.heat = this.clamp(st.heat + 6, 0, 100);
+    st.morale = this.clamp(st.morale + 2, 0, 100);
+    this.syncTeams(st);
+    this.addLog(st, st.month, "电商女团「浪彩少女AW9」官宣：正式成员 " + joined.join("、") + "；预备役 " + reserve.map(m => m.name).join("、") + "。", "main");
+    this.save();
+    return { text: "浪彩少女AW9 官宣——电商直播间与云公演体系并网。\n正式成员（" + joined.length + " 人）：" + joined.join("、") +
+      (skipped.length ? "\n不在籍，未挂载：" + skipped.join("、") : "") +
+      "\n预备役（总监钦点 9 人）：" + reserve.map(m => m.name).join("、") +
+      "\n\n（正式成员每人人气+4 羉绊+4；预备役每人人气+3 羁绊+3；热度+6 士气+2。）", tone: "main" };
+  },
+
+  /* 【2020·9月事件②】BEJ48 解散队伍编号（疫情效益下滑，用户口径）：
+     assign = { 成员id → "SII"|"NII"|"HII"|"X"|"XII"(保留时)|"stay" }。
+     上调本部：每队至多接收 3 人（不含预备生队伍，PREP 不可作为去向；XII 保留时同队待遇）；
+     未上调者留任 BEJ48——队伍编号摘除，统一挂分团名（branchLabel="BEJ48"，无队伍编制，用户口径）。
+     落地记录 decisions.bej20Up / bej20Stay；旗标 flags.bej20Done。 */
+  applyBej20(assign) {
+    const st = this.st;
+    if (st.flags.bej20Done) return { text: "BEJ48 的队伍编号已经摘下。", tone: "blocked" };
+    const pool = st.members.filter(m => m.status === "branch" && m.branchTeam === "BEJ48");
+    if (!pool.length) return { text: "当前没有在册的 BEJ48 成员。", tone: "blocked" };
+    const TEAMS = this.headTeams(st);   // XII 保留时含 XII（用户规则：不得硬编码本部四队）
+    assign = assign || {};
+    const upCnt = {};
+    for (const m of pool) {
+      const t = assign[m.id];
+      if (t == null) return { text: "还有成员未分配去向（上调本部每队至多 3 人 / 留任挂分团名）。" };
+      if (TEAMS.indexOf(t) >= 0) {
+        upCnt[t] = (upCnt[t] || 0) + 1;
+        if (upCnt[t] > 3) return { text: "Team " + t + " 本次接收已满 3 人——每队至多接收 3 人。" };
+      } else if (t !== "stay") return { text: "编制表无效（含未知去向）。" };
+    }
+    const up = [], stay = [];
+    for (const m of pool) {
+      const t = assign[m.id];
+      if (t === "stay") {
+        m.branchLabel = "BEJ48";   // 无队伍编制 → 统一挂分团名（用户口径，不叫预备生）
+        m.captain = false; m.vice = false;
+        m.note = (m.note ? m.note + "；" : "") + "2020-09 BEJ48队伍编号解散 · 留任（挂分团名，无队伍编制）";
+        stay.push(m.name);
+      } else {
+        m.status = "active"; m.team = t; m.branchTeam = null; m.branchLabel = null;
+        m.captain = false; m.vice = false;
+        m.pop = this.clamp((m.pop || 0) + this.rnd(6, 12), 0, 100);
+        m.bond = this.clamp((m.bond || 0) + 10, 0, 100);
+        m.note = "2020-09 BEJ48队伍编号解散 · 上调本部 Team " + t;
+        up.push(m.name);
+      }
+    }
+    st.flags.bej20Done = true;
+    st.decisions.bej20Up = up;
+    st.decisions.bej20Stay = stay;
+    this.syncTeams(st);
+    this.addLog(st, st.month, "BEJ48 宣布解散队伍编号：上调本部 " + up.length + " 人（每队≤3），其余 " + stay.length + " 人留任挂分团名。", "main");
+    this.save();
+    return { text: "★「BEJ48 编号谢幕」——上调本部 " + up.length + " 人：" + (up.join("、") || "无") +
+      "\n留任（统一挂分团名）" + stay.length + " 人。北京的灯牌摘下了，孩子们的路还长。\n\n（上调成员每人人气+6~12 羁绊+10；旗标 bej20Done 已登记。）", tone: "main" };
+  },
+
+  /* 【2020·9月事件②】全员留任快选：BEJ48 全员留任挂分团名（不逐人拍板） */
+  bej20StayAll() {
+    const st = this.st;
+    if (st.flags.bej20Done) return { text: "BEJ48 的队伍编号已经摘下。", tone: "blocked" };
+    const pool = st.members.filter(m => m.status === "branch" && m.branchTeam === "BEJ48");
+    if (!pool.length) return { text: "当前没有在册的 BEJ48 成员。", tone: "blocked" };
+    const stay = [];
+    for (const m of pool) {
+      m.branchLabel = "BEJ48";   // 无队伍编制 → 统一挂分团名（用户口径，不叫预备生）
+      m.captain = false; m.vice = false;
+      m.note = (m.note ? m.note + "；" : "") + "2020-09 BEJ48队伍编号解散 · 留任（挂分团名，无队伍编制）";
+      stay.push(m.name);
+    }
+    st.flags.bej20Done = true;
+    st.decisions.bej20Up = [];
+    st.decisions.bej20Stay = stay;
+    this.syncTeams(st);
+    this.addLog(st, st.month, "BEJ48 宣布解散队伍编号：全员 " + stay.length + " 人留任挂分团名。", "main");
+    this.save();
+    return { text: "编号摘下，人都在：BEJ48 全员 " + stay.length + " 人留任（统一挂分团名），北京名号保留、队伍编制不再。（旗标 bej20Done 已登记。）", tone: "main" };
+  },
+
+  /* 【2020·10月事件】GNZ48 首次分团内大重组（用户口径，2020-10 史实锚点，按用户口径挂载）：
+     仅玩家兼任 GNZ48 总监（2016「下一站」选 GNZ48 → flags.concur17.GNZ48）时触发。
+     分班公演收官、恢复队伍公演：Team G / Team NIII / Team Z 重新编成，
+     人数限制同本部队伍（每队 13~20 人）；未编入队伍者转入 GNZ48 预备生。
+     assign = { 成员id → "G"|"NIII"|"Z"|"prep" }；旗标 flags.gnzReorg20Done；名单 decisions.gnzReorg20。
+     【人数下限特则】分团在册成员总数不足 39（=3×13）时无法物理满足每队 13 人下限，
+     此时只校验上限 20（下限不强制），避免编制窗无法敲定的死锁。
+     【队长任命】编入队伍者保留原队长/副队长任命（重组不改队长任命，史实后续任命待用户口径）；
+     转入预备生者解除队长/副队长。 */
+  GNZ_REORG20_TEAMS: { G: "Team G", NIII: "Team NIII", Z: "Team Z" },
+  applyGnzReorg20(assign) {
+    const st = this.st;
+    if (st.flags.gnzReorg20Done) return { text: "GNZ48 的分团内大重组早已落定。", tone: "blocked" };
+    const pool = st.members.filter(m => m.status === "branch" && m.branchTeam === "GNZ48");
+    if (!pool.length) return { text: "当前没有在册的 GNZ48 成员。", tone: "blocked" };
+    const TL = this.GNZ_REORG20_TEAMS;
+    const TKEYS = Object.keys(TL);
+    const curKey = { "Team G": "G", "Team NIII": "NIII", "Team Z": "Z" };
+    /* 全员都在重组池内（现编队只是预填默认值），最终各队人数由分配结果决定，cnt 从零起算 */
+    const cnt = { G: 0, NIII: 0, Z: 0 };
+    const minPer = pool.length >= 39 ? 13 : 0;   // 人手不足时放开 13 人下限（见函数头注）
+    assign = assign || {};
+    for (const m of pool) {
+      const t = assign[m.id];
+      if (t == null) return { text: "还有成员未分配去向（Team G / Team NIII / Team Z / GNZ48预备生）。" };
+      if (TKEYS.indexOf(t) >= 0) { cnt[t]++; if (cnt[t] > 20) return { text: TL[t] + " 编制将超 20 人——每队 13~20 人，同本部队伍限制。" }; }
+      else if (t !== "prep") return { text: "编制表无效（含未知去向）。", tone: "blocked" };
+    }
+    for (const k of TKEYS) if (cnt[k] < minPer) return { text: TL[k] + " 编制不足 13 人——每队 13~20 人，同本部队伍限制。" };
+    const roster = { G: [], NIII: [], Z: [], prep: [] };
+    for (const m of pool) {
+      const t = assign[m.id];
+      if (t === "prep") {
+        m.branchLabel = "预备生"; m.captain = false; m.vice = false;
+        m.note = (m.note ? m.note + "；" : "") + "2020-10 GNZ48分团内大重组 · 转入预备生";
+        roster.prep.push(m.name);
+      } else {
+        m.branchLabel = TL[t];
+        m.note = (m.note ? m.note + "；" : "") + "2020-10 GNZ48分团内大重组 · 编入 " + TL[t];
+        roster[t].push(m.name);
+      }
+    }
+    st.flags.gnzReorg20Done = true;
+    st.decisions.gnzReorg20 = roster;
+    this.syncTeams(st);
+    this.addLog(st, st.month, "GNZ48 结束分班公演、恢复队伍公演：分团内大重组——Team G " + roster.G.length + " 人 / Team NIII " + roster.NIII.length + " 人 / Team Z " + roster.Z.length + " 人，预备生 " + roster.prep.length + " 人。", "main");
+    this.save();
+    return { text: "★「广州 · 重新出发」——分班公演落幕，队伍公演回归：\nTeam G " + roster.G.length + " 人（" + roster.G.join("、") + "）\nTeam NIII " + roster.NIII.length + " 人（" + roster.NIII.join("、") + "）\nTeam Z " + roster.Z.length + " 人（" + roster.Z.join("、") + "）\n转入 GNZ48 预备生 " + roster.prep.length + " 人（" + (roster.prep.join("、") || "无") + "）。\n\n（旗标 gnzReorg20Done 已登记。）", tone: "main" };
+  },
+
+  /* 【2020 总选新机制·用户口径】分团 TOP1 兼任本部队伍（9月事件安排，UI.showGe20Branch1Picker）：
+     兼任不调动（保留分团在册），备注登记；羁绊+4 人气+4；旗标 ge20Branch1Done。 */
+  applyGe20Branch1(team) {
+    const st = this.st;
+    if (st.flags.ge20Branch1Done) return { text: "分团 TOP1 的兼任安排早已落定。", tone: "blocked" };
+    const name = st.flags.ge20BranchTop1;
+    const m = name ? st.members.find(x => x.name === name) : null;
+    if (!m || m.status !== "branch") return { text: "分团 TOP1 当前不在册，兼任安排作废。", tone: "blocked" };
+    if (this.headTeams(st).indexOf(team) < 0) return { text: "兼任目标无效（需本部在编队伍）。", tone: "blocked" };
+    m.note = (m.note ? m.note + "；" : "") + "2020总选分团TOP1 · 兼任 Team " + team + "（用户口径）";
+    m.pop = this.clamp((m.pop || 0) + 4, 0, 100);
+    m.bond = this.clamp((m.bond || 0) + 4, 0, 100);
+    st.decisions.ge20Branch1 = { name: m.name, team: team };
+    st.flags.ge20Branch1Done = true;
+    this.syncTeams(st);
+    this.addLog(st, st.month, "2020总选分团TOP1 " + m.name + "（" + m.branchTeam + "）兼任本部 Team " + team + "。", "main");
+    this.save();
+    return { text: m.name + " 以分团 TOP1 的身份兼任 Team " + team + "——两地的灯牌，第一次照在同一个人身上。\n\n（兼任不调动：保留 " + m.branchTeam + " 在册；人气+4 羁绊+4。）", tone: "main" };
+  },
+
+  /* 【2020 总选新机制·用户口径】入榜 IDFT 成员升格移籍（9月事件安排，UI.showGe20IdftPicker）：
+     assign = { 成员id → 本部队|分团名|"stay" }。升格本部=入编现役；升格分团=移籍挂分团名（无队伍编制）；
+     stay=留任 IDFT。升格红利：人气+8~14 羁绊+10；旗标 ge20IdftDone，名单 decisions.ge20IdftUp。 */
+  applyGe20Idft(assign) {
+    const st = this.st;
+    if (st.flags.ge20IdftDone) return { text: "入榜 IDFT 成员的去向已经落定。", tone: "blocked" };
+    const names = st.flags.ge20Idft || [];
+    const pool = names.map(n => st.members.find(m => m.name === n && m.status === "idft")).filter(Boolean);
+    if (!pool.length) return { text: "入榜的 IDFT 成员均已不在池中。", tone: "blocked" };
+    const TEAMS = this.headTeams(st);
+    const BR = ["BEJ48", "GNZ48", "SHY48", "CKG48"].concat(st.teb19 && st.teb19.open ? ["TEB48"] : []);
+    assign = assign || {};
+    for (const m of pool) {
+      const t = assign[m.id];
+      if (t == null) return { text: "还有成员未安排去向（升格本部 / 移籍分团 / 留任 IDFT）。" };
+      if (t !== "stay" && TEAMS.indexOf(t) < 0 && BR.indexOf(t) < 0) return { text: "编制表无效（含未知去向）。", tone: "blocked" };
+    }
+    const up = [], br = [];
+    for (const m of pool) {
+      const t = assign[m.id];
+      if (t === "stay") continue;
+      if (TEAMS.indexOf(t) >= 0) {
+        m.status = "active"; m.team = t;
+        m.pop = this.clamp((m.pop || 0) + this.rnd(8, 14), 0, 100);
+        m.bond = this.clamp((m.bond || 0) + 10, 0, 100);
+        m.note = "2020总选 · IDFT升格移籍 Team " + t + "（用户口径）";
+        up.push(m.name);
+      } else {
+        m.status = "branch"; m.team = t; m.branchTeam = t; m.branchLabel = t;   // 无队伍编制 → 挂分团名
+        m.pop = this.clamp((m.pop || 0) + this.rnd(6, 12), 0, 100);
+        m.bond = this.clamp((m.bond || 0) + 8, 0, 100);
+        m.note = "2020总选 · IDFT升格移籍 分团 " + t + "（挂分团名）";
+        br.push(m.name);
+      }
+    }
+    st.flags.ge20IdftDone = true;
+    st.decisions.ge20IdftUp = up.concat(br);
+    this.syncTeams(st);
+    this.addLog(st, st.month, "2020总选入榜 IDFT 成员去向落定：升格本部 " + up.length + " 人，移籍分团 " + br.length + " 人。", "main");
+    this.save();
+    return { text: "训练生池的门被总选票数推开了：升格本部 " + up.length + " 人（" + up.join("、") + "）\n移籍分团 " + br.length + " 人（" + br.join("、") + "）。\n\n（升格本部人气+8~14 羁绊+10；移籍分团人气+6~12 羁绊+8，挂分团名；旗标 ge20IdftDone 已登记。）", tone: "main" };
   },
 
   /* 【2018 复刻路线专属】红白歌会·中国预赛出征名单（UI.showKohakuPicker 回调）：
@@ -2505,12 +3276,14 @@ const Game = {
       this.addLog(st, st.month, "赵嘉敏 合约期满毕业——拉锯一年的官司暂休到此画上句号，她以演员的身份重新出发。", "main");
     }
 
-    // ① 新成员入队（2016：六期生3月 / 七期生9、10月；2017：八期生4、5、6、9月；2018：九/十/十一期生+分团新期生；
-    //    2026：二十四期生5月；2027：预挂载表）。2018 起支持 branchTeam 字段：分团新期生建分团预备生简卡。
+    // ① 新成员入队（2016：六期生3月 / 七期生9、10月；2017：八期生4、5、6、9、10月 + SHY48二期生；2018：九/十/十一期生+分团新期生；
+    //    2026：二十四期生5月；2027：预挂载表）。2017 起支持 branchTeam 字段：分团新期生建分团预备生简卡
+    //    （2017 线仅限对应分团已开业，未开业则不入册，后续离团表自然跳过）。
     const joinSrc = st.era === "2016" ? DATA.joining2016
       : st.era === "2017" ? DATA.joining2017
       : st.era === "2018" ? DATA.joining2018
       : st.era === "2019" ? []   // 【2019】不挂载静态入团表：招新由 9 月剧情事件承载（主线③）
+      : st.era === "2020" ? (DATA.joining2020 || [])   // 【2020】疫情年史实入团表（分团新期生建简卡）
       : st.era === "2027" ? (DATA2026.joining2027 || [])
       : DATA2026.joining2026;
     for (const j of joinSrc) {
@@ -2518,7 +3291,12 @@ const Game = {
         /* 【去重】同名成员已在册则跳过——月末流程重复跑同一月（旧档 monthStarted 缺失重入等）
            不再生成第二张卡（曾致 2018 组阁预备生栏整列重复） */
         if (st.members.some(x => x.name === j.name && x.status !== "left")) continue;
-        if (st.era === "2018" && j.branchTeam) {
+        if ((st.era === "2017" || st.era === "2018" || st.era === "2020") && j.branchTeam) {
+          /* 【2017】分团未开业则不入册（如玩家未点亮沈阳剧场，SHY48二期生张羽涵不入册） */
+          if (st.era === "2017" && st.branch17) {
+            const bOpen = j.branchTeam === "SHY48" ? st.branch17.shyOpen : j.branchTeam === "CKG48" ? st.branch17.ckgOpen : true;
+            if (!bOpen) continue;
+          }
           /* 【2018】分团新期生：分团预备生简卡（无人气/羁绊，分团标签页展示） */
           st.members.push({
             id: "j" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
@@ -2545,19 +3323,27 @@ const Game = {
       }
     }
 
-    // ② 离团/移籍生效（2016/2017/2018/2019/2027 线；2026 线的人员退出走末位淘汰事件）
+    // ② 离团/移籍生效（2016/2017/2018/2019/2020/2027 线；2026 线的人员退出走末位淘汰事件）
     //    移籍分团（type 以「移籍」开头）→ status='branch'；兼任（type 以「兼任」开头）→ 保留在籍仅备注
     const leaveSrc = st.era === "2026" ? []
       : st.era === "2027" ? (DATA2026.leaving2027 || [])
+      : st.era === "2020" ? (DATA.leaving2020 || [])   // 【2020】史实离团表挂载（v0.13.9）：
+                                                       // 分团解散安置/TEB48/一期生合约仍由主线①④⑤承载，本表只负责散点离团
       : st.era === "2019" ? (DATA.leaving2019 || [])   // 【2019】史实离团表挂载（v0.12.3）：
                                                        // 二次组阁/IDFT 移籍照旧由主线②承载，本表只负责散点离团
       : st.era === "2018" ? DATA.leaving2018
       : st.era === "2017" ? DATA.leaving2017 : DATA.leaving2016;
     for (const lv of leaveSrc) {
       if (lv.month !== st.month) continue;
-      /* 人员表按「2016 年末游戏内实况」装载：已因玩家决策离团/暂休的成员自动跳过 */
-      const m0 = st.members.find(x => x.name === lv.name);
+      /* 人员表按「2016 年末游戏内实况」装载：已因玩家决策离团/暂休的成员自动跳过；
+         lv.branchTeam 有值时优先命中对应分团卡（如 CKG48 孟玥 vs 本部 NII 孟玥同名双卡） */
+      const m0 = lv.branchTeam
+        ? st.members.find(x => x.name === lv.name && x.branchTeam === lv.branchTeam)
+        : st.members.find(x => x.name === lv.name);
       if (!m0 || m0.status === "left" || m0.status === "rest") continue;
+      /* 分团出身限定（lv.branchTeam 有值时）：如 2020-02 离团的 CKG48 孟玥与已毕业的
+         本部 NII 一期生孟玥重名，按 branchTeam 限定避免误命中同名本部卡 */
+      if (lv.branchTeam && m0.branchTeam !== lv.branchTeam) continue;
       /* 荣誉殿堂成员不再走离团表（与 2026 杨冰怡口径一致） */
       if (m0.hall) continue;
       /* 【2019】去年点将出征鹅厂选秀的成员不随史实表离团——封闭集训/限定团线
@@ -2746,6 +3532,53 @@ const Game = {
       ];
     }
 
+    /* ============ 2020 线（共渡）：疫情年，五条主线 ============ */
+    if (st.era === "2020") {
+      const lockPeak = st.month <= 3;   // 1~3 月：聚众类行动停办（公演/团建）
+      const rep20 = this.isReplicate(st);
+      const covidDesc = { 0: "防疫部署：物资采购与《疫情期运营管理办法》成文（需资金≥20万）", 1: "返工安排：分批错峰返工与隔离防疫制度落地", 2: "防疫与返工体系已建成" };
+      const cloudDesc = { 0: "策划案：机位/推流/线上打投体系立项", 1: "技术测试：全流程彩排（需资金≥20万）", 2: "首场试播：云公演正式上线" };
+      const acts20 = [];
+      if (st.decisions.branch19Keep === "keep") {
+        acts20.push({ id: "reorg20", main: true, name: "安置分团成员", desc: st.reorg20.done
+          ? "安置已完成——上调本部/旗号留任/IDFT 全部归位"
+          : "CKG48/SHY48 解散：成员逐人拍板去向（上调本部每阉13~20人；保留旗号的分团可留任16人；其余移入 IDFT）",
+          disabled: st.reorg20.done || !st.members.some(m => m.status === "branch" && (m.branchTeam === "SHY48" || m.branchTeam === "CKG48")) });
+      }
+      acts20.push(
+        { id: "covid20", main: true, name: "防疫与返工安排", desc: covidDesc[st.covid20.done ? 2 : st.covid20.stage],
+          disabled: st.covid20.done || (st.covid20.stage === 0 && st.money < 20),
+          disabledTip: st.covid20.stage === 0 && st.money < 20 ? "资金不足（需≥20万）" : "" },
+        { id: "cloud20", main: true, name: "策划云公演", desc: st.cloud20.done ? "云公演体系运行中——本月「剧场公演」已替换为线上「云公演」" : cloudDesc[st.cloud20.stage],
+          disabled: st.cloud20.done || (st.cloud20.stage === 1 && st.money < 20),
+          disabledTip: st.cloud20.stage === 1 && st.money < 20 ? "资金不足（需≥20万）" : "" },
+      );
+      if (rep20) {
+        acts20.push({ id: "teb20", main: true, name: "与日方和平分手", desc: st.teb20.done
+          ? "分手事宜已办妥" : "以财政压力为由将 TEB48 还给日方，并以此为契机洽谈和平分手" + (st.teb19 && st.teb19.open ? "（台北成员需先安置）" : ""),
+          disabled: st.teb20.done });
+      }
+      acts20.push(
+        { id: "ge", main: true, name: "筹备总选举", desc: "线上打投组织与物料（8月线上总选前，筹备度+18）",
+          disabled: st.month < 2 || st.month > 7 || st.geDone },
+        { id: "rt", main: true, name: "筹备金曲大赏", desc: "舞台编排与新歌打磨（12月线上大赏前，筹备度+20）",
+          disabled: st.month < 10 || st.month > 12 || st.rtDone },
+        { id: "gen1", main: true, name: "一期生合约", desc: st.gen1.done ? "一期生去留已全部拍板" : "一期生合约年内全部到期（赵嘉敏学业线除外）——总选落幕后逐人拍板",
+          disabled: st.gen1.done || st.month < 9, disabledTip: st.month < 9 ? "总选落幕后（9月）开放" : "" },
+        { id: "visit", main: true, name: "走访成员", desc: "与一名成员谈心：矲绊↑ 士气↑ 叶盛负担↓（视频连线）" },
+        { id: "duty", name: "替叶盛值班", desc: "接手一轮成员事务：叶盛负担-15" },
+        { id: "show", name: lockPeak ? "剧场公演（停办）" : (st.cloud20.done ? "云公演" : "剧场公演（空场）"),
+          desc: lockPeak ? "疫情封控，聚众活动停办——4月起恢复（收益减半）"
+            : st.cloud20.done ? "线上开演：资金↑ 热度↑ 士气↓（收益减半口径）"
+            : "空场录制：资金↑ 热度↑ 士气↓（收益减半口径）",
+          disabled: lockPeak, disabledTip: lockPeak ? "政策原因：聚众活动不能进行（1~3月）" : "" },
+        { id: "business", name: "商务合作", desc: "接代言与商演：资金↑↑ 热度↓ 叶盛负担↑" },
+        { id: "train", name: "全团特训", desc: "提升训练度（分批错峰训练）：花费15万，全团实力+1" },
+        { id: "promo", name: "宣传造势", desc: "线上投放与话题运营：热度+10（花费20万）" },
+      );
+      return acts20;
+    }
+
     /* ============ 2019 线（双岸）：五条主线 ============ */
     if (st.era === "2019") {
       const t19 = st.teb19;
@@ -2868,11 +3701,13 @@ const Game = {
   listActions() {
     const st = this.st;
     const acts = this.listActionsCore();
-    const ok = st.money >= 15;
+    const lockPeak = st.era === "2020" && st.month <= 3;   // 2020 疫情：1~3 月聚众类行动停办
+    const ok = st.money >= 15 && !lockPeak;
     acts.push({
-      id: "teamBld", name: "队伍团建",
-      desc: "为指定队伍安排团建：磨合度+6 士气+2 队友关系小幅升温（耗资15万）",
-      disabled: !ok, disabledTip: ok ? "" : "资金不足（需≥15万）",
+      id: "teamBld", name: lockPeak ? "队伍团建（停办）" : "队伍团建",
+      desc: lockPeak ? "政策原因：聚众活动不能进行（1~3月）"
+        : "为指定队伍安排团建：磨合度+6 士气+2 队友关系小幅升温（耗资15万）",
+      disabled: !ok, disabledTip: ok ? "" : lockPeak ? "政策原因：聚众活动不能进行（1~3月）" : "资金不足（需≥15万）",
     });
     return acts;
   },
@@ -2886,6 +3721,7 @@ const Game = {
     switch (id) {
       case "teamBld": {
         /* 【v0.13.1】队伍团建（全线通用）：先弹队伍选择窗（早退不耗AP），选定后落地 */
+        if (st.era === "2020" && st.month <= 3) return { text: "政策红线：疫情期间聚众活动不能进行。", tone: "blocked" };
         if (!payload || !payload.team) return { text: "", tone: "pickTeamBld" };
         const tbKey = payload.team;
         const tbRoster = this.teamRoster(st, tbKey);
@@ -3018,11 +3854,11 @@ const Game = {
         break;
       }
       case "ge": {
-        if (st.month < 2 || st.month > 6 || st.geDone)
-          return { text: "当前不在总选举筹备期（2-6月）。", tone: "blocked" };
+        if (st.month < 2 || st.month > (st.era === "2020" ? 7 : 6) || st.geDone)
+          return { text: st.era === "2020" ? "当前不在总选举筹备期（2-7月，8月线上开榜）。" : "当前不在总选举筹备期（2-6月）。", tone: "blocked" };
         st.gePlan = this.clamp(st.gePlan + 18, 0, 100);
         st.money -= 25;
-        res = { text: "总选举筹备推进：打投组、物料组就位。筹备度+18，资金-25万。", tone: "main" };
+        res = { text: "总选举筹备推进" + (st.era === "2020" ? "（线上打投体系）" : "") + "：打投组、物料组就位。筹备度+18，资金-25万。", tone: "main" };
         break;
       }
       case "rt": {
@@ -3066,13 +3902,24 @@ const Game = {
         break;
       }
       case "show": {
-        const income = Math.round(45 + st.heat * 0.3 + st.train * 0.5);
+        const income = Math.round((45 + st.heat * 0.3 + st.train * 0.5) * (st.era === "2020" ? 0.5 : 1));
         st.money += income;
         st.heat = this.clamp(st.heat + 4, 0, 100);
         st.morale = this.clamp(st.morale - 4, 0, 100);
-        res = { text: "剧场公演满座，票房 +"+income+" 万，应援声浪持续到深夜。（热度+4 士气-4）", tone: "good" };
+        if (st.era === "2020") {
+          if (st.month <= 3) return { text: "政策红线：疫情期间聚众活动不能进行。", tone: "blocked" };
+          if (st.cloud20.done) st.cloud20.held += 1;
+          res = { text: (st.cloud20.done ? "云公演" : "空场录制的公演") + "收官，线上票房与打投 +" + income + " 万。（热度+4 士气-4；疫情年收益减半）", tone: "good" };
+        } else {
+          res = { text: "剧场公演满座，票房 +" + income + " 万，应援声浪持续到深夜。（热度+4 士气-4）", tone: "good" };
+        }
         break;
       }
+      case "covid20": res = this.advanceCovid20(); break;
+      case "cloud20": res = this.advanceCloud20(); break;
+      case "reorg20": res = this.advanceReorg20(); break;
+      case "teb20": res = this.advanceTeb20(); break;
+      case "gen1": return { text: "", tone: "pickGen1" };   // 转交 UI 一期生逐人拍板窗
       case "business": {
         const gain = Math.round(60 + st.heat * 0.8);
         st.money += gain;
@@ -3348,7 +4195,7 @@ const Game = {
      热度/训练度低迷、人浮于事的月份，是真会亏的。 */
   SALARY_UNIT: 0.5,            // 本部成员月薪（万）
   BRANCH_UPKEEP_UNIT: 0.35,    // 分团成员月薪估算（万）
-  FIXED_EXPENSE: { "2016": 25, "2017": 30, "2018": 32, "2019": 34, "2026": 26, "2027": 28 },
+  FIXED_EXPENSE: { "2016": 25, "2017": 30, "2018": 32, "2019": 34, "2020": 34, "2026": 26, "2027": 28 },
 
   /* 在册本部成员数（暂休 rest 不计工资） */
   hqPayrollCount(st) {
@@ -3376,7 +4223,14 @@ const Game = {
   /* 汇总本月收支（供结算表展示） */
   settle(st) {
     let income;
-    if (st.era === "2026") {
+    if (st.era === "2020") {
+      /* 2020：疫情年。1~3 月收益停止（剧场停摆）；4 月起收益减半（上座受限，云公演补位）。
+         TEB48 开业收入延续至分手；SHY48/CKG48 开业收入延续至安置落地（剧场关停）。 */
+      const base = 70 + st.heat * 0.5 + st.train * 0.25
+        + (st.teb19 && st.teb19.open ? 25 : 0)
+        + (st.branch17 && st.branch17.shyOpen ? 20 : 0) + (st.branch17 && st.branch17.ckgOpen ? 25 : 0);
+      income = st.month <= 3 ? 0 : base * 0.5;
+    } else if (st.era === "2026") {
       /* 2026：危局之年（人头成本重校后基数 95）；CGT48 重建成功后贡献月收入 */
       income = 95 + st.heat * 0.5 + st.train * 0.25 + (st.cgt.open ? 25 : 0);
     } else if (st.era === "2027") {
@@ -3410,7 +4264,9 @@ const Game = {
     const top7 = t7.sum;
     const fixed = this.FIXED_EXPENSE[st.era] != null ? this.FIXED_EXPENSE[st.era] : 30;
     income = Math.round(income);
-    const expense = Math.round(salary + top7 + branchCost + fixed);
+    const rawExpense = salary + top7 + branchCost + fixed;
+    /* 2020 疫情年：1~3 月公司半速运转，支出减半 */
+    const expense = Math.round(st.era === "2020" && st.month <= 3 ? rawExpense * 0.5 : rawExpense);
     return {
       income, expense, net: income - expense,
       detail: { salary, top7, top7Count: t7.n, branchCost, fixed, hqCount, brCount },
@@ -3562,12 +4418,15 @@ const Game = {
        这样同一月末里「前置事件的选择」可以解锁后续事件
        （如 5月：下一站选 SHY48/CKG48 → 解锁开拓者点将）。 */
     const monthlySrc = st.era === "2027" ? STORY.monthly27
-      : st.era === "2026" ? STORY.monthly26 : st.era === "2019" ? STORY.monthly19
+      : st.era === "2026" ? STORY.monthly26
+      : st.era === "2020" ? STORY.monthly20
+      : st.era === "2019" ? STORY.monthly19
       : st.era === "2018" ? STORY.monthly18
       : st.era === "2017" ? STORY.monthly17 : STORY.monthly;
     let randomSrc;
     if (st.era === "2027") randomSrc = STORY.randomPool26.concat(STORY.randomPool27 || []);
     else if (st.era === "2026") randomSrc = STORY.randomPool26;
+    else if (st.era === "2020") randomSrc = [];   // 疫情年：月度表覆盖全年，不挂 2016 随机池
     else if (st.era === "2019") randomSrc = STORY.randomPool.concat(STORY.randomPool19 || []);
     else if (st.era === "2018") randomSrc = STORY.randomPool.concat(STORY.randomPool18 || []);
     else if (st.era === "2017") randomSrc = STORY.randomPool.concat(STORY.randomPool17 || []);
@@ -3581,13 +4440,19 @@ const Game = {
       if (ev) steps.push(this.buildEventStep(ev, st));
     }
 
-    /* ⑥ 七月：总选举结算 */
-    if (st.month === 7 && !st.geDone) {
+    /* ⑥ 七月：总选举结算（2020 疫情年延迟至 8 月线上举行，见下） */
+    if (st.month === 7 && !st.geDone && st.era !== "2020") {
       steps.push(this.resolveGE(st));
       this.applyHallReign(st, steps);   // 【荣誉殿堂】连霸升堂统一判定（各年代线通用规则）
     }
+    /* 【2020】疫情年总选举延迟至 8 月：线上直播收费、不卖票，活动收益减半（用户口径） */
+    if (st.month === 8 && !st.geDone && st.era === "2020") {
+      st.flags.geOnline20 = true;
+      steps.push(this.resolveGE(st));
+      this.applyHallReign(st, steps);
+    }
 
-    /* ⑦ 十二月：金曲大赏结算（2026/2027 线若被取消则改为年末总结会）+ 年度结局 */
+    /* ⑦ 十二月：金曲大赏结算（2020 疫情年改为线上直播收费，收益减半；2026/2027 线若被取消则改为年末总结会）+ 年度结局 */
     if (st.month === 12) {
       if ((st.era === "2026" || st.era === "2027") && st.rtCancelled) {
         const closeNar = st.era === "2027" ? STORY.rtCancelledClose27(st) : STORY.rtCancelledClose(st);
@@ -3675,8 +4540,12 @@ const Game = {
     const extraPool = st.era === "2027"
       ? (st.branch27 && st.branch27.open ? st.members.filter(m => m.status === "branch" && m.branchTeam === "WHN48") : [])
       : (st.branch.announce ? st.members.filter(m => m.status === "branch") : []);
+    /* 【2020 新机制·用户口径】IDFT 训练生池成员入总选名单——入榜者可升格移籍（含分团，由玩家安排）；
+       2020 总选除赵嘉敏外一期生不参选（一期生合约年，毕业公演后安置）。 */
+    if (st.era === "2020") extraPool.push(...st.members.filter(m => m.status === "idft"));
     const pool = this.activeMembers(st).concat(extraPool)
-      .filter(m => !(st.era === "2016" && m.name === "赵嘉敏") && m.team !== "HALL");   // 荣誉殿堂/影视部成员不参选
+      .filter(m => !(st.era === "2016" && m.name === "赵嘉敏") && m.team !== "HALL")   // 荣誉殿堂/影视部成员不参选
+      .filter(m => st.era !== "2020" || m.gen !== "一期生" || m.name === "赵嘉敏");   // 2020：除赵嘉敏外一期生不参选
     const ranked = pool
       .map(m => ({ m, score: m.pop * 1.5 + (m.pwr || 0) * pwrW + m.bond * bondW + st.gePlan * 0.3 + st.heat * 0.25 + (m.geBoost || 0) + this.rnd(0, 12) }))
       .sort((a, b) => b.score - a.score);
@@ -3697,21 +4566,30 @@ const Game = {
     /* 【荣誉殿堂·连霸基准】每年总选第一登记为决策 tag（ge2016Top1 / ge2017Top1 / …），
        次年总选结算据此判定连霸升堂（applyHallReign）；快速通道年份在 fastState* 里按史实预填同名 tag。 */
     st.decisions["ge" + st.era + "Top1"] = st.geResult.top1;
+    /* 【2020 新机制·用户口径】登记分团 TOP1（可兼任本部队伍）与入榜 IDFT 成员（可升格移籍），
+       由玩家在 9 月事件中逐项安排（flags.ge20BranchTop1 / ge20Idft）。 */
+    if (st.era === "2020") {
+      const b1 = ranked.find(r => r.m.status === "branch" && top48.some(t => t.name === r.m.name));
+      st.flags.ge20BranchTop1 = b1 ? b1.m.name : null;
+      st.flags.ge20Idft = ranked.filter(r => r.m.status === "idft" && top48.some(t => t.name === r.m.name)).map(r => r.m.name);
+    }
     /* 【经济系统 v2】TOP7 分成名单：总选后按名次登记（flags 跨年继承），
        此后每月按 第1名3万/2~3名2万/4~7名1万 支付分成，升堂/离团自动停付。 */
     st.flags.geTop7 = top48.slice(0, 7).map(r => r.name);
     for (const m of st.members) delete m.geBoost;
 
-    const money = Math.round(120 + st.heat * 0.8);
+    /* 【2020 线特例】疫情年线上直播收费（flags.geOnline20），活动收益减半（用户口径）。 */
+    const money = Math.round((120 + st.heat * 0.8) * (st.era === "2020" ? 0.5 : 1));
     st.money += money;
     st.heat = this.clamp(st.heat + (st.geStrategy === "focus" ? 15 : 12), 0, 100);
-    this.addLog(st, 7, "总选举落幕，第一名：" + ranked[0].m.name + "。全团话题度暴涨。", "gold");
+    this.addLog(st, st.month, "总选举落幕（" + (st.era === "2020" ? "线上直播" : "") + "），第一名：" + ranked[0].m.name + "。全团话题度暴涨。", "gold");
 
     const narr = st.geStrategy === "balance" ? STORY.geNarrative.balance : STORY.geNarrative.good;
     const crownPages = STORY.geNarrative.crown.map(p => ({
       ...p, s: p.s === "{top1}" ? ranked[0].m.name : p.s, t: this.fmt(p.t),
     }));
     const title = st.era === "2027" ? "第十四届偶像年度人气总决选 · 结果"
+      : st.era === "2020" ? "第七届偶像年度人气总决选 · 线上直播 · 结果"
       : st.era === "2026" ? "SNH48 年度人气总决选 · 结果"
       : st.era === "2019" ? "「星梦远航」第六届总决选 · 结果"
       : st.era === "2018" ? "「砥砺前行」第五届总决选 · 结果"
@@ -3742,6 +4620,7 @@ const Game = {
     if (score >= 85)      { tier = "great";  money = 150; heat = 15; }
     else if (score >= 65) { tier = "good";   money = 100; heat = 10; }
     else                  { tier = "normal"; money = 60;  heat = 4;  }
+    if (st.era === "2020") money = Math.round(money * 0.5);   // 【2020】线上直播收费：收益减半（用户口径）
     st.money += money;
     st.heat = this.clamp(st.heat + heat, 0, 100);
     this.addLog(st, 12, "年度金曲大赏落幕（评价：" + tier + (origBonus ? "，含原创曲目加成" : "") + "）。资金+" + money + "万。", "gold");
@@ -3861,6 +4740,7 @@ const Game = {
   computeGrade(st) {
     if (st.era === "2027") return this.computeGrade27(st);
     if (st.era === "2026") return this.computeGrade26(st);
+    if (st.era === "2020") return this.computeGrade20(st);
     if (st.era === "2019") return this.computeGrade19(st);
     if (st.era === "2018") return this.computeGrade18(st);
     if (st.era === "2017") return this.computeGrade17(st);

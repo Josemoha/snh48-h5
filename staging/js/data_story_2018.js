@@ -31,9 +31,9 @@
         编入预备生≤16人——本部成员降入预备生羁绊-4、分团成员上调预备生
         依旧视为上调享红利）→ 队长队副任命（每队恰1队长/队副至多1）→ Game.applyReorg18
         落地（落编者移籍分团羁绊-8；分团上调享红利；FT 随组阁成立）。
-     ② 预备生汇报公演制度：1月推行（舞台总监·马跃），每月月末汇报公演，表现优异
-        的预备生（含分团预备生）由总监定队升格（可自分团上调本部，不下放）——年内
-        升格 6 人达成主线。
+     ② 预备生汇报公演制度：1月推行（舞台总监·马跃），每四个月月末汇报公演，表现优异
+        的预备生（含分团预备生，每场 2 人）由总监定队升格（可自分团上调本部，不下放）——年内
+        升格 5 人（上限 6，留容错）达成主线。
      ③ 年度活动策划：总选举（7月「砥砺前行」）+ 金曲大赏（12月）；连霸（top1 ===
         history.ge2017Top1）→ 引擎自动触发升堂事件（hallAscend18）。
      ④ 复刻《双面偶像》（仅 2017 tag shuangmian17=plan）：行动三段，承办队伍由玩家
@@ -259,44 +259,31 @@ STORY.hallAscend18 = st => [
    ======================================================================== */
 
 /* 【主线②】预备生汇报公演（共享事件对象，定义后逐月挂载——勿写成字面量内自引用）。
-   候选由 engine.prepStageCandidates 确定性生成（本部 PREP + 分团预备生，含分团上调
-   通道）：pages 与 choices.effect 均取加权首位，指向同一位成员。
-   总监定队升格：SII / NII / HII / X 或留任观察。 */
+   每 4 个月一次（4/8/12月），每场升格 2 人：候选由 engine.prepStageCandidates 确定性
+   生成（本部 PREP + 分团预备生，含分团上调通道）取加权前 2 位；总监在 pickMode=
+   "prepStagePromote" 点将窗逐人定队（SII / NII / HII / X，FT 成立后可选；或全员留任）。 */
 const prepEv18 = {
   id: "m_prep_stage18",
   title: "预备生汇报公演",
-  gate: s => Game.prepStageCandidates(s).length > 0,
+  gate: s => s.month % 4 === 0 && Game.prepStageCandidates(s).length > 0,   // 每 4 个月一次（4/8/12月）
   pages: s => {
-    const star = Game.prepStageCandidates(s)[0];
-    const fromBranch = star.status === "branch";
+    const stars = Game.prepStageCandidates(s).slice(0, 2);
+    const names = stars.map(m => m.name + "（" + (m.status === "branch" ? m.branchTeam + "预备生" : "预备生") + "）").join("、");
+    const fromBranch = stars.some(m => m.status === "branch");
     return [
-      { nar: true, t: "每月一次的预备生汇报公演如期开演。舞台总监马跃站在侧台盯完整场，在本子上圈了一个名字——" + star.name + "（" + (fromBranch ? star.branchTeam + "预备生" : "预备生") + "）。" },
-      { s: "马跃", cls: "", t: "（演出结束，拿着记录本来找你）总监，公演我盯了一个月，这个孩子的进步是断层的：站姿、走位、开口都不说了——她缺的不是能力，是一个正式的位置。按新制度，表现优异的预备生由总监定队。她怎么安排，您定。" },
+      { nar: true, t: "每四个月一次的预备生汇报公演如期开演。舞台总监马跃站在侧台盯完整场，在本子上圈了两个名字——" + names + "。" },
+      { s: "马跃", cls: "", t: "（演出结束，拿着记录本来找你）总监，公演我盯了一个月，这两个孩子的进步是断层的：站姿、走位、开口都不说了——她们缺的不是能力，是一个正式的位置。按新制度，表现优异的预备生由总监定队。她们怎么安排，您定。" },
       { nar: true, t: (fromBranch
-        ? "（她来自" + star.branchTeam + "——上调本部是组阁年才有的通道，升格后人气与羁绊都会上一个台阶。）"
+        ? "（其中有人来自分团——上调本部是组阁年才有的通道，升格后人气与羁绊都会上一个台阶。）"
         : "（预备生升格入队后，人气与羁绊将获得提升。）") },
     ];
   },
   choices: [
-    { label: "升格入 Team SII", hint: "人气与羁绊提升（分团上调加成更多）",
-      tag: "prepStage18", value: "SII",
-      effect: st => { const m = Game.prepStageCandidates(st)[0]; return Game.promotePrep18(m.id, "SII").text; } },
-    { label: "升格入 Team NII", hint: "人气与羁绊提升",
-      tag: "prepStage18", value: "NII",
-      effect: st => { const m = Game.prepStageCandidates(st)[0]; return Game.promotePrep18(m.id, "NII").text; } },
-    { label: "升格入 Team HII", hint: "人气与羁绊提升",
-      tag: "prepStage18", value: "HII",
-      effect: st => { const m = Game.prepStageCandidates(st)[0]; return Game.promotePrep18(m.id, "HII").text; } },
-    { label: "升格入 Team X", hint: "人气与羁绊提升",
-      tag: "prepStage18", value: "X",
-      effect: st => { const m = Game.prepStageCandidates(st)[0]; return Game.promotePrep18(m.id, "X").text; } },
-    { label: "升格入 Team FT", hint: "新成立的队伍正需要新鲜血液（人气与羁绊提升）",
-      tag: "prepStage18", value: "FT",
-      gate: st => !!st.flags.ftFormed,   // 组阁编制会后 FT 成立，预备生亦可升入
-      effect: st => { const m = Game.prepStageCandidates(st)[0]; return Game.promotePrep18(m.id, "FT").text; } },
-    { label: "继续留任预备生观察", hint: "暂不升格（下月再议）",
+    { label: "宣布升格名单，为两人定队", hint: "逐人选择 SII / NII / HII / X（FT 成立后可选；人气与羁绊提升，分团上调加成更多）",
+      pickMode: "prepStagePromote" },
+    { label: "两人均继续留任预备生观察", hint: "本场暂不升格（下次公演再议）",
       tag: "prepStage18", value: "stay",
-      effect: () => "你在汇报表上写下「继续观察」。马跃点点头：「下个月她要是还这么稳，您可就不好说了。」" },
+      effect: () => "你在汇报表上写下「继续观察」。马跃点点头：「下次公演她们要是还这么稳，您可就不好说了。」" },
   ],
 };
 
@@ -308,7 +295,7 @@ STORY.monthly18 = {
       title: "1月 · 交接周",
       pages: st => [
         { s: "叶盛", cls: "speaker-yesheng", t: "先交个底：去年双团落地、原创上台，家底比前年厚了不止一圈——但组阁这一刀下去，全团从安心期进入震荡期，士气和人心，是今年最贵的两样东西。" },
-        { s: "叶盛", cls: "speaker-yesheng", t: "还有件事得提前说：新来的舞台总监马跃，人是从选秀节目组挖来的，最懂镜头前的那套规矩。他提了个「预备生汇报公演」制度——每月让预备生上台轮一遍，表现优异的，当场定队升格。他说：「预备生不是库存，是期货。」" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "还有件事得提前说：新来的舞台总监马跃，人是从选秀节目组挖来的，最懂镜头前的那套规矩。他提了个「预备生汇报公演」制度——每四个月让预备生上台轮一遍，表现优异的，当场定队升格。他说：「预备生不是库存，是期货。」" },
         { nar: true, t: "你把台历翻到 1 月的第一页。组阁、公演、总选、大赏——2018 年的关键词只有两个字：重排。" },
       ],
     },
