@@ -622,8 +622,9 @@ const DATA = {
      · 2019-10-25  BEJ48 七期生 2 人：宁轲、吕蕊（Team B）；
      · 2019-10-26  GNZ48 七期生 2 人：刘果、马昕玥；
      · 2019-11-17  SNH48 十三期生 1 人：张睿婕；
-     · 2019-11-29  SNH48 十三期生 2 人：由淼、王见妮；BEJ48 七期生 2 人：杜亚轩、熊文婕（Team J）。
-     共 18 人为 2019 年全部入团成员（高菲儿不在官方时间线内，不挂载）；
+     · 2019-11-29  SNH48 十三期生 2 人：由淼、王贝妮；BEJ48 七期生 2 人：杜亚轩、熊文婕（Team J）。
+     共 18 人为 2019 年全部入团成员（高菲儿不在官方时间线内，不挂载；
+     原挂载「王见妮」系考据误记，按用户口径 2026-10-25 勘误为王贝妮）；
      史实中 BEJ48/GNZ48 七期多直接升格入队，游戏内统一按「预备生归属由总监拍板」处理。
      入线声明：2019 线不挂载 joining2019 静态表（组阁与新生加入由剧情承载），
      本表仅作 9 月招新事件候选池——归属由总监在拍板窗逐一决定（本部预备生 /
@@ -644,7 +645,7 @@ const DATA = {
     { name: "马昕玥", branch: "GNZ48", gen: "GNZ48七期生", join: "2019-10-26" },
     { name: "张睿婕", branch: null,     gen: "十三期生",    join: "2019-11-17" },
     { name: "由淼",   branch: null,     gen: "十三期生",    join: "2019-11-29" },
-    { name: "王见妮", branch: null,     gen: "十三期生",    join: "2019-11-29" },
+    { name: "王贝妮", branch: null,     gen: "十三期生",    join: "2019-11-29" },   // 原挂载「王见妮」系误记，按用户口径勘误
     { name: "杜亚轩", branch: "BEJ48", gen: "BEJ48七期生", join: "2019-11-29" },
     { name: "熊文婕", branch: "BEJ48", gen: "BEJ48七期生", join: "2019-11-29" },
   ],
@@ -698,12 +699,53 @@ const DATA = {
      · 孟玥：CKG48 一期生（2017-10 入团），2020-02 退团（按用户口径挂载 2020-02）——
        与 2016 年已毕业的 SNH48 NII 一期生孟玥重名，两张卡并存（CKG 卡按用户口径补建）；
        branchTeam 限定命中 CKG 卡，CKG48 未开业（无卡）则自动跳过。
+     · 陈亿杉、曾洁：BEJ48 七期生（2019-09-28 入团），2020-03 退团（疫情裁撤，按用户口径
+       挂载 2020-03）；杜亚轩：BEJ48 七期生（2019-11-29 入团），2020-03 退团（同上）。
+       三人为 2019 主线③招新候选池成员（有建卡渠道，未招录则无卡自动跳过）。
+     · 2020-04 何晓玉（本部二期生）毕业；戚予珠（十期生）/陈俊羽（SHY48三期生）/
+       王诗蒙（SHY48一期生）疫情裁撤；
+       2020-05 周睿林（十期生·预备生）/熊沁娴（八期生·预备生）离团，易嘉爱（二期生）毕业；
+       2020-06 鲁静萍（十期生）/王贝妮（十三期生，2019 招新拍板建卡，未招录则自动跳过）
+       疫情裁撤；
+       2020-08 宋雨珊（五期生）/汪佳翎（四期生）/冯晓菲（四期生）/江真仪（七期生）毕业，
+       王欣颜甜甜（九期生）疫情裁撤；
+       2020-10 陈盼（九期生·预备生）离团，张嘉予（六期生）疫情裁撤；
+       2020-12 刘晨雪（十四期生·预备生，joining2020 建卡）离团，李钊（四期生）毕业。
+       以上均按用户口径挂载（2026-10-25 批次）。
+     【裁撤补偿口径（动态分配，v0.13.11）】裁撤成员由引擎按卡况动态判定归属：
+       本部成员或玩家兼任分团（concur17）成员 → layoff20Choice 由玩家拍板是否支付
+       补偿金（15 万/人）；未兼任分团成员 → 默认自动支付。口径详见 engine.applyLayoff20。
+       【补偿金口径】因受疫情影响裁撤团队人员：默认公司支付补偿金 15 万/人
+       （资金支出，士气+2 体面转身）；玩家兼任 BEJ48（flags.concur17.BEJ48，2016
+       「下一站」选 BEJ48）时由 3 月剧情事件 layoff20 拍板是否支付——不支付则
+       省下资金，但士气-4 热度-3，BEJ48 在册成员每人羁绊-4（见 engine.applyLayoff20）。
      若两人游戏内无卡（2017 线八期生建卡在 joining2017；SHY48 未开业则张羽涵
      不入册），离团自动跳过。 */
   leaving2020: [
     { month: 1,  name: "马凡",   date: "2020-01", type: "离团", story: false, note: "八期生（预备生）" },
     { month: 1,  name: "张羽涵", branchTeam: "SHY48", date: "2020-01", type: "退团", story: false, note: "SHY48二期生" },
     { month: 2,  name: "孟玥",   branchTeam: "CKG48", date: "2020-02", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 3,  name: "陈亿杉", branchTeam: "BEJ48", date: "2020-03", type: "退团", story: false, note: "BEJ48七期生（疫情裁撤）" },
+    { month: 3,  name: "曾洁",   branchTeam: "BEJ48", date: "2020-03", type: "退团", story: false, note: "BEJ48七期生（疫情裁撤）" },
+    { month: 3,  name: "杜亚轩", branchTeam: "BEJ48", date: "2020-03", type: "退团", story: false, note: "BEJ48七期生（疫情裁撤）" },
+    { month: 4,  name: "何晓玉", date: "2020-04", type: "毕业", story: false, note: "二期生" },
+    { month: 4,  name: "戚予珠", date: "2020-04", type: "离团", story: false, note: "十期生（疫情裁撤）" },
+    { month: 4,  name: "陈俊羽", branchTeam: "SHY48", date: "2020-04", type: "退团", story: false, note: "SHY48三期生（疫情裁撤）" },
+    { month: 4,  name: "王诗蒙", branchTeam: "SHY48", date: "2020-04", type: "退团", story: false, note: "SHY48一期生（疫情裁撤）" },
+    { month: 5,  name: "周睿林", date: "2020-05", type: "离团", story: false, note: "十期生（预备生）" },
+    { month: 5,  name: "熊沁娴", date: "2020-05", type: "离团", story: false, note: "八期生（预备生）" },
+    { month: 5,  name: "易嘉爱", date: "2020-05", type: "毕业", story: false, note: "二期生" },
+    { month: 6,  name: "鲁静萍", date: "2020-06", type: "离团", story: false, note: "十期生（疫情裁撤）" },
+    { month: 6,  name: "王贝妮", date: "2020-06", type: "离团", story: false, note: "十三期生（疫情裁撤）" },   // 十三期生走 2019 招新拍板建卡，未招录则自动跳过
+    { month: 8,  name: "宋雨珊", date: "2020-08", type: "毕业", story: false, note: "五期生" },
+    { month: 8,  name: "汪佳翎", date: "2020-08", type: "毕业", story: false, note: "四期生" },
+    { month: 8,  name: "冯晓菲", date: "2020-08", type: "毕业", story: false, note: "四期生" },
+    { month: 8,  name: "江真仪", date: "2020-08", type: "毕业", story: false, note: "七期生" },
+    { month: 8,  name: "王欣颜甜甜", date: "2020-08", type: "离团", story: false, note: "九期生（疫情裁撤）" },
+    { month: 10, name: "陈盼",   date: "2020-10", type: "离团", story: false, note: "九期生（预备生）" },
+    { month: 10, name: "张嘉予", date: "2020-10", type: "离团", story: false, note: "六期生（疫情裁撤）" },
+    { month: 12, name: "刘晨雪", date: "2020-12", type: "离团", story: false, note: "十四期生（疫情裁撤）" },
+    { month: 12, name: "李钊",   date: "2020-12", type: "毕业", story: false, note: "四期生" },
   ],
 
   /* ---------------- 2020 年史实入团表（2020「共渡」线，引擎按月建卡） ----------------

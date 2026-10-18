@@ -534,28 +534,63 @@ const UI = {
     this.$("btn-start-game").onclick = () => this.startPrologue();
     this.$("btn-back-title").onclick = () => this.showTitle();
     this.$("input-name").value = "";
-    /* 六个开局年代：2016/2026 为完整线；2017/2018/2019/2027 为快速通道（中途年份直入，v0.11.1） */
-    const ERAS = ["2016", "2026", "2017", "2018", "2019", "2027"];
-    const FAST = ["2017", "2018", "2019", "2027"];
+    /* 三个开局入口：2016/2026 为完整线；「快速通道」为二级菜单（并入 2017/2018/2019/2027，v0.13.11） */
+    const MAIN = ["2016", "2026"];
+    const FAST_YEARS = ["2017", "2018", "2019", "2020", "2027"];
     const cards = {};
-    for (const e of ERAS) {
+    for (const e of MAIN) {
       cards[e] = this.$("era-card-" + e);
       cards[e].classList.remove("selected");
+      cards[e].onclick = () => pick(e);
     }
+    cards.fast = this.$("era-card-fast");
+    cards.fast.classList.remove("selected");
+    cards.fast.onclick = () => this.showFastEraMenu(FAST_YEARS, pick);
     this.$("fast-track-warn").classList.add("hidden");
     const pick = era => {
       this._pickedEra = era;
-      for (const e of ERAS) cards[e].classList.toggle("selected", e === era);
-      this.$("fast-track-warn").classList.toggle("hidden", FAST.indexOf(era) < 0);
+      cards.fast.classList.toggle("selected", FAST_YEARS.indexOf(era) >= 0);
+      for (const e of MAIN) cards[e].classList.toggle("selected", e === era);
+      this.$("fast-track-warn").classList.toggle("hidden", FAST_YEARS.indexOf(era) < 0);
       this.$("btn-start-game").disabled = this.$("input-name").value.trim() === "";
     };
-    for (const e of ERAS) cards[e].onclick = () => pick(e);
+  },
+
+  /* 【快速通道】二级菜单：并入所有快速通道年份（2017/2018/2019/2027，v0.13.11）。
+     选定后回填主界面选中态（快速入口卡亮起 + 显示快速通道警示）；
+     实际开局仍走 startPrologue → showFastTrackChoices 补选 → Game.newGameFast。 */
+  showFastEraMenu(years, onPick) {
+    const INFO = {
+      "2017": { name: "本部新章", desc: "双团开设、卫视联动、原创公演。跳过 2016「开辟分团」的剧情。" },
+      "2018": { name: "星阵重列", desc: "全团组阁、预备生汇报公演、鹅厂选秀。跳过 2016–2017 的剧情。" },
+      "2019": { name: "双岸", desc: "TEB48 跨海筹建、二次组阁、限定团成团。跳过 2016–2018 的剧情。" },
+      "2020": { name: "共渡", desc: "疫情停摆、分团安置、云公演、BEJ48 编号谢幕。跳过 2016–2019 的剧情。" },
+      "2027": { name: "大河新篇", desc: "WHN48 武汉落地、影视部焕新。跳过 2026「革新征程」的剧情。" },
+    };
+    const c = this.card("快速通道 · 选择开局年份",
+      "从中间年份开局将跳过此前年份的剧情——选定年份后，开局前还需补选影响当年的关键决策（按史实默认预选）。想完整体验请选 2016 / 2026 开局。");
+    const box = this.el("div", "modal-choices ft-group");
+    for (const y of years) {
+      const info = INFO[y];
+      const b = this.el("button", "ft-opt", "");
+      b.innerHTML = "<b>" + y + " · " + info.name + "</b><span>⚡ " + info.desc + "</span>";
+      b.onclick = () => {
+        this.closeModal();
+        onPick(y);
+      };
+      box.appendChild(b);
+    }
+    c.appendChild(box);
+    const cancel = this.el("button", "btn btn-ghost modal-close", "返回");
+    cancel.onclick = () => this.closeModal();
+    c.appendChild(cancel);
+    this.modal(c);
   },
 
   startPrologue() {
     const name = this.$("input-name").value.trim();
     if (!name) { this.toast("先写下你的名字吧"); return; }
-    const FAST = ["2017", "2018", "2019", "2027"];
+    const FAST = ["2017", "2018", "2019", "2020", "2027"];
     if (this._pickedEra !== "2016" && this._pickedEra !== "2026" && FAST.indexOf(this._pickedEra) < 0) {
       this.toast("请选择一个开局年代"); return;
     }
@@ -648,6 +683,40 @@ const UI = {
         { key: "gejiahui17", title: "2017 年 11 月 · 葛佳慧的辞呈", def: "promise", opts: [
           { v: "promise", label: "承诺音乐规划", d: "2018 专辑自动发行；选秀自动占位；限定团不成团默认顺延（默认）" },
           { v: "release", label: "允许支付违约金解约", d: "葛佳慧已离团；无专辑线" },
+        ] },
+      ],
+      "2020": [
+        { key: "branchPost", title: "2016–2018 · 分团兼任（主线⑥分担对象）", def: "none", opts: [
+          { v: "none", label: "无分团兼任", d: "主线⑥为「分担叶盛」（默认）" },
+          { v: "BEJ48", label: "兼任 BEJ48（北京）", d: "主线⑥为「专注 BEJ48 事务」；2020-03 裁撤补偿金可拍板" },
+          { v: "GNZ48", label: "兼任 GNZ48（广州）", d: "主线⑥为「专注 GNZ48 事务」；解锁 2020-10 GNZ48 大重组" },
+          { v: "SHY48", label: "兼任 SHY48（沈阳）", d: "含开拓者六人已随开业进驻（快速通道自动处理）" },
+          { v: "CKG48", label: "兼任 CKG48（重庆）", d: "含开拓者六人已随开业进驻（快速通道自动处理）" },
+        ] },
+        { key: "jpMode", title: "2016 年末 · 对日合作基调（决定 2020 主线④和平分手）", def: "normal", opts: [
+          { v: "normal", label: "正常合作（原创公演路线）", d: "2020 无 TEB48 分手主线（默认）" },
+          { v: "replicate", label: "复刻模式（日方授权曲目）", d: "解锁 2020 主线④「与日方和平分手」；2019 保分团只需年末资金 1/4" },
+        ] },
+        { key: "xiiKeep18", title: "2018 年 1 月 · Team XII 的去留（张怡的请求）", def: "dissolve", opts: [
+          { v: "dissolve", label: "取消 XII 编制", d: "史实路线（默认）：2018/2019 组阁均无 XII" },
+          { v: "keep", label: "保留 XII 编制", d: "XII 视同正常本部队伍参与 2020 安置/升格/编制" },
+        ] },
+        { key: "gejiahui17", title: "2017 年 11 月 · 葛佳慧的辞呈", def: "promise", opts: [
+          { v: "promise", label: "承诺音乐规划", d: "2018 专辑已发行；限定团默认顺延（默认）" },
+          { v: "release", label: "允许支付违约金解约", d: "葛佳慧已离团；无专辑线" },
+        ] },
+        { key: "branch19Keep", title: "2019 序章 · 分团撤资危机", def: "giveup", opts: [
+          { v: "giveup", label: "放弃分团（史实路线）", d: "SHY48/CKG48 停运；未保旗成员移籍 IDFT；孟波保旗按兼任口径落定（默认）" },
+          { v: "keep", label: "保住分团", d: "SHY48/CKG48 在册分团卡维持原状；2020 序章需安置两团成员（主线①）" },
+        ] },
+        { key: "teb19Push", title: "2019 主线 · TEB48 筹建（仅复刻模式生效）", def: "none", opts: [
+          { v: "none", label: "不推进", d: "台北未开业；2020 无 TEB48 安置（非复刻线强制此项）" },
+          { v: "go", label: "拍板推进（史实路线）", d: "台北星梦剧院 2019 年内开业，首批成员 16 人建卡；2020 主线④需先安置台北成员" },
+        ] },
+        { key: "fengXinDuo19", title: "2019 · 冯薪朵的请缨（可选）", def: "none", opts: [
+          { v: "none", label: "未触发请缨事件", d: "2020-01 恋爱风波事件不触发（默认）" },
+          { v: "bej", label: "同意——兼任 BEJ48，重心分团", d: "触发 2020-01 恋爱风波事件（依例执行/当面恳谈）" },
+          { v: "hq", label: "婉拒——留任本部", d: "2020-01 恋爱风波事件不触发" },
         ] },
       ],
       "2027": [
@@ -1399,6 +1468,30 @@ const UI = {
     grid.parentElement.appendChild(endBtn);
   },
 
+  /* 【2020】疫情裁撤补偿拍板窗（layoff20Pick）：逐批拍板是否支付补偿金（15 万/人）；
+     不支付：士气-4 热度-3，涉分团在册成员羁绊-4，涉本部在册成员羁绊-2。 */
+  showLayoff20Picker(names) {
+    const c = this.card("疫情裁撤 · 补偿金拍板",
+      "待裁成员：" + names.join("、") + "。按合同补偿条款，补偿金为 15 万/人——支付，还是不支付？");
+    const box = this.el("div", "modal-choices ft-group");
+    const mk = (label, hint, pay) => {
+      const b = this.el("button", "ft-opt", "");
+      b.innerHTML = "<b>" + label + "</b><span>" + hint + "</span>";
+      b.onclick = () => {
+        this.closeModal();
+        const r = Game.applyLayoff20(names, pay);
+        Game.st.flags.layoff20Choice = [];
+        this.renderGame();
+        this.toast(r.text);
+      };
+      box.appendChild(b);
+    };
+    mk("「按合同足额支付。」", "资金-" + names.length * 15 + " 万（15 万/人）；士气+2（体面转身）", true);
+    mk("「今年没有这笔预算。」", "省下补偿金；士气-4 热度-3，涉分团在册成员羁绊-4，涉本部在册成员羁绊-2", false);
+    c.appendChild(box);
+    this.modal(c);
+  },
+
   onAction(id) {
     if (id === "visit") { this.showMemberPicker(); return; }
     if (id === "coach") { this.showCoachPicker(); return; }   // 2017：先选特训对象
@@ -1414,6 +1507,8 @@ const UI = {
     }
     /* 原创公演（2017）：先弹队伍选择窗，选队后播放制作场景 */
     if (res.tone === "origPick") { this.showOrigPicker(); return; }
+    /* 【2020】疫情裁撤补偿拍板：弹支付/不支付窗，落地在 Game.applyLayoff20(names, pay) */
+    if (res.tone === "layoff20Pick") { this.showLayoff20Picker(res.names); return; }
     /* 复刻《双面偶像》（2018）：先弹承办队伍选择窗 */
     if (res.tone === "pickTeam18") { this.showSm18TeamPicker(); return; }
     /* 队伍团建（全线通用）：弹队伍选择窗，选队后落地（Game.doAction('teamBld', {team})） */
@@ -2934,19 +3029,19 @@ const UI = {
       for (const t of DATA2026.teams) teams.push([t.id, t.short]);
       teams.push(["HALL", "荣誉殿堂"]);
       for (const b of DATA2026.branches) teams.push([b.id, b.id]);
-      teams.push(["rest", "暂休"], ["left", "已离团"]);
+      teams.push(["rest", "暂休"], ["honorGrad", "荣誉毕业生"], ["siba", "丝芭传媒"], ["left", "已离团"]);
     } else if (st.era === "2027") {
       teams = [["all", "全部"]];
       for (const t of DATA2026.teams) teams.push([t.id, t.short]);
       teams.push(["HALL", "荣誉殿堂"]);
       for (const b of DATA2026.branches) teams.push([b.id, b.id]);
-      teams.push(["WHN48", "WHN48"], ["rest", "暂休"], ["left", "已离团"]);
+      teams.push(["WHN48", "WHN48"], ["rest", "暂休"], ["honorGrad", "荣誉毕业生"], ["siba", "丝芭传媒"], ["left", "已离团"]);
     } else if (st.era === "2017") {
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"], ["PREP", "预备生"],
                ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["left", "已离团"]];
     } else if (st.era === "2018" || st.era === "2019" || st.era === "2020") {
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"], ["PREP", "预备生"],
-               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["idft", "IDFT"], ["staff", "工作人员"], ["left", "已离团"]];
+               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["idft", "IDFT"], ["staff", "工作人员"], ["honorGrad", "荣誉毕业生"], ["siba", "丝芭传媒"], ["left", "已离团"]];
       if (st.flags.ftFormed) teams.splice(6, 0, ["FT", "FT"]);   // 组阁：Team FT 成立后入列
       /* 2019/2020：分团停运后标签页按在册成员动态裁剪；TEB48 开业后入列 */
       if (st.era === "2019" || st.era === "2020") {
@@ -2972,6 +3067,8 @@ const UI = {
     else if (isBranchTab)
       members = members.filter(m => m.status === "branch" && m.branchTeam === this._memberFilter);
     else if (this._memberFilter === "rest") members = members.filter(m => m.status === "rest");
+    else if (this._memberFilter === "honorGrad") members = members.filter(m => m.honorGrad);   // 荣誉毕业生（2020 一期生毕业分类）
+    else if (this._memberFilter === "siba") members = members.filter(m => m.siba);             // 丝芭传媒（续约成功/转岗分类）
     else if (this._memberFilter === "idft") members = members.filter(m => m.status === "idft");
     else if (this._memberFilter === "left") members = members.filter(m => m.status === "left");
     else members = members.filter(m => m.team === this._memberFilter && m.status === "active");
@@ -3015,6 +3112,8 @@ const UI = {
       nameRow.appendChild(this.el("span", "team-badge tb-" + badgeTeam, badgeText));
       nameRow.appendChild(document.createTextNode(m.name));
       if (m.hall) nameRow.appendChild(this.el("span", "mc-flag", "殿堂"));
+      if (m.honorGrad) nameRow.appendChild(this.el("span", "mc-flag", "荣誉毕业生"));   // 2020 一期生毕业分类
+      if (m.siba) nameRow.appendChild(this.el("span", "mc-flag", "丝芭传媒"));         // 续约成功/转岗分类
       if (m.captain) nameRow.appendChild(this.el("span", "mc-flag", "队长"));
       else if (m.vice) nameRow.appendChild(this.el("span", "mc-flag", "副队"));
       else if (m.sub) nameRow.appendChild(this.el("span", "mc-flag", "替补"));   // 2018 组阁：每队主力16+替补4
@@ -3024,6 +3123,8 @@ const UI = {
       const metaText = (m.gen || "")
         + (isBranch ? " · " + (m.branchLabel || m.branchTeam) : "")
         + (isHall ? " · 荣誉殿堂 · 影视部" : "")
+        + (m.honorGrad ? " · 荣誉毕业生" : "")
+        + (m.siba ? " · 丝芭传媒" : "")
         + (!isBranch ? (m.status === "rest" ? " · 暂休" : m.status === "idft" ? " · IDFT" : m.status === "staff" ? " · 工作人员" : m.status === "left" ? " · 已离团" : "") : "")
         + (!isBranch && m.note && m.status !== "active" ? " · " + m.note : "");
       card.appendChild(this.el("div", "mc-meta", metaText));
