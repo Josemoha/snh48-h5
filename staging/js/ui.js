@@ -3043,10 +3043,17 @@ const UI = {
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"], ["PREP", "预备生"],
                ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["idft", "IDFT"], ["staff", "工作人员"], ["honorGrad", "荣誉毕业生"], ["siba", "丝芭传媒"], ["left", "已离团"]];
       if (st.flags.ftFormed) teams.splice(6, 0, ["FT", "FT"]);   // 组阁：Team FT 成立后入列
-      /* 2019/2020：分团停运后标签页按在册成员动态裁剪；TEB48 开业后入列 */
+      /* 2019/2020：分团停运后标签页按在册成员动态裁剪；TEB48 开业后入列。
+         【修复】原表达式 (m.branchTeam === k || m.note || "").indexOf(k) 存在
+         优先级错误：branchTeam 命中时括号值为 true，true.indexOf 直接抛
+         TypeError——只要有 SHY48/CKG48 成员在册（2019 保旗线 / 2020 keep 线，
+         含快速通道与正常游玩），成员页与整个主界面渲染即中断（日志页随之中断）。 */
       if (st.era === "2019" || st.era === "2020") {
         teams = teams.filter(([k]) =>
-          !(k === "SHY48" || k === "CKG48") || st.members.some(m => (m.status === "branch" || m.status === "idft" || m.status === "active" || m.status === "rest") && (m.branchTeam === k || m.note || "").indexOf(k) >= 0 || (k === "SHY48" && m.team === "SHY48") || (k === "CKG48" && m.team === "CKG48")));
+          !(k === "SHY48" || k === "CKG48") || st.members.some(m =>
+            ((m.status === "branch" || m.status === "idft" || m.status === "active" || m.status === "rest")
+              && (m.branchTeam === k || String(m.note || "").indexOf(k) >= 0))
+            || (k === "SHY48" && m.team === "SHY48") || (k === "CKG48" && m.team === "CKG48")));
         if (st.flags.teb19Open && st.members.some(m => m.branchTeam === "TEB48" || m.team === "TEB48")) teams.splice(teams.findIndex(([k]) => k === "HALL"), 0, ["TEB48", "TEB48"]);
       }
     } else {
