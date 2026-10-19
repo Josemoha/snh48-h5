@@ -1317,6 +1317,28 @@ const UI = {
         this.el("div", "quest-detail", st.gen1.done
           ? "✔ 续约/毕业/转岗——半部历史的册页已合上"
           : "一期生合约年内全部到期（赵嘉敏学业线除外）：说服续约 / 让其毕业 / 转为工作人员")));
+      /* 主线 · 年度活动筹备（总选8月线上开榜 + 金曲大赏12月线上举行）——筹备度必须展示 */
+      const b20act = this.el("div", "");
+      b20act.appendChild(this.el("div", "quest-detail",
+        (st.geDone ? "总决选 ✔（8月线上开榜 · 第一名：" + (st.geResult && st.geResult.top1 || "——") + "）" : "总决选 8月 · 线上直播")
+        + "　|　" +
+        (st.rtDone ? "金曲大赏 ✔（" + st.rtScore + "/100）" : "金曲大赏 12月 · 线上直播")));
+      if (!st.geDone || !st.rtDone) {
+        if (!st.geDone) {
+          const bar20ge = this.el("div", "mc-bar pop"); bar20ge.innerHTML = "<i style=\"width:" + st.gePlan + "%\"></i>";
+          b20act.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", "总决选筹备度"), this.el("span", "", st.gePlan + "/100")]))
+            ; b20act.appendChild(bar20ge);
+        }
+        if (!st.rtDone) {
+          const bar20rt = this.el("div", "mc-bar bond"); bar20rt.innerHTML = "<i style=\"width:" + st.rtPlan + "%\"></i>";
+          b20act.appendChild(this.el("div", "mc-bar-label", [this.el("span", "", "金曲大赏筹备度"), this.el("span", "", st.rtPlan + "/100")]))
+            ; b20act.appendChild(bar20rt);
+        }
+        b20act.appendChild(this.el("div", "quest-detail", "「筹备总选举」2~7月可用 ·「筹备金曲大赏」10~12月可用（线上直播收费，收益减半）"));
+      }
+      box.appendChild(mkCard("主线 · 年度活动筹备",
+        st.geDone && st.rtDone ? "✔ 双活动收官" : st.geDone ? "总选已开榜" : "进行中", st.geDone && st.rtDone ? "q-done" : "q-open",
+        b20act));
       /* 分团态势 */
       const keptBr = Game.keptBranchFlags20(st);
       const br20Txt = st.reorg20.done
@@ -1774,12 +1796,12 @@ const UI = {
       const b = this.el("button", "pick-btn", "");
       const paint = () => {
         const cur = dst[id];
-        DST.forEach(d => b.classList.remove(d.cls));
+        DST.forEach(d => { if (d.cls) b.classList.remove(d.cls); });   // 空 cls remove 会抛 SyntaxError（同 showTeamAssignPicker 修复）
         let label;
         if (!cur) { label = "点击分配去处"; }
         else {
           const d = DST.find(x => x.key === cur);
-          b.classList.add(d.cls);
+          if (d.cls) b.classList.add(d.cls);
           label = d.label;
         }
         b.innerHTML = m.name + '<span class="pb-team">' + label + "</span>";
@@ -1835,7 +1857,7 @@ const UI = {
     for (const m of targets) {
       const b = this.el("button", "pick-btn", "");
       const paint = () => {
-        TEAMS.forEach(t => b.classList.remove(t.cls));
+        TEAMS.forEach(t => { if (t.cls) b.classList.remove(t.cls); });   // 空 cls 直接 remove 会抛 SyntaxError（2020 安置/一期生窗点击无反应的根因）
         const cur = dst[m.id];
         let label;
         if (!cur) label = "点击选择去向";
@@ -1855,6 +1877,7 @@ const UI = {
       paint();
       grid.appendChild(b);
     }
+    refresh();   // 构建后先刷一次（预填 initial 的场景——如分团 TOP1「不兼任」——确认键需立即可用）
     confirmBtn.onclick = () => {
       this.closeModal();
       cfg.onConfirm(dst);
@@ -1926,21 +1949,28 @@ const UI = {
     });
   },
 
-  /* 2020总选新机制·分团TOP1兼任本部安排窗（用户口径）：选定本部队（XII 保留时同队待遇）；
+  /* 2020总选新机制·分团TOP1兼任本部安排窗（用户口径）：每个分团 TOP1 都可安排，
+     逐人选定本部队（XII 保留时同队待遇）或「不兼任」（预填，可直接确认）；
      落地在 engine.applyGe20Branch1（兼任不调动） */
   showGe20Branch1Picker(onDone) {
     const st = Game.st;
-    const m = st.members.find(x => x.name === st.flags.ge20BranchTop1 && x.status === "branch");
-    if (!m) { if (onDone) onDone(); return; }
+    const names = Array.isArray(st.flags.ge20BranchTop1) ? st.flags.ge20BranchTop1 : (st.flags.ge20BranchTop1 ? [st.flags.ge20BranchTop1] : []);
+    const targets = names.map(n => st.members.find(x => x.name === n && x.status === "branch")).filter(Boolean);
+    if (!targets.length) { if (onDone) onDone(); return; }
+    const teams = Game.headTeams(st).map(t => ({ key: t, label: "兼任 Team " + t, cls: "on-" + t.toLowerCase() }));
+    teams.push({ key: "none", label: "不兼任（留在分团）", cls: "" });
+    const initial = {};
+    for (const m of targets) initial[m.id] = "none";   // 预填「不兼任」：可直接确认
     this.showTeamAssignPicker({
       title: "分团 TOP1 · 兼任安排",
-      sub: m.name + "（" + m.branchTeam + " · 2020总选分团第一）——选定兼任的本部队伍（兼任不调动，保留分团在册）",
-      pool: [m],
-      teams: Game.headTeams(st).map(t => ({ key: t, label: "兼任 Team " + t, cls: "on-" + t.toLowerCase() })),
+      sub: "2020总选各分团的第一名——兼不兼、兼到哪支队伍，逐人拍板（兼任不调动，保留分团在册）",
+      pool: targets,
+      teams: teams,
+      initial: initial,
       confirmLabel: "兼任官宣 →",
-      cardInfo: () => m.branchTeam + " · 人气" + (m.pop || 0),
+      cardInfo: m => m.branchTeam + " · 人气" + (m.pop || 0),
       onConfirm: dst => {
-        const res = Game.applyGe20Branch1(dst[m.id]);
+        const res = Game.applyGe20Branch1(dst);
         this.renderGame();
         this.toast(res.text);
         if (onDone) onDone();

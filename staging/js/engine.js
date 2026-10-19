@@ -2800,6 +2800,8 @@ const Game = {
         return true;
       });
     }
+    /* 【旧档兼容】2020 线分团 TOP1 名单：v0.14.0 前为单名字符串 → 统一转为数组 */
+    if (st.flags && typeof st.flags.ge20BranchTop1 === "string") st.flags.ge20BranchTop1 = [st.flags.ge20BranchTop1];
     /* 【v0.13.0】旧档追补：初始化成员关系 & 队伍磨合度（首次读档时预置同队初始关系） */
     this.initRelSystem(st);
     return st;
@@ -3277,23 +3279,47 @@ const Game = {
   },
 
   /* 【2020 总选新机制·用户口径】分团 TOP1 兼任本部队伍（9月事件安排，UI.showGe20Branch1Picker）：
-     兼任不调动（保留分团在册），备注登记；羁绊+4 人气+4；旗标 ge20Branch1Done。 */
-  applyGe20Branch1(team) {
+     每个分团的 TOP1 都可以兼任；assign = { 成员id → 本部队|"none" }。
+     兼任不调动（保留分团在册），备注登记；兼任者羁绊+4 人气+4；旗标 ge20Branch1Done。 */
+  applyGe20Branch1(assign) {
     const st = this.st;
     if (st.flags.ge20Branch1Done) return { text: "分团 TOP1 的兼任安排早已落定。", tone: "blocked" };
-    const name = st.flags.ge20BranchTop1;
-    const m = name ? st.members.find(x => x.name === name) : null;
-    if (!m || m.status !== "branch") return { text: "分团 TOP1 当前不在册，兼任安排作废。", tone: "blocked" };
-    if (this.headTeams(st).indexOf(team) < 0) return { text: "兼任目标无效（需本部在编队伍）。", tone: "blocked" };
-    m.note = (m.note ? m.note + "；" : "") + "2020总选分团TOP1 · 兼任 Team " + team + "（用户口径）";
-    m.pop = this.clamp((m.pop || 0) + 4, 0, 100);
-    m.bond = this.clamp((m.bond || 0) + 4, 0, 100);
-    st.decisions.ge20Branch1 = { name: m.name, team: team };
+    /* 旧档兼容：v0.14.0 前登记的是单名字符串，读档时已在 _normalize 转数组 */
+    const names = Array.isArray(st.flags.ge20BranchTop1) ? st.flags.ge20BranchTop1 : (st.flags.ge20BranchTop1 ? [st.flags.ge20BranchTop1] : []);
+    const pool = names.map(n => st.members.find(x => x.name === n && x.status === "branch")).filter(Boolean);
+    if (!pool.length) return { text: "分团 TOP1 当前均不在册，兼任安排作废。", tone: "blocked" };
+    assign = assign || {};
+    const TEAM = this.headTeams(st);
+    const done = [];
+    for (const m of pool) {
+      const raw = assign[m.id];
+      const t = (!raw || raw === "none") ? null : raw;
+      if (t) {
+        if (TEAM.indexOf(t) < 0) return { text: "兼任目标无效（需本部在编队伍或不兼任）。", tone: "blocked" };
+      }
+    }
+    for (const m of pool) {
+      const raw = assign[m.id];
+      const t = (!raw || raw === "none") ? null : raw;
+      if (!t) {
+        st.decisions["ge20Branch1_" + m.name] = null;
+        continue;
+      }
+      m.note = (m.note ? m.note + "；" : "") + "2020总选" + m.branchTeam + "TOP1 · 兼任 Team " + t + "（用户口径）";
+      m.pop = this.clamp((m.pop || 0) + 4, 0, 100);
+      m.bond = this.clamp((m.bond || 0) + 4, 0, 100);
+      done.push(m.name + "→Team " + t);
+      this.addLog(st, st.month, "2020总选" + m.branchTeam + "TOP1 " + m.name + " 兼任本部 Team " + t + "。", "main");
+    }
+    st.decisions.ge20Branch1 = pool.map(m => {
+      const raw = assign[m.id];
+      return { name: m.name, branch: m.branchTeam, team: (!raw || raw === "none") ? null : raw };
+    });
     st.flags.ge20Branch1Done = true;
     this.syncTeams(st);
-    this.addLog(st, st.month, "2020总选分团TOP1 " + m.name + "（" + m.branchTeam + "）兼任本部 Team " + team + "。", "main");
     this.save();
-    return { text: m.name + " 以分团 TOP1 的身份兼任 Team " + team + "——两地的灯牌，第一次照在同一个人身上。\n\n（兼任不调动：保留 " + m.branchTeam + " 在册；人气+4 羁绊+4。）", tone: "main" };
+    if (!done.length) return { text: "各分团 TOP1 均留在分团，不作兼任。（决策已登记：全员不兼任。）", tone: "normal" };
+    return { text: done.map(s => s.split("→")[0]).join("、") + " 以分团 TOP1 的身份兼任本部队伍（" + done.map(s => s.replace("→", " → ")).join("、") + "）——两地的灯牌，第一次照在同一些人身上。\n\n（兼任不调动：保留分团在册；兼任者人气+4 羁绊+4。）", tone: "main" };
   },
 
   /* 【2020 总选新机制·用户口径】入榜 IDFT 成员升格移籍（9月事件安排，UI.showGe20IdftPicker）：
@@ -4838,11 +4864,19 @@ const Game = {
     /* 【荣誉殿堂·连霸基准】每年总选第一登记为决策 tag（ge2016Top1 / ge2017Top1 / …），
        次年总选结算据此判定连霸升堂（applyHallReign）；快速通道年份在 fastState* 里按史实预填同名 tag。 */
     st.decisions["ge" + st.era + "Top1"] = st.geResult.top1;
-    /* 【2020 新机制·用户口径】登记分团 TOP1（可兼任本部队伍）与入榜 IDFT 成员（可升格移籍），
-       由玩家在 9 月事件中逐项安排（flags.ge20BranchTop1 / ge20Idft）。 */
+    /* 【2020 新机制·用户口径】登记各分团 TOP1（每个分团的第一名都可兼任本部队伍）
+       与入榜 IDFT 成员（可升格移籍），由玩家在 9 月事件中逐项安排
+       （flags.ge20BranchTop1 = 各分团 TOP1 名单数组 / ge20Idft）。 */
     if (st.era === "2020") {
-      const b1 = ranked.find(r => r.m.status === "branch" && top48.some(t => t.name === r.m.name));
-      st.flags.ge20BranchTop1 = b1 ? b1.m.name : null;
+      const brTeams = [];
+      const b1List = [];
+      for (const r of ranked) {
+        if (r.m.status !== "branch" || !r.m.branchTeam || !top48.some(t => t.name === r.m.name)) continue;
+        if (brTeams.indexOf(r.m.branchTeam) >= 0) continue;   // 每个分团只取名次最高的一位
+        brTeams.push(r.m.branchTeam);
+        b1List.push(r.m.name);
+      }
+      st.flags.ge20BranchTop1 = b1List;
       st.flags.ge20Idft = ranked.filter(r => r.m.status === "idft" && top48.some(t => t.name === r.m.name)).map(r => r.m.name);
     }
     /* 【经济系统 v2】TOP7 分成名单：总选后按名次登记（flags 跨年继承），
@@ -4871,6 +4905,7 @@ const Game = {
       : "「比翼齐飞」第三届总决选 · 结果";
     const aftermath = st.era === "2027" ? STORY.geAftermath27(st)
       : st.era === "2026" ? STORY.geAftermath26
+      : st.era === "2020" ? STORY.geAftermath20(st)
       : st.era === "2019" ? STORY.geAftermath19(st)
       : st.era === "2018" ? STORY.geAftermath18(st)
       : st.era === "2017" ? STORY.geAftermath17(st)
@@ -4898,7 +4933,8 @@ const Game = {
     st.money += money;
     st.heat = this.clamp(st.heat + heat, 0, 100);
     this.addLog(st, 12, "年度金曲大赏落幕（评价：" + tier + (origBonus ? "，含原创曲目加成" : "") + "）。资金+" + money + "万。", "gold");
-    const rtNar = st.era === "2027" ? STORY.rtNarrative27 : st.era === "2019" ? STORY.rtNarrative19
+    const rtNar = st.era === "2027" ? STORY.rtNarrative27 : st.era === "2020" ? STORY.rtNarrative20
+      : st.era === "2019" ? STORY.rtNarrative19
       : st.era === "2018" ? STORY.rtNarrative18
       : st.era === "2017" ? STORY.rtNarrative17 : STORY.rtNarrative;
     const narPages = rtNar[tier === "great" ? "great" : "normal"];

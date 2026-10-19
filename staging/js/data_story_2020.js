@@ -64,7 +64,7 @@
      aw9Formed（9月事件：电商女团浪彩少女AW9 官宣——史实成员九人自动挂载，
      不在籍跳过（按用户口径挂载 2020-09）；总监钦点预备役九人）。
      bej20Done（9月事件：BEJ48 解散队伍编号——上调本部每队≤3，其余留任挂分团名）。
-     ge20BranchTop1 / ge20Idft（2020 总选新机制登记：分团TOP1 可兼任本部、
+     ge20BranchTop1 / ge20Idft（2020 总选新机制登记：各分团 TOP1（每个分团第一名都算）可兼任本部、
      入榜 IDFT 可升格移籍；由 9 月事件安排）/ ge20Branch1Done / ge20IdftDone /
      gnzReorg20Done（10月事件：GNZ48 首次分团内大重组——分班公演收官、恢复队伍公演，
      Team G / Team NIII / Team Z 重新编成，人数限制同本部队伍（每队 13~20 人），
@@ -597,23 +597,27 @@ STORY.monthly20 = {
       ],
     },
     {
-      /* 【2020 总选新机制·后续①】分团 TOP1 兼任本部（用户口径，8月总选登记 flags.ge20BranchTop1）：
-         pickMode="ge20branch1" → UI.showGe20Branch1Picker → Game.applyGe20Branch1。 */
+      /* 【2020 总选新机制·后续①】各分团 TOP1 兼任本部（用户口径，8月总选登记 flags.ge20BranchTop1
+         = 各分团 TOP1 名单数组：每个分团总选第一都可以兼任本部队伍）：
+         pickMode="ge20branch1" → UI.showGe20Branch1Picker（逐人拍板，可全选不兼任）→ Game.applyGe20Branch1。 */
       id: "m9_20_ge_b1",
       title: "9月 · 分团 TOP1 的兼任",
-      gate: st => !st.flags.ge20Branch1Done && !!st.flags.ge20BranchTop1
-        && st.members.some(m => m.name === st.flags.ge20BranchTop1 && m.status === "branch"),
+      gate: st => !st.flags.ge20Branch1Done
+        && (Array.isArray(st.flags.ge20BranchTop1) ? st.flags.ge20BranchTop1 : (st.flags.ge20BranchTop1 ? [st.flags.ge20BranchTop1] : []))
+          .some(n => st.members.some(m => m.name === n && m.status === "branch")),
       pages: st => {
-        const m = st.members.find(x => x.name === st.flags.ge20BranchTop1);
+        const names = Array.isArray(st.flags.ge20BranchTop1) ? st.flags.ge20BranchTop1 : (st.flags.ge20BranchTop1 ? [st.flags.ge20BranchTop1] : []);
+        const list = names.map(n => st.members.find(x => x.name === n && x.status === "branch")).filter(Boolean)
+          .map(m => m.name + "（" + m.branchTeam + " 分团第一）");
         return [
-          { s: "马跃", cls: "", t: "总监，今年总选的新机制该兑现了：分团 TOP1 允许兼任本部队伍。上榜的是 " + (m ? m.name + "（" + m.branchTeam + "）" : "——") + "，兼不兼、兼到哪支队伍，您定。" },
+          { s: "马跃", cls: "", t: "总监，今年总选的新机制该兑现了：分团 TOP1 允许兼任本部队伍——每个分团的第一名都算。上榜的是 " + (list.join("、") || "——") + "，谁兼、兼不兼、兼到哪支队伍，您逐人定。" },
         ];
       },
       choices: [
-        { label: "安排兼任——选定本部队伍", hint: "兼任不调动（保留分团在册）；人气+4 羁绊+4",
+        { label: "逐人拍板——谁兼任、兼到哪队", hint: "每个分团 TOP1 都可安排：兼任不调动（保留分团在册）；兼任者人气+4 羁绊+4；也可全员不兼任",
           pickMode: "ge20branch1" },
-        { label: "「留在分团，不用兼。」", hint: "不作兼任；热度+1",
-          effect: st => { st.flags.ge20Branch1Done = true; st.decisions.ge20Branch1 = null; st.heat = Game.clamp(st.heat + 1, 0, 100); return "你把方案推了回去：分团的孩子，先在分团站稳。（决策已登记：不作兼任。热度+1。）"; } },
+        { label: "「都留在分团，不用兼。」", hint: "全部不作兼任；热度+1",
+          effect: st => { st.flags.ge20Branch1Done = true; st.decisions.ge20Branch1 = []; st.heat = Game.clamp(st.heat + 1, 0, 100); return "你把方案推了回去：分团的孩子，先在分团站稳。（决策已登记：全员不作兼任。热度+1。）"; } },
       ],
     },
     {
@@ -755,6 +759,30 @@ STORY.monthly20 = {
         { s: "王婧", cls: "speaker-wangjing", t: "（最后发言）今年的总选第一名和金曲大赏榜单，都是隔着一个屏幕念出来的——没有欢呼的现场，收益也只有一半。但有一样东西比排名重要——我们一个人都没有丢下。总监，辛苦了。" },
       ],
     },
+  ],
+};
+
+/* ========================================================================
+   三·五、总选举次日 / 金曲大赏叙事（2020 专属：线上直播口径，
+   此前未接线导致 8 月总选、12 月大赏落到 2016 的通用文案——已接）
+   ======================================================================== */
+STORY.geAftermath20 = st => {
+  const reign = st.geResult && st.history.ge2019Top1 && st.geResult.top1 === st.history.ge2019Top1;
+  return [
+    { s: "叶盛", cls: "speaker-yesheng", t: "（第二天一早把后台数据表放进你桌上）总监，开榜了。没有场馆、没有欢呼，只有一条条滚动的弹幕——今年的第一，是隔着屏幕念出来的。" },
+    { s: "马跃", cls: "", t: "（划着报表）直播间同时在线破了纪录，打投收入对半，但人气没打对折。还有——各分团的第一名都上了榜，兼任本部的新机制，九月份要兑现了。" },
+    { nar: true, t: (reign
+      ? "（连霸达成——升堂事件将在结算中触发。）"
+      : "（总选举线上落幕。打投收入已入账（收益减半口径），全团热度大涨。距离年末，还有一场线上大赏。）") },
+  ];
+};
+
+STORY.rtNarrative20 = {
+  great: [
+    { nar: true, t: "大赏的直播流里，年度金曲的前奏准时响起。弹幕刷过一整屏的应援色——叶盛在旁边轻声说：「隔着屏幕，孩子们也把这个年头唱亮了。」" },
+  ],
+  normal: [
+    { nar: true, t: "最后一段旋律收尾，直播间缓缓暗下去。防疫、云公演、线上开榜、线上大赏——共渡之年，就这样唱到了最后。" },
   ],
 };
 
