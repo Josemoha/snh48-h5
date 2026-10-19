@@ -240,6 +240,7 @@ body {
   border-radius: 10px; padding: 10px 14px; margin-bottom: 18px;
 }
 .fast-warn.hidden { display: none; }
+.modal-card .fast-warn { margin: 0 0 14px; }   /* 弹窗内的快速通道警示块 */
 .era-name { font-size: 17px; font-weight: 700; margin: 2px 0 8px; letter-spacing: 3px; }
 .era-desc { font-size: 13px; color: var(--text-dim); }
 .era-status { margin-top: 10px; font-size: 12px; font-weight: 700; }

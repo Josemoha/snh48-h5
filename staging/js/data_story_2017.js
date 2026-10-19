@@ -353,10 +353,12 @@ STORY.monthly17 = {
          tag tanqi17：blessing / severance。
          注：史实路线她自 2016 年起处于暂休（status=rest），leaving2017 的离团条目会被
          引擎跳过，故两个选项的 effect 都负责把成员卡置为离团；若旧档中她仍在籍，
-         引擎会在本处理离团，本事件 gate 排除已离团情形。 */
+         引擎会在本处理离团，本事件 gate 排除已离团情形。
+         【新增门控】2016 线拒绝请假（tanqiQJ16=refuse）则意外未发生，
+         本事件整轮跳过（成员保持在籍）。 */
       id: "m3_17_tanqi",
       title: "3月 · 唐安琪的决定",
-      gate: st => { const m = st.members.find(x => x.name === "唐安琪"); return !!m && m.status !== "left"; },
+      gate: st => { const m = st.members.find(x => x.name === "唐安琪"); return !!m && m.status !== "left" && st.decisions.tanqiQJ16 !== "refuse"; },
       pages: [
         { nar: true, t: "一年过去。去年春天那场意外里的女孩，如今已经能自己走进公司大门——唐安琪约了今天，来签一份文件。复查报告就在文件袋里：烧伤恢复得很好，好到所有人都松了口气；可也正是这份报告的另一页，写清了医生的建议。" },
         { s: "唐安琪", cls: "", t: "总监，谢谢你见我。医生说，我的身体以后不能再承受剧场的连排和聚光灯了。我想了很久——与其占着位置悬在中间，不如好好地告别。我申请解约。" },

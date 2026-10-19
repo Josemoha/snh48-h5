@@ -2624,6 +2624,44 @@ const Game = {
     return Math.round(this.clamp(chem, 15, 90));
   },
 
+  /* 【2016 团建链·用户口径】本部队伍按磨合度升序（在册≥1人；exclude 排除项，
+     如 2 月观察轮排除 Team NII——NII 留给 3 月固定团建） */
+  chemRankedHQ(st, exclude) {
+    st = st || this.st;
+    exclude = exclude || [];
+    return this.headTeams(st)
+      .filter(t => exclude.indexOf(t) < 0 && this.teamRoster(st, t).length > 0)
+      .map(t => {
+        if (st.chem[t] == null) { st.chem[t] = this.calcChem(st, t); st.chemStable[t] = st.chemStable[t] || 0; }
+        return { team: t, chem: st.chem[t] };
+      })
+      .sort((a, b) => a.chem - b.chem || (a.team < b.team ? -1 : 1));
+  },
+
+  /* 【2016 团建链】剩余待团建队伍（排除 NII 与 2 月已建队伍，按磨合度升序；
+     4/5/6 月依序各取一队自动触发） */
+  tbRest16(st) {
+    st = st || this.st;
+    const done = st.flags.tbBld16Done || [];
+    const feb = st.decisions.tbLow16 && st.decisions.tbLow16 !== "skip" ? [st.decisions.tbLow16] : [];
+    return this.chemRankedHQ(st, ["NII"].concat(feb)).map(r => r.team).filter(t => done.indexOf(t) < 0);
+  },
+
+  /* 【2016 团建链】自动团建落地（与行动 teamBld 同效：资金-15万（余额不足免收）、
+     磨合度+6、士气+2、随机队友关系+1） */
+  autoTeamBld(st, team) {
+    if (st.money >= 15) st.money -= 15;
+    if (st.chem[team] == null) { st.chem[team] = this.calcChem(st, team); st.chemStable[team] = st.chemStable[team] || 0; }
+    st.chem[team] = Math.min(100, st.chem[team] + 6);
+    st.morale = this.clamp(st.morale + 2, 0, 100);
+    const list = this.teamRoster(st, team).filter(m => !m.hall);
+    for (const m of list) {
+      const mates = list.filter(x => x.id !== m.id);
+      if (mates.length) this.relAdd(st, m.id, mates[this.rnd(0, mates.length - 1)].id, 1);
+    }
+    return team + " 团建圆满结束——磨合度+6（现 " + st.chem[team] + "），队内气氛明显升温（士气+2）。";
+  },
+
   /* 人员变动检测：对比每支队伍的成员指纹。
      纯退团（无新增、离开者全部 status='left'）只更新指纹——磨合度与稳定加成保留；
      其余变动重算磨合度初始值并清零稳定计数。 */
@@ -3499,7 +3537,7 @@ const Game = {
     //    · 2017 线 4 月起仍暂休 → 补为依约解约离团（默认祝福路线，无副作用）。
     const taq = st.members.find(x => x.name === "唐安琪");
     if (taq) {
-      if (st.era === "2016" && st.month >= 4 && taq.status === "active") {
+      if (st.era === "2016" && st.month >= 4 && taq.status === "active" && st.decisions.tanqiQJ16 !== "refuse") {
         taq.status = "rest"; taq.note = "3月末意外烧伤，专心治疗休养";
         this.addLog(st, st.month, "唐安琪 暂休（3月末意外烧伤，专心治疗休养）", "bad");
       } else if (st.era === "2017" && st.month >= 4 && taq.status === "rest") {
@@ -3607,6 +3645,12 @@ const Game = {
       /* 赵嘉敏：2018-06 毕业仅限「史实官司暂休」路线（zhaoMin17=freeze，旧档默认史实）；
          学业线归队等其他在籍状态不随史实表离团（在籍至 2020-10） */
       if (lv.name === "赵嘉敏" && !this.zjmFreezeRoute(st)) continue;
+      /* 唐安琪：2016-03 烧伤仅限「同意请假」路线（tanqiQJ16=agree，旧档无决策时默认史实发生）；
+         拒绝请假（refuse）则意外不发生——2016 暂休不落地、2017 康复离团同样不落地，
+         成员保持在籍（3 月叙事事件同步跳过） */
+      if (lv.name === "唐安琪"
+          && ((st.era === "2016" && lv.type === "暂休") || st.era === "2017")
+          && st.decisions.tanqiQJ16 === "refuse") continue;
       const m = m0;
       if (lv.type.indexOf("移籍") === 0) { m.status = "branch"; m.branchTeam = lv.branchTeam || "BEJ48"; }
       else if (lv.type.indexOf("兼任") === 0) { if (lv.note) m.note = lv.note; }

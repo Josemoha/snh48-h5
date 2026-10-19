@@ -20,7 +20,7 @@
         疫情之下没了投资方的分团必须解散——只能上调本部（SII/NII/HII/X，
         每队 13~20 人同组阁规则）；若序章保留了旗号（孟波出资 / 兼任总监自费），
         对应分团可留任 16 人（无队伍编制，统一挂分团名，用户口径）；其余移入 IDFT。
-        pickMode="reorg20" → UI.showReorg20Picker → Game.applyReorg20。
+        pickMode="reorg20" → UI.showReorg20Picker（SHY48/CKG48 分团分窗，逐窗提示旗号保否）→ Game.applyReorg20。
      ② 防疫工作与偶像返工安排（通用）：行动「covid20」两段——防疫部署 → 返工安排。
      ③ 策划云公演（通用）：行动「cloud20」三段——策划案 → 技术测试 → 首场试播；
         完成后 4 月起「剧场公演」行动替换为「云公演」（线上直播，收益减半口径）。
@@ -118,6 +118,14 @@ STORY.prologue20 = {
       gate: st => st.decisions.branch19Keep === "keep"
         && st.members.some(m => m.status === "branch" && (m.branchTeam === "SHY48" || m.branchTeam === "CKG48")),
       title: "孟波的提议 · 分团的旗号",
+      pages: st => {
+        const ask = st.decisions.branchPost === "CKG48" ? "SHY48" : "CKG48";   // 孟波保自己坐镇的另一块（兼任 CKG48 时他只能问 SHY48）
+        return [
+          { nar: true, t: "年度决策会议开到一半，视频接入列表里跳出一个新头像——" + ask + "总经理孟波。他的背景是空了一半的排练室，口罩掛在耳边，神色比镜头更模糊。" },
+          { s: "王婧", cls: "speaker-wangjing", t: "（低声）总监，孟波的会议我也旁听了一半——" + ask + "的资方已经正式退出，账面上撑不过这个春天。他个人想出一笔钱保旗号，但那笔钱和他的岗位，都要您点头。" },
+          { s: "孟波", cls: "", t: "（视频那头，他先站了起来，隔着屏幕鞠了一躬）总监，打扰了。疫下封城，剧场归零，资方说了，二月就撒——牌子我养不起，队伍也养不起。但我个人想出钱保住旗号：十六个孩子留任挂分团名，其余的，全交给集团安置。这笔钱，我出；这个人情，我认。您，批不批？" },
+        ];
+      },
       choices: [
         { gate: st => st.decisions.branchPost === "CKG48",
           label: "「接受。让 SHY48 的旗号继续飘着。」",
@@ -147,6 +155,10 @@ STORY.prologue20 = {
     {
       gate: st => st.decisions.branchPost === "SHY48" && st.decisions.mengbo20 === "CKG48",
       title: "你的答案 · SHY48 的旗号",
+      pages: st => [
+        { nar: true, t: "孟波保下了重庆的那块牌子，视频那头的灯灭了。会议室安静了几秒——所有人的视线都转向了你：兼任 SHY48 总监的你，沈阳那边，怎么答？" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（低声）总监，您要是也想保 SHY48 的旗号，只能自己掏钱——账上现在的四分之一，大概就是那个数。这笔钱没有回报口径，董事会那关，我替您去磕。" },
+      ],
       choices: [
         { label: "「同步保留。SHY48 的旗号，我自己出钱保。」", hint: "消耗当前资金的 1/4：SHY48 解散队伍、保留旗号留任16人；其余成员由你安置",
           tag: "self20Flag", value: "keep",

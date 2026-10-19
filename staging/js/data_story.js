@@ -368,7 +368,7 @@ const STORY = {
       },
     ],
 
-    /* ---------- 2月：春节特别公演 ---------- */
+    /* ---------- 2月：春节特别公演 + 磨合度观察（团建链起点） ---------- */
     2: [
       {
         id: "m2_cny",
@@ -380,6 +380,43 @@ const STORY = {
         choices: [
           { label: "加演三场，抓住春节档", hint: "资金+90，士气-8，热度+4", tag: "cnyMode", value: "extra", effect: st => { st.money += 90; st.morale = Math.max(0, st.morale - 8); st.heat = Math.min(100, st.heat + 4); return "春节连演场场爆满，票房喜人，但假期彻底泡汤——几个孩子在后台睡得很沉。资金+90，士气-8，热度+4。"; } },
           { label: "让团员回家过年，只演两场", hint: "资金+40，士气+8", tag: "cnyMode", value: "rest", effect: st => { st.money += 40; st.morale = Math.min(100, st.morale + 8); return "两场公演依然满座，团员们过了个像样的年。有人在家族群里发了剧场合照，配文「我上班的地方」。资金+40，士气+8。"; } },
+        ],
+      },
+      {
+        /* 【2016·2月新增（用户口径 2026-10-25）】磨合度观察：动态查询当前本部磨合度
+           最低的队伍（Team NII 本轮不参选——NII 留给 3 月固定团建；若最低为 NII
+           则顺延为第二低），叶盛提议为该队举办团建。
+           允许 → 本月为该队团建（Game.autoTeamBld），并启动 3~6 月全队伍团建链；
+           拒绝 → 无后续事件。决策 tbLow16（登记为被选队伍名 / skip）。 */
+        id: "m2_tb16",
+        title: "2月 · 磨合度报告",
+        gate: st => !st.decisions.tbLow16 && !st.flags.tbPlan16,
+        pages: st => {
+          const rank = Game.chemRankedHQ(st, ["NII"]);
+          const low = rank[0];
+          const board = rank.map(r => r.team + " " + r.chem).join("　·　");
+          return [
+            { s: "叶盛", cls: "speaker-yesheng", t: "（抱着一摞公演评估表进门）总监，开年第一份队务报告——各队磨合度出来了：" + board + "。最低的是 " + (low ? low.team + "，只有 " + low.chem + " 分" : "——") + "。再这么下去，公演的合位要出问题了。" },
+            { s: "叶盛", cls: "speaker-yesheng", t: "我的提议：给 " + (low ? low.team : "最低的队伍") + " 办一场团建——吃饭、合宿、破冰游戏都行，预算 15 万。队伍磨合的账，得靠台下先补上。您批不批？" },
+          ];
+        },
+        choices: [
+          { label: "「批了。这支队伍，最需要一团火。」", hint: st => { const low = Game.chemRankedHQ(st, ["NII"])[0]; return "为 " + (low ? low.team : "——") + " 举办团建：磨合度+6 士气+2（耗资15万）；后续 3~6 月全队伍团建链启动"; },
+            tag: "tbLow16", value: "go",
+            effect: st => {
+              const low = Game.chemRankedHQ(st, ["NII"])[0];
+              if (!low) return "你刚想批，叶盛却摆了摆手：「算了总监，各队都齐整着呢。」（无可团建队伍）";
+              st.decisions.tbLow16 = low.team;
+              st.flags.tbPlan16 = true;
+              st.flags.tbBld16Done = [];
+              return "你在团建申请上签了字。当晚，" + low.team + " 的孩子们被拉去了火锅店——赔不是的、认门的、交换小秘密的，一个都没落下。\n\n" + Game.autoTeamBld(st, low.team) + "\n\n（决策已登记：tbLow16=" + low.team + "。3~6 月全队伍团建链已启动——叶盛说了，要一视同仁。）";
+            } },
+          { label: "「现在账紧，团建缓一缓。」", hint: "不举办团建；后续团建链不启动",
+            tag: "tbLow16", value: "skip",
+            effect: st => {
+              st.decisions.tbLow16 = "skip";
+              return "你在报告上批了「缓办」：春节刚过，账上的每一笔都要花在刀刃上。叶盛应了一声，把评估表抱了回去——队伍的磨合问题，只能靠公演一场场磨了。\n\n（决策已登记：tbLow16=skip。不启动团建链。）";
+            } },
         ],
       },
     ],
@@ -415,11 +452,51 @@ const STORY = {
         ],
       },
       {
+        /* 【2016·3月新增（用户口径 2026-10-25）】全队伍团建链·第二棒：叶盛提议
+           一视同仁、后续几月各队轮一遍团建——本月定为 Team NII（自动允许，
+           无需拍板）。随后唐安琪前来请假：她与朋友的约定和团建冲突。
+           拒绝请假 → 后续烧伤剧情不触发（离团表暂休同步跳过）；
+           同意请假 → 唐安琪烧伤剧情照常触发。决策 tanqiQJ16。 */
+        id: "m3_tb16_nii",
+        title: "3月 · 一视同仁",
+        gate: st => st.flags.tbPlan16 && !st.flags.tbNiiBld16
+          && st.members.some(m => m.status === "active" && m.team === "NII" && !m.hall),
+        pages: st => {
+          const feb = st.decisions.tbLow16;
+          return [
+            { s: "叶盛", cls: "speaker-yesheng", t: "总监，上个月 " + (feb || "那支队伍") + " 的团建效果显著——公演合位都齐了不少。我琢磨着：既然要办，就一视同仁——接下来几个月，把每支队伍都轮一遍团建，谁也不偏。本月就定 Team NII，预算照旧 15 万，我不客气地直接排上了。" },
+            { nar: true, t: "NII 的团建定在了本周末。通知发下去的第二天，唐安琪敲响了你办公室的门——手里攥着手机，欲言又止。" },
+            { s: "唐安琪", cls: "", t: "总监……那个，周末的团建，我、我可能来不了。我和朋友很早就约好了那天见面——真的推不掉，取消的话太失礼了。能不能……请个假？" },
+          ];
+        },
+        choices: [
+          { label: "「团建不改期，这次假不批。」", hint: "唐安琪留守参加团建（羁绖-2）；3月末唐安琪烧伤剧情不会触发",
+            tag: "tanqiQJ16", value: "refuse",
+            effect: st => {
+              st.flags.tbNiiBld16 = true;
+              st.decisions.tanqiQJ16 = "refuse";
+              const m = st.members.find(x => x.name === "唐安琪");
+              if (m) m.bond = Math.max(0, (m.bond || 0) - 2);
+              return "你摇了摇头：「全队都在，就你缺席，像什么样子？和朋友的约定，另找时间补上吧。」她低下头应了声「知道了」，轻轻带上了门。\n\n" + Game.autoTeamBld(st, "NII") + "\n\n（决策已登记：tanqiQJ16=refuse。唐安琪 羁绖-2。）";
+            } },
+          { label: "「批了，和朋友的约定要紧。」", hint: "唐安琪缺席团建；3月末唐安琪烧伤剧情照常触发",
+            tag: "tanqiQJ16", value: "agree",
+            effect: st => {
+              st.flags.tbNiiBld16 = true;
+              st.decisions.tanqiQJ16 = "agree";
+              return "你在请假条上签了字：「和朋友约好的事就别改了，去吧——团建下次补上。」她连声道谢，鞠了一躬，轻快地退出了办公室。（你目送门合上，不知怎的，心里忽然掠过一丝说不清的不安——你说不上来是为什么，只是把她的名字在日历上又多圈了一笔。）\n\n" + Game.autoTeamBld(st, "NII") + "\n\n（决策已登记：tanqiQJ16=agree。）";
+            } },
+        ],
+      },
+      {
         /* 【唐安琪·纯叙事】3月末意外烧伤、暂休养伤（史实锚点：2016年3月末）。
+           仅「同意请假」路线触发（tanqiQJ16=agree，旧档无决策默认史实发生；
+           拒绝请假则整轮跳过，离团表暂休同步不落地）。
            名单变动由 leaving2016（唐安琪·暂休）在月末结算先行生效，本事件仅作叙事呈现，
            不设选项、不动数值。2017 线 3 月「唐安琪的决定」（m3_17_tanqi）为本事件后传。 */
         id: "m3_tanqi_rest",
         title: "3月末 · 病房外的千纸鹤",
+        gate: st => st.decisions.tanqiQJ16 !== "refuse",
         pages: [
           { nar: true, t: "3月的最后一个星期，一条深夜通报让整条河都安静了下来——Team NII 的唐安琪，在一次意外中严重烧伤，被连夜送进了医院。" },
           { s: "叶盛", cls: "speaker-yesheng", t: "（凌晨还守在办公室）医院刚传来的消息：手术顺利，人已经脱离危险。但是总监……接下来的治疗和复健，是以年计的。很长的一段时间里，她都没办法再站上舞台了。" },
@@ -452,6 +529,29 @@ const STORY = {
             { nar: true, t: "（分团主线尚未完成——继续推进「分团筹备」，完成后将触发成立剧情与月度收益。）" },
           ];
         },
+      },
+      {
+        /* 【2016·4月（用户口径 2026-10-25）】全队伍团建链：剩余队伍按磨合度升序
+           自动轮值（顺序由当月磨合度动态决定），本月第一支。自动进行、无需拍板。 */
+        id: "m4_tb16",
+        title: "4月 · 团建轮值",
+        gate: st => st.flags.tbPlan16 && (st.flags.tbBld16Done || []).length === 0 && Game.tbRest16(st).length > 0,
+        pages: st => {
+          const t = Game.tbRest16(st)[0];
+          return [
+            { s: "叶盛", cls: "speaker-yesheng", t: "总监，团建轮值继续——这个月轮到 " + t + "（磨合度 " + st.chem[t] + "）。场子和餐馆都订好了，预算 15 万，走的老规矩。" },
+            { nar: true, t: "（团建自动安排：一视同仁，每支本部队伍轮一遍。）" },
+          ];
+        },
+        choices: [
+          { label: "「照计划办。」", hint: st => { const t = Game.tbRest16(st)[0]; return "为 " + (t || "——") + " 团建：磨合度+6 士气+2（耗资15万）"; },
+            effect: st => {
+              const t = Game.tbRest16(st)[0];
+              if (!t) return "（本月无可团建队伍。）";
+              st.flags.tbBld16Done = (st.flags.tbBld16Done || []).concat(t);
+              return "周报上多了一栏团建记录——影像归档，账目照销。\n\n" + Game.autoTeamBld(st, t);
+            } },
+        ],
       },
     ],
 
@@ -527,10 +627,56 @@ const STORY = {
             pickMode: "pioneer6" },
         ],
       },
+      {
+        /* 【2016·5月（用户口径 2026-10-25）】全队伍团建链：剩余队伍按磨合度升序
+           自动轮值（第二支；4 月那支完成后才触发）。 */
+        id: "m5_tb16",
+        title: "5月 · 团建轮值",
+        gate: st => st.flags.tbPlan16 && (st.flags.tbBld16Done || []).length === 1 && Game.tbRest16(st).length > 0,
+        pages: st => {
+          const t = Game.tbRest16(st)[0];
+          return [
+            { s: "叶盛", cls: "speaker-yesheng", t: "总监，团建轮值第二棒——这个月 " + t + "（磨合度 " + st.chem[t] + "）。钱从预算里走，不用您操心。" },
+            { nar: true, t: "（团建自动安排：一视同仁，每支本部队伍轮一遍。）" },
+          ];
+        },
+        choices: [
+          { label: "「照计划办。」", hint: st => { const t = Game.tbRest16(st)[0]; return "为 " + (t || "——") + " 团建：磨合度+6 士气+2（耗资15万）"; },
+            effect: st => {
+              const t = Game.tbRest16(st)[0];
+              if (!t) return "（本月无可团建队伍。）";
+              st.flags.tbBld16Done = (st.flags.tbBld16Done || []).concat(t);
+              return "周报上多了一栏团建记录——影像归档，账目照销。\n\n" + Game.autoTeamBld(st, t);
+            } },
+        ],
+      },
     ],
 
-    /* ---------- 6月：总选冲刺（策略选择） ---------- */
+    /* ---------- 6月：总选冲刺（策略选择）+ 团建轮值收尾 ---------- */
     6: [
+      {
+        /* 【2016·6月（用户口径 2026-10-25）】全队伍团建链：剩余队伍按磨合度升序
+           自动轮值（第三支；若 4/5 月已轮完则自然不触发）。 */
+        id: "m6_tb16",
+        title: "6月 · 团建轮值",
+        gate: st => st.flags.tbPlan16 && (st.flags.tbBld16Done || []).length === 2 && Game.tbRest16(st).length > 0,
+        pages: st => {
+          const t = Game.tbRest16(st)[0];
+          return [
+            { s: "叶盛", cls: "speaker-yesheng", t: "总监，团建轮值第三棒——这个月 " + t + "（磨合度 " + st.chem[t] + "）。总选前的冲刺月，正好让大家松半天气。" },
+            { nar: true, t: "（团建自动安排：一视同仁，每支本部队伍轮一遍。）" },
+          ];
+        },
+        choices: [
+          { label: "「照计划办。」", hint: st => { const t = Game.tbRest16(st)[0]; return "为 " + (t || "——") + " 团建：磨合度+6 士气+2（耗资15万）"; },
+            effect: st => {
+              const t = Game.tbRest16(st)[0];
+              if (!t) return "（本月无可团建队伍。）";
+              st.flags.tbBld16Done = (st.flags.tbBld16Done || []).concat(t);
+              return "周报上多了一栏团建记录——影像归档，账目照销。\n\n" + Game.autoTeamBld(st, t);
+            } },
+        ],
+      },
       {
         /* 【赵嘉敏·选项式事件】学业 vs 舞台（总选前开启；无论何选，她都不参加2016总选）。
            史实路线=暂休（7月30日发表）；①/③在本事件内即时处理。

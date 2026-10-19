@@ -569,6 +569,9 @@ const UI = {
     };
     const c = this.card("快速通道 · 选择开局年份",
       "从中间年份开局将跳过此前年份的剧情——选定年份后，开局前还需补选影响当年的关键决策（按史实默认预选）。想完整体验请选 2016 / 2026 开局。");
+    /* 快速通道风险警示（2026-10 用户口径）：花名册错乱/未知 bug 等，推荐从头经营 */
+    c.appendChild(this.el("div", "fast-warn",
+      "⚠ 使用快速通道可能导致花名册错乱、未知 bug 增加等情况——推荐玩家从头开始经营（2016 / 2026 开局），快速通道仅供作者实测与已通关前作的玩家使用。"));
     const box = this.el("div", "modal-choices ft-group");
     for (const y of years) {
       const info = INFO[y];
@@ -741,6 +744,8 @@ const UI = {
     for (const g of groups) state[g.key] = g.def;
     const c = this.card("快速通道 · 补选关键决策（" + era + " 年开局）",
       "从中间年份开局将跳过此前年份的剧情——以下是影响 " + era + " 年剧情走向的关键决策，已按史实默认预选，可自行调整后开工。");
+    c.appendChild(this.el("div", "fast-warn",
+      "⚠ 使用快速通道可能导致花名册错乱、未知 bug 增加等情况——推荐玩家从头开始经营。"));
     const wrap = this.el("div", "");
     for (const g of groups) {
       const title = this.el("div", "ft-group-title", g.title);
@@ -1920,33 +1925,54 @@ const UI = {
   /* 分团安置窗（2020 主线①）：CKG48/SHY48 成员逐人定队；
      保留旗号的分团可选「留任旗号」（≤16人）；不保留则只有本部四队/IDFT。
      落地在 engine.applyReorg20 */
+  /* 分团安置窗（2020 主线①）：CKG48/SHY48 **分团分窗**逐人定队；
+     每个窗口顶部提示该分团旗号是否被保（孟波出资 / 兼任总监自费），
+     保留旗号的分团可选「留任旗号（≤16人）」；不保留则只有本部各队/IDFT。
+     两窗依次弹出，全部敲定后统一落地在 engine.applyReorg20（本部每队13~20全校验） */
   showReorg20Picker() {
     const st = Game.st;
-    const targets = st.members.filter(m => m.status === "branch" && (m.branchTeam === "SHY48" || m.branchTeam === "CKG48"));
     const KEPT = Game.keptBranchFlags20(st);
-    const teams = [
-      { key: "SII", label: "上调 Team SII", cls: "on-sii" },
-      { key: "NII", label: "上调 Team NII", cls: "on-nii" },
-      { key: "HII", label: "上调 Team HII", cls: "on-hii" },
-      { key: "X",   label: "上调 Team X",   cls: "on-x" },
-    ];
-    if (Game.keptXiiInRoster(st)) teams.push({ key: "XII", label: "上调 Team XII", cls: "on-xii" });   // XII 保留时视同正常本部队伍
-    teams.push({ key: "idft", label: "移籍 IDFT", cls: "" });
-    if (KEPT.length) teams.push({ key: "stay", label: "留任旗号（≤16人）", cls: "" });
-    this.showTeamAssignPicker({
-      title: "分团安置名单 · 选择去向",
-      sub: "为每位 CKG48/SHY48 成员安排去向（点击卡片循环切换；上调本部享人气矲绊红利；每队13~20人" + (Game.keptXiiInRoster(st) ? "；XII 保留编制，同为去向" : "") + ")",
-      pool: targets,
-      teams: teams,
-      confirmLabel: "安置名单敲定 →",
-      cardInfo: null,
-      onConfirm: dst => {
-        const res = Game.applyReorg20(dst);
-        this.renderGame();
-        if (res.vn) this.playScene(res.vn, () => this.toast(res.text));
-        else this.toast(res.text);
-      },
-    });
+    const flagNote = team => {
+      if (st.decisions.mengbo20 === team) return "✔ 旗号已保留（孟波个人出资）——可留任 16 人挂分团名";
+      if (st.decisions.self20Flag === "keep" && st.decisions.branchPost === team) return "✔ 旗号已保留（你自费保留）——可留任 16 人挂分团名";
+      return "✘ 旗号未保留——队伍解散，成员上调本部或移入 IDFT";
+    };
+    const runQueue = (teams, acc) => {
+      const team = teams[0];
+      if (!team) return;   // 防御：空队列不应出现（初始两团、递归前已过滤）
+      const targets = st.members.filter(m => m.status === "branch" && m.branchTeam === team);
+      if (!targets.length) { runQueue(teams.slice(1), acc); return; }   // 该分团已无在册成员 → 跳过本窗
+      const teamOpts = [
+        { key: "SII", label: "上调 Team SII", cls: "on-sii" },
+        { key: "NII", label: "上调 Team NII", cls: "on-nii" },
+        { key: "HII", label: "上调 Team HII", cls: "on-hii" },
+        { key: "X",   label: "上调 Team X",   cls: "on-x" },
+      ];
+      if (Game.keptXiiInRoster(st)) teamOpts.push({ key: "XII", label: "上调 Team XII", cls: "on-xii" });   // XII 保留时视同正常本部队伍
+      teamOpts.push({ key: "idft", label: "移籍 IDFT", cls: "" });
+      if (KEPT.indexOf(team) >= 0) teamOpts.push({ key: "stay", label: "留任旗号（≤16人）", cls: "" });
+      this.showTeamAssignPicker({
+        title: "分团安置名单 · " + team,
+        sub: "「" + team + "」安置拍板（两窗依次弹出，全部敲定后统一落地）——旗号状态：" + flagNote(team)
+          + "；点击卡片循环切换，上调本部享人气矲绊红利；本部每队 13~20 人" + (Game.keptXiiInRoster(st) ? "（XII 保留编制，同为去向）" : ""),
+        pool: targets,
+        teams: teamOpts,
+        confirmLabel: teams.length > 1 ? team + " 名单敲定 → 下一团" : "安置名单敲定 →",
+        cardInfo: null,
+        onConfirm: dst => {
+          const merged = Object.assign({}, acc, dst);
+          const rest = teams.slice(1).filter(t2 => st.members.some(m => m.status === "branch" && m.branchTeam === t2));
+          if (rest.length) runQueue(rest, merged);
+          else {
+            const res = Game.applyReorg20(merged);
+            this.renderGame();
+            if (res.vn) this.playScene(res.vn, () => this.toast(res.text));
+            else this.toast(res.text);
+          }
+        },
+      });
+    };
+    runQueue(["SHY48", "CKG48"], {});
   },
 
   /* 2020总选新机制·分团TOP1兼任本部安排窗（用户口径）：每个分团 TOP1 都可安排，
