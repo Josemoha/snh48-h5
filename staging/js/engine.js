@@ -24,6 +24,9 @@ const Game = {
   SAVE_KEY: "snh48_h5_save_v1",
   BACKUP_KEY: "snh48_h5_save_bak",   // 双 key 互备（主档被单独清理时兜底）
   SAVE_VERSION: 1,
+  /* 【已废弃用途】原「总结任期」按钮挂载年份限定（旧版只挂最新剧本年份），
+     2026-10-26 翻页式改版后不再使用：任意年份结算画面均可打开总结任期。保留常量仅供参考 */
+  LATEST_STORY_ERA: "2020",
 
   /* ============================ 新开局 ============================ */
 
@@ -156,7 +159,7 @@ const Game = {
       for (const r of (DATA.branchRoster2017[bt] || [])) {
         const ex = members.find(x => x.name === r.name);
         if (ex) {
-          /* 已在籍的移籍成员卡：同步 2016-09/10 的队长/副队任命与队伍标注，人气羄绊保留 */
+          /* 已在籍的移籍成员卡：同步 2016-09/10 的队长/副队任命与队伍标注，人气羁绊保留 */
           if (ex.status === "branch") {
             if (r.captain) ex.captain = true;
             if (r.vice) ex.vice = true;
@@ -206,6 +209,9 @@ const Game = {
       pwrBase: pwrBase,
       gePlan: 0, geStrategy: null, geDone: false, geResult: null,
       rtPlan: 0, rtDone: false, rtScore: 0,
+      /* 总结任期：抉择记录全程继承 + 刚结束年份归档 */
+      termLog: (src.termLog || []).slice(),
+      termArchive: Object.assign({}, src.termArchive, src.era ? { [src.era]: this.termArchiveYear(src) } : {}),
       history: {
         roster2016: snapshot,
         ge2016Top1: src.geResult ? src.geResult.top1 : null,
@@ -339,6 +345,9 @@ const Game = {
       pwrBase: pwrBase,
       gePlan: 0, geStrategy: null, geDone: false, geResult: null,
       rtPlan: 0, rtDone: false, rtScore: 0, rtCancelled: false,
+      /* 总结任期：抉择记录全程继承 + 刚结束年份归档 */
+      termLog: (src.termLog || []).slice(),
+      termArchive: Object.assign({}, src.termArchive, src.era ? { [src.era]: this.termArchiveYear(src) } : {}),
       history: {
         roster2026: snapshot,
         ge2026Top1: src.geResult ? src.geResult.top1 : null,
@@ -841,7 +850,8 @@ const Game = {
         if (j.branchTeam) {
           st.members.push({
             id: "ft" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
-            pop: 0, bond: 0, status: "branch", branchTeam: j.branchTeam, branchLabel: "预备生", note: j.note,
+            pop: 0, bond: 0, status: "branch", branchTeam: j.branchTeam,
+            branchLabel: j.branchLabel || "预备生", note: j.note,
           });
         } else {
           st.members.push({
@@ -944,6 +954,9 @@ const Game = {
       pwrBase: pwrBase,
       gePlan: 0, geStrategy: null, geDone: false, geResult: null,
       rtPlan: 0, rtDone: false, rtScore: 0,
+      /* 总结任期：抉择记录全程继承 + 刚结束年份归档 */
+      termLog: (src.termLog || []).slice(),
+      termArchive: Object.assign({}, src.termArchive, src.era ? { [src.era]: this.termArchiveYear(src) } : {}),
       history: {
         roster2017: snapshot,
         ge2017Top1: src.geResult ? src.geResult.top1 : null,    // 连霸判定（主线③升堂事件）
@@ -1022,6 +1035,9 @@ const Game = {
       pwrBase: pwrBase,
       gePlan: 0, geStrategy: null, geDone: false, geResult: null,
       rtPlan: 0, rtDone: false, rtScore: 0,
+      /* 总结任期：抉择记录全程继承 + 刚结束年份归档 */
+      termLog: (src.termLog || []).slice(),
+      termArchive: Object.assign({}, src.termArchive, src.era ? { [src.era]: this.termArchiveYear(src) } : {}),
       history: {
         roster2018: snapshot,
         money2018: src.money,                                   // 去年年末资金（撤资危机扣减基数）
@@ -2060,8 +2076,15 @@ const Game = {
       teb20: { done: false },                                      // 主线④：与日方和平分手（仅复刻线）
       gen1: { done: false },                                       // 主线⑤：一期生合约
       pwrBase: pwrBase,
+      /* 总结任期：年初羁绊快照（算「年度喜爱成员」用）；年初资金走 history.money2019；
+         termLog 本年抉择记录（UI 在选项生效时经 Game.logTermChoice 写入） */
+      bondBase: members.reduce((o, m) => { o[m.name] = m.bond || 0; return o; }, {}),
+      termLog: [],
       gePlan: 0, geDone: false, geResult: null,
       rtPlan: 0, rtDone: false, rtScore: 0,
+      /* 总结任期：抉择记录全程继承 + 刚结束年份归档 */
+      termLog: (src.termLog || []).slice(),
+      termArchive: Object.assign({}, src.termArchive, src.era ? { [src.era]: this.termArchiveYear(src) } : {}),
       history: Object.assign({}, src.history, {
         roster2019: snapshot,
         money2019: src.money,
@@ -2153,7 +2176,8 @@ const Game = {
   /* 【2020 主线①】分团安置落地（UI.showReorg20Picker 确认回调）：
      assign = { 成员id → "SII"|"NII"|"HII"|"X"|"XII"(保留时)|"stay"|"idft" }。
      stay 仅对保留旗号的分团开放（每团≤16人，无队伍编制 → 统一挂分团名，用户口径）；
-     本部每队 13~20 人（现有人数+新上调；XII 保留时视同正常本部队伍，见 headTeams 口径）；idft 移入训练生池。（矲绊-6）。
+     本部每队 13~20 人（现有人数+新上调；XII 保留时视同正常本部队伍，见 headTeams 口径）；
+     未决定（null/缺失）的成员自动落 IDFT（2020 优化：UI 只点想上调的人，其余默认 IDFT，减少点击）。（羁绊-6）。
      完成后分团剧场关停（月收入终止）。 */
   applyReorg20(assign) {
     const st = this.st, r = st.reorg20;
@@ -2168,13 +2192,12 @@ const Game = {
     let idftN = 0;
     for (const m of pool) {
       const t = assign[m.id];
-      if (t == null) return { text: "还有成员未分配去向（本部各队 / 留任旗号 / IDFT）。" };
-      if (t === "stay") {
+      if (t === "idft" || t == null) idftN++;   // 未决定归属 → 自动落 IDFT（用户口径，减少玩家点击）
+      else if (t === "stay") {
         if (KEPT.indexOf(m.branchTeam) < 0) return { text: m.branchTeam + " 的旗号已解散——其成员不能选择留任。" };
         stayCnt[m.branchTeam]++;
         if (stayCnt[m.branchTeam] > 16) return { text: m.branchTeam + " 留任 " + stayCnt[m.branchTeam] + " 人越界——保留旗号至多留任 16 人。" };
-      } else if (t === "idft") idftN++;
-      else if (TEAMS.indexOf(t) >= 0) { cnt[t]++; if (cnt[t] > 20) return { text: "Team " + t + " 编制 " + cnt[t] + " 人越界——本部每队上限 20 人。" }; }
+      } else if (TEAMS.indexOf(t) >= 0) { cnt[t]++; if (cnt[t] > 20) return { text: "Team " + t + " 编制 " + cnt[t] + " 人越界——本部每队上限 20 人。" }; }
       else return { text: "编制表无效（含未知去向）。" };
     }
     for (const t of TEAMS) if (cnt[t] < 13) return { text: "Team " + t + " 编制仅 " + cnt[t] + " 人——本部每队下限 13 人，请补足。" };
@@ -2187,7 +2210,7 @@ const Game = {
         m.note = "2020疫情 · 旗号留任（" + m.branchTeam + "）";
         m.bond = this.clamp((m.bond || 0) + 2, 1, 100);
         stayed.push(m.name);
-      } else if (t === "idft") {
+      } else if (t === "idft" || t == null) {   // 未决定 → 自动落 IDFT
         m.status = "idft"; m.team = "IDFT"; m.branchTeam = null; m.branchLabel = null;
         m.captain = false; m.vice = false; delete m.sub;
         m.bond = this.clamp((m.bond || 0) - 6, 1, 100);
@@ -2816,6 +2839,9 @@ const Game = {
     if (!st.branch17) st.branch17 = { shy: 0, ckg: 0, shyOpen: false, ckgOpen: false, shyOpenMonth: 0, ckgOpenMonth: 0 };
     if (!st.orig) st.orig = { SII: false, NII: false, HII: false, X: false };
     if (st.pwrBase === undefined) st.pwrBase = 0;
+    /* 总结任期字段兑底（老存档）：抉择记录 / 年初羁绊快照缺失时按空账处理 */
+    if (!Array.isArray(st.termLog)) st.termLog = [];
+    if (!st.bondBase) st.bondBase = {};
     /* 2027「大河新篇」线字段兜底 */
     if (!st.branch27) st.branch27 = { stage: 0, open: false, openMonth: 0 };
     if (!st.film) st.film = { stage: 0, done: false, doneMonth: 0 };
@@ -3149,6 +3175,65 @@ const Game = {
       "\n\n（正式成员每人人气+4 羉绊+4；预备役每人人气+3 羁绊+3；热度+6 士气+2。）", tone: "main" };
   },
 
+  /* 【2016·3月事件】毕志飞导演电影《纯洁心灵·逐梦演艺圈》同名主题曲 MV 邀约
+     （用户口径，同人演绎）：点将一支队伍全员参演 MV；婉拒不进本函数。
+     参演队伍在册成员：人气+2 实力+1 羁绊+2（MV 拍摄历练），通告费 +20万；热度+3。
+     落地队伍记入 decisions.zhumeng16（队名），旗标 flags.zhumeng16Done 防重触发。 */
+  applyZhumeng16(teamKey) {
+    const st = this.st;
+    if (st.flags.zhumeng16Done) return { text: "《纯洁心灵·逐梦演艺圈》主题曲 MV 邀约已有结论。", tone: "blocked" };
+    const roster = st.members.filter(m => m.status === "active" && m.team === teamKey);
+    if (!roster.length) return { text: "该队伍没有在册成员。", tone: "blocked" };
+    for (const m of roster) {
+      m.pop = this.clamp((m.pop || 0) + 2, 0, 100);
+      if (m.pwr != null) m.pwr = this.clamp(m.pwr + 1, 0, 100);
+      m.bond = this.clamp((m.bond || 0) + 2, 0, 100);
+      m.note = (m.note ? m.note + "；" : "") + "参演《纯洁心灵·逐梦演艺圈》同名主题曲MV（2016-03 拍板·用户口径）";
+    }
+    st.money += 20;
+    st.heat = this.clamp(st.heat + 3, 0, 100);
+    st.decisions.zhumeng16 = teamKey;
+    st.flags.zhumeng16Done = true;
+    this.syncTeams(st);
+    this.addLog(st, st.month, "★《纯洁心灵·逐梦演艺圈》同名主题曲 MV 拍摄：Team " + teamKey + " 全员参演（通告费 +20万）。", "main");
+    this.save();
+    return { text: "MV 拍摄敲定：Team " + teamKey + " 全员参演《纯洁心灵·逐梦演艺圈》同名主题曲 MV。\n\n（全队每人人气+2 实力+1 羁绊+2；通告费 +20万；热度+3。）", tone: "main" };
+  },
+
+  /* 【2020·11月事件】张一白导演电影《燃野少年的天空》演员招募（用户口径，同人演绎）：
+     实际有分量的配角仅 1 个名额，其余多为不露脸的群像龙套。
+     count=2（总监争取到 2 个配角名额）或 1（龙套历练）；婉拒不进本函数。
+     参演成员：人气+2 实力+1 羁绊+3（剧组历练），含分团在册与影视部（HALL）成员；
+     通告费：2 人 +35万 / 1 人 +18万；热度+3 士气+2。
+     名单记入 decisions.ranye20（{ count, names }）。 */
+  applyRanye20(count, ids) {
+    const st = this.st;
+    if (st.flags.ranye20Done) return { text: "《燃野少年的天空》参演名单已敲定。", tone: "blocked" };
+    const picked = (ids || []).map(id => st.members.find(m => m.id === id)).filter(Boolean);
+    if (picked.length !== count) return { text: "参演名单无效（需 " + count + " 人）。", tone: "blocked" };
+    for (const m of picked) {
+      if (!(m.status === "active" || m.status === "branch"))
+        return { text: m.name + " 不可参演（需在册成员）。", tone: "blocked" };
+    }
+    for (const m of picked) {
+      m.pop = this.clamp((m.pop || 0) + 2, 0, 100);
+      if (m.pwr != null) m.pwr = this.clamp(m.pwr + 1, 0, 100);
+      m.bond = this.clamp((m.bond || 0) + 3, 0, 100);
+      m.note = (m.note ? m.note + "；" : "") + "参演《燃野少年的天空》（2020-11 拍板·用户口径）";
+    }
+    const money = count >= 2 ? 35 : 18;
+    st.money += money;
+    st.heat = this.clamp(st.heat + 3, 0, 100);
+    st.morale = this.clamp(st.morale + 2, 0, 100);
+    st.decisions.ranye20 = { count: count, names: picked.map(m => m.name) };
+    st.flags.ranye20Done = true;
+    this.syncTeams(st);
+    this.addLog(st, st.month, "★《燃野少年的天空》：张一白导演剧组来团选角，参演 " + picked.map(m => m.name).join("、") + "（通告费 +" + money + "万）。", "main");
+    this.save();
+    return { text: "剧组的车开进园区那天，孩子们扒着窗户看了很久。舞蹈房里练出来的节奏感，被大银幕看中了。\n\n参演名单（" + picked.length + " 人）：" + picked.map(m => m.name).join("、") +
+      "\n\n（参演成员每人：人气+2 实力+1 羁绊+3；通告费 +" + money + "万；热度+3 士气+2。）", tone: "main" };
+  },
+
   /* 【2020·9月事件②】BEJ48 解散队伍编号（疫情效益下滑，用户口径）：
      assign = { 成员id → "SII"|"NII"|"HII"|"X"|"XII"(保留时)|"stay" }。
      上调本部：每队至多接收 3 人（不含预备生队伍，PREP 不可作为去向；XII 保留时同队待遇）；
@@ -3442,7 +3527,7 @@ const Game = {
 
   /* 复刻路线限定：铃木玛莉亚东京毕业公演赴日名单（Team SII 五人点将，
      pickMode="sii5m" → UI.showMariaInvitePicker）。生效同 miyazawaInvite：
-     五人羄绊+10 人气+3；名单记入 decisions.mariaInvite，并登记 mariaDispatch 供后续派遣事件。 */
+     五人羁绊+10 人气+3；名单记入 decisions.mariaInvite，并登记 mariaDispatch 供后续派遣事件。 */
   mariaInvite(ids) {
     const st = this.st;
     const picked = (ids || [])
@@ -3456,9 +3541,9 @@ const Game = {
     }
     this.recordDecision("mariaInvite", names);
     this.recordDecision("mariaDispatch", true);
-    this.addLog(st, st.month, "赴日名单公布：" + names.join("、") + " ——随铃木玛莉亚赴东京参加毕业公演。（羄绊+10 人气+3）", "main");
+    this.addLog(st, st.month, "赴日名单公布：" + names.join("、") + " ——随铃木玛莉亚赴东京参加毕业公演。（羁绊+10 人气+3）", "main");
     this.save();
-    return { text: "东京的镜头对准了她们：" + names.join("、") + "。毕业公演的安可环节，玛莉亚把话筒递向了上海来的五个孩子。（五人羄绊+10 人气+3）" };
+    return { text: "东京的镜头对准了她们：" + names.join("、") + "。毕业公演的安可环节，玛莉亚把话筒递向了上海来的五个孩子。（五人羁绊+10 人气+3）" };
   },
 
   /* 复刻路线限定：北原里英东京毕业公演赴日名单（其效力队伍五人点将，
@@ -3503,6 +3588,48 @@ const Game = {
       st.camp26[map[value]] += 1;
     }
     this.save();
+  },
+
+  /* 【总结任期·年度归档】跨年时（carryTo*）把刚结束那一年打包存入新档的 termArchive：
+     年初/年末资金、年初/年末实力均值、年度喜爱成员（按 bondBase 快照比对）。
+     总结任期窗据其中放开局至当前年份的每一年。 */
+  termArchiveYear(src) {
+    const era = src.era;
+    const bb = src.bondBase || {};
+    let top = null, topD = 0;
+    for (const m of src.members) {
+      if (m.status !== "active") continue;
+      const d = (m.bond || 0) - (bb[m.name] || 0);
+      if (d > topD) { topD = d; top = m; }
+    }
+    const mBase = src.history && src.history["money" + (parseInt(era, 10) - 1)];
+    const prevArc = src.termArchive && src.termArchive[String(parseInt(era, 10) - 1)];
+    const mStart = mBase != null ? mBase
+      : prevArc && prevArc.moneyEnd != null ? prevArc.moneyEnd   /* 上年归档年末 = 本年年初 */
+      : era === "2016" ? 600       /* 2016 开局初始资金（newGame）*/
+      : era === "2026" ? 380       /* 2026 开局初始资金 */
+      : null;
+    return {
+      moneyStart: mStart,
+      moneyEnd: src.money,
+      pwrStart: src.pwrBase || 0,
+      pwrEnd: this.avgPwr(src),
+      favorite: top ? { name: top.name, d: topD } : null,
+      /* 翻页式总结任期（2026-10-26）：每页补关键成绩快照，历史年份也能显示。
+         老存档归档无这些字段 → UI 按 — 兜底，不凑数。 */
+      top1: (src.geResult && src.geResult.top1) || null,
+      rtScore: src.rtDone ? (src.rtScore != null ? src.rtScore : null) : (src.rtCancelled ? "cancelled" : null),
+      heat: src.heat != null ? src.heat : null,
+      morale: src.morale != null ? src.morale : null,
+    };
+  },
+
+  /* 【总结任期·抉择记录】UI 在玩家点下事件选项时调用（月度事件 / 行动剧情 / 序章抉择）。
+     记入 st.termLog（全程累积，跨年由 carryTo 继承），供结算画面「总结任期」窗逐年回放。 */
+  logTermChoice(event, label) {
+    const st = this.st;
+    st.termLog = st.termLog || [];
+    st.termLog.push({ era: st.era, month: st.month, event: event || "", choice: label || "" });
   },
 
   addLog(st, month, text, tone) {
@@ -3571,6 +3698,20 @@ const Game = {
         /* 【去重】同名成员已在册则跳过——月末流程重复跑同一月（旧档 monthStarted 缺失重入等）
            不再生成第二张卡（曾致 2018 组阁预备生栏整列重复） */
         if (st.members.some(x => x.name === j.name && x.status !== "left")) continue;
+        /* 【2016】分团方向直落成员（用户口径 2026-10-25：王馨悦 4·20 直落 GNZ48
+           Team G）：分团官宣后方入册（官宣晚于史实月份则顺延到官宣当月落地）；
+           分团主线失败（未官宣）则不入册。branchLabel 有值则直落正式队。 */
+        if (st.era === "2016" && j.branchTeam) {
+          if (!(st.branch && st.branch.announce)) continue;
+          st.members.push({
+            id: "j" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
+            pop: this.rnd(10, 20), bond: 12, status: "branch", branchTeam: j.branchTeam,
+            branchLabel: j.branchLabel || "预备生",
+            note: j.note,
+          });
+          this.addLog(st, st.month, j.branchTeam + " 新成员入团：" + j.name + "（" + j.gen + " · " + (j.branchLabel || "预备生") + "）", "good");
+          continue;
+        }
         if ((st.era === "2017" || st.era === "2018" || st.era === "2020") && j.branchTeam) {
           /* 【2017】分团未开业则不入册（如玩家未点亮沈阳剧场，SHY48二期生张羽涵不入册） */
           if (st.era === "2017" && st.branch17) {
@@ -3666,6 +3807,24 @@ const Game = {
       }
       if (lv.story && !STORY.farewell.skip.includes(lv.name)) {
         steps.push({ type: "vn", title: "告别", pages: STORY.farewell.pages(lv) });
+      }
+    }
+
+    /* 【2016】名册精简·张韵雯追补（用户口径 2026-10-25）：8月「名册精简」事件
+       （m8_layoff16）选了提前毕业路线时，张韵雯延至10月同一口径离团。
+       与唐安琪同理不走离团表（避免离团表先行落地的时序 bug），全部事件控制。 */
+    if (st.era === "2016" && st.month === 10 && (st.flags.layoff16 === "paid" || st.flags.layoff16 === "nopaid")) {
+      const zyw = st.members.find(x => x.name === "张韵雯");
+      if (zyw && zyw.status === "active") {
+        zyw.status = "left";
+        if (st.flags.layoff16 === "paid") {
+          zyw.note = "2016-10 名册精简提前毕业（公司支付补偿金10万）";
+          st.money -= 10;
+          this.addLog(st, st.month, "张韵雯 提前毕业（名册精简，补偿金10万）。", "bad");
+        } else {
+          zyw.note = "2016-10 名册精简提前毕业（无补偿）";
+          this.addLog(st, st.month, "张韵雯 提前毕业（名册精简，无补偿）。", "bad");
+        }
       }
     }
 
@@ -3886,7 +4045,7 @@ const Game = {
             disabled: st.flags.httPromise20Done || !v || c < 3 || st.money < 40,
             disabledTip: st.money < 40 ? "资金不足（需≥40万）" : (!v || c < 3) ? "承诺的账要一笔笔对：先走访她 1 次、特训她 3 次" : "" }];
         })() : []),
-        { id: "visit", main: true, name: "走访成员", desc: "与一名成员谈心：矲绊↑ 士气↑ 叶盛负担↓（视频连线）" },
+        { id: "visit", main: true, name: "走访成员", desc: "与一名成员谈心：羁绊↑ 士气↑ 叶盛负担↓（视频连线）" },
         { id: "duty", name: "替叶盛值班", desc: "接手一轮成员事务：叶盛负担-15" },
         { id: "show", name: lockPeak ? "剧场公演（停办）" : (st.cloud20.done ? "云公演" : "剧场公演（空场）"),
           desc: lockPeak ? "疫情封控，聚众活动停办——4月起恢复（收益减半）"
@@ -4819,7 +4978,7 @@ const Game = {
       pages: pages.map(p => ({ ...p, t: this.fmt(p.t) })),
       after: (ev.after || []).map(p => ({ ...p, t: this.fmt(p.t) })),   // 选项结算后追加的公共剧情
       choices: ev.choices ? ev.choices.map(c => ({
-        label: c.label, hint: c.hint || "",
+        label: c.label, hint: typeof c.hint === "function" ? c.hint(st) : (c.hint || ""),
         gate: c.gate ? c.gate(st) : true,
         tag: c.tag, value: c.value,          // 决策标签透传给 UI
         pickMode: c.pickMode,                // 特殊交互模式（如 sii5：Team SII 五人选将）

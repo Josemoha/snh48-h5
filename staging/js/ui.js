@@ -195,12 +195,19 @@ const UI = {
         const box = this.el("div", "vn-choices");
         for (const ch of step.choices) {
           if (ch.gate === false) continue;
-          const b = this.el("button", "vn-choice", ch.label + (ch.hint ? "　—— " + ch.hint : ""));
+          /* hint 支持函数形式（动态文本，如 2016 团建链按磨合度点名队伍） */
+          const hintTxt = typeof ch.hint === "function" ? ch.hint(Game.st) : (ch.hint || "");
+          const b = this.el("button", "vn-choice", ch.label + (hintTxt ? "　—— " + hintTxt : ""));
           b.onclick = (e) => {
             e.stopPropagation();
             /* 特殊交互：pickMode="sii5" → Team SII 五人选将窗（宫泽佐江毕业公演）
                           pickMode="sii5m" → Team SII 五人选将窗（玛莉亚东京毕业公演）
                           pickMode="pioneer6" → 开拓者六人点将窗（2017 移籍名单） */
+            if (ch.pickMode === "zhumeng16") {
+              this.closeModal();
+              this.showZhumeng16Picker(finish);   // 《纯洁心灵·逐梦演艺圈》MV 队伍点将窗（2016·3月）
+              return;
+            }
             if (ch.pickMode === "sii5") {
               this.closeModal();
               this.showSIIInvitePicker(finish);
@@ -278,6 +285,11 @@ const UI = {
               this.showAW9Picker(finish);        // 电商女团浪彩少女AW9 预备役点将窗（2020·9月）
               return;
             }
+            if (ch.pickMode === "ranye20") {
+              this.closeModal();
+              this.showRanyePicker(ch.value === "cast2" ? 2 : 1, finish);   // 《燃野少年的天空》选角窗（2020·11月，cast2=争取到 2 个配角 / cast1=龙套历练 1 人）
+              return;
+            }
             if (ch.pickMode === "bej20") {
               this.closeModal();
               this.showBej20Picker(finish);      // BEJ48 解散编号·逐人拍板窗（2020·9月）
@@ -335,6 +347,7 @@ const UI = {
             }
             const resultText = ch.run();
             // 选择结果作为一段旁白接着播放（再接事件 after 公共剧情），播完再结束本事件
+            Game.logTermChoice(step.title, ch.label);   // 总结任期：抉择记录（事件名 + 所选项）
             this.closeModal();
             this.stepVN({ title: "——", pages: [{ nar: true, t: Game.fmt(resultText) }].concat(step.after || []) }, finish);
           };
@@ -836,6 +849,7 @@ const UI = {
           b.onclick = (e) => {
             e.stopPropagation();
             if (c.tag) Game.recordDecision(c.tag, c.value !== undefined ? c.value : c.id);
+            Game.logTermChoice((typeof pc.sceneLabel === "function" ? pc.sceneLabel(Game.st) : (pc.sceneLabel || (typeof pro.sceneLabel === "function" ? pro.sceneLabel(Game.st) : pro.sceneLabel))) , c.label);   // 总结任期：抉择记录
             const rt = c.apply(Game.st);
             const resultPages = [{ nar: true, t: rt }].concat(after);
             this.playVNFull(resultPages, pro.sceneLabel, () => runPathChoices(rest));
@@ -942,10 +956,13 @@ const UI = {
       body.onclick = null; footer.innerHTML = "";
       const box = this.el("div", "vn-choices");
       for (const ch of scene.choices) {
-        const b = this.el("button", "vn-choice", ch.label + (ch.hint ? "　—— " + ch.hint : ""));
+        /* hint 支持函数形式（动态文本） */
+        const hintTxt = typeof ch.hint === "function" ? ch.hint(Game.st) : (ch.hint || "");
+        const b = this.el("button", "vn-choice", ch.label + (hintTxt ? "　—— " + hintTxt : ""));
         b.onclick = (e) => {
           e.stopPropagation();
           if (ch.tag) Game.recordDecision(ch.tag, ch.value !== undefined ? ch.value : ch.id);   // 决策标签登记
+          Game.logTermChoice(typeof scene.label === "function" ? scene.label(st) : scene.label, ch.label);   // 总结任期：抉择记录
           const rt = ch.apply(Game.st);   // 选项效果落地
           Game.logChoice(rt);             // 结算文本记入当月日志
           queue = [{ nar: true, t: rt }, ...after];
@@ -1643,11 +1660,11 @@ const UI = {
   showMariaInvitePicker(onDone) {
     this.showMultiPick({
       title: "铃木玛莉亚毕业公演 · 赴日名单",
-      sub: "东京的毕业公演——仅限 Team SII 在籍成员（不含玛莉亚本人），被选中者羄绊+10 人气+3",
+      sub: "东京的毕业公演——仅限 Team SII 在籍成员（不含玛莉亚本人），被选中者羁绊+10 人气+3",
       pool: Game.st.members.filter(m => m.status === "active" && m.team === "SII" && m.name !== "铃木玛莉亚"),   // 排除寿星本人
       count: 5,
       confirmLabel: "名单敲定，出发东京 →",
-      cardInfo: m => m.team + " · 羄绊" + m.bond + " 人气" + m.pop,
+      cardInfo: m => m.team + " · 羁绊" + m.bond + " 人气" + m.pop,
       onConfirm: ids => {
         const res = Game.mariaInvite(ids);
         this.renderGame();
@@ -1922,13 +1939,11 @@ const UI = {
     });
   },
 
-  /* 分团安置窗（2020 主线①）：CKG48/SHY48 成员逐人定队；
-     保留旗号的分团可选「留任旗号」（≤16人）；不保留则只有本部四队/IDFT。
-     落地在 engine.applyReorg20 */
-  /* 分团安置窗（2020 主线①）：CKG48/SHY48 **分团分窗**逐人定队；
-     每个窗口顶部提示该分团旗号是否被保（孟波出资 / 兼任总监自费），
-     保留旗号的分团可选「留任旗号（≤16人）」；不保留则只有本部各队/IDFT。
-     两窗依次弹出，全部敲定后统一落地在 engine.applyReorg20（本部每队13~20全校验） */
+  /* 分团安置窗（2020 主线①，两阶段优化·少点击）：
+     有保旗 → 阶段①先勾选留任旗号成员（≤16人）；阶段②统一本部定队，
+     各队距满编 20 人的空位标注在选项上，默认全部预填 IDFT，只点想上调的人；
+     无保旗 → 直接阶段②。确认后仍未决定的自动落 IDFT（engine.applyReorg20 兼容 null）。
+     本部每队 13~20 全校验不变，统一落地在 engine.applyReorg20 */
   showReorg20Picker() {
     const st = Game.st;
     const KEPT = Game.keptBranchFlags20(st);
@@ -1937,42 +1952,84 @@ const UI = {
       if (st.decisions.self20Flag === "keep" && st.decisions.branchPost === team) return "✔ 旗号已保留（你自费保留）——可留任 16 人挂分团名";
       return "✘ 旗号未保留——队伍解散，成员上调本部或移入 IDFT";
     };
-    const runQueue = (teams, acc) => {
-      const team = teams[0];
-      if (!team) return;   // 防御：空队列不应出现（初始两团、递归前已过滤）
-      const targets = st.members.filter(m => m.status === "branch" && m.branchTeam === team);
-      if (!targets.length) { runQueue(teams.slice(1), acc); return; }   // 该分团已无在册成员 → 跳过本窗
-      const teamOpts = [
-        { key: "SII", label: "上调 Team SII", cls: "on-sii" },
-        { key: "NII", label: "上调 Team NII", cls: "on-nii" },
-        { key: "HII", label: "上调 Team HII", cls: "on-hii" },
-        { key: "X",   label: "上调 Team X",   cls: "on-x" },
-      ];
-      if (Game.keptXiiInRoster(st)) teamOpts.push({ key: "XII", label: "上调 Team XII", cls: "on-xii" });   // XII 保留时视同正常本部队伍
-      teamOpts.push({ key: "idft", label: "移籍 IDFT", cls: "" });
-      if (KEPT.indexOf(team) >= 0) teamOpts.push({ key: "stay", label: "留任旗号（≤16人）", cls: "" });
+    const headTeams = Game.headTeams(st);
+    const curCnt = {};
+    headTeams.forEach(t => { curCnt[t] = st.members.filter(m => m.status === "active" && m.team === t && !m.hall).length; });
+
+    /* 阶段②：本部定队（默认 IDFT，未决定自动落 IDFT） */
+    const stageHead = stayIds => {
+      const pool = st.members.filter(m => m.status === "branch"
+        && (m.branchTeam === "SHY48" || m.branchTeam === "CKG48") && !stayIds.has(m.id));
+      if (!pool.length) {   // 全员留任 → 直接落地
+        const assign = {};
+        for (const id of stayIds) assign[id] = "stay";
+        const res = Game.applyReorg20(assign);
+        this.renderGame();
+        if (res.vn) this.playScene(res.vn, () => this.toast(res.text));
+        else this.toast(res.text);
+        return;
+      }
+      const teamOpts = headTeams.map(t => ({
+        key: t, cls: "on-" + t.toLowerCase(),
+        label: "上调 Team " + t + "（空 " + Math.max(0, 20 - curCnt[t]) + " 位）",
+      }));
+      teamOpts.push({ key: "idft", label: "移籍 IDFT（默认）", cls: "" });
+      const initial = {};
+      for (const m of pool) initial[m.id] = "idft";   // 预填 IDFT：可直接确认，只点想上调的人
       this.showTeamAssignPicker({
-        title: "分团安置名单 · " + team,
-        sub: "「" + team + "」安置拍板（两窗依次弹出，全部敲定后统一落地）——旗号状态：" + flagNote(team)
-          + "；点击卡片循环切换，上调本部享人气矲绊红利；本部每队 13~20 人" + (Game.keptXiiInRoster(st) ? "（XII 保留编制，同为去向）" : ""),
-        pool: targets,
+        title: "分团安置名单 · 本部定队",
+        sub: "点击卡片切换去向（默认全部移籍 IDFT，只点想上调的人；确认后未改动的自动落 IDFT）——"
+          + "各队距满编 20 人的空位已标注，上调本部享人气羁绊红利；本部每队 13~20 人"
+          + (Game.keptXiiInRoster(st) ? "（XII 保留编制，同为去向）" : ""),
+        pool: pool,
         teams: teamOpts,
-        confirmLabel: teams.length > 1 ? team + " 名单敲定 → 下一团" : "安置名单敲定 →",
-        cardInfo: null,
+        initial: initial,
+        confirmLabel: "安置名单敲定 →",
+        cardInfo: m => m.branchTeam,
         onConfirm: dst => {
-          const merged = Object.assign({}, acc, dst);
-          const rest = teams.slice(1).filter(t2 => st.members.some(m => m.status === "branch" && m.branchTeam === t2));
-          if (rest.length) runQueue(rest, merged);
-          else {
-            const res = Game.applyReorg20(merged);
-            this.renderGame();
-            if (res.vn) this.playScene(res.vn, () => this.toast(res.text));
-            else this.toast(res.text);
-          }
+          const assign = {};
+          for (const m of pool) assign[m.id] = (dst[m.id] && headTeams.indexOf(dst[m.id]) >= 0) ? dst[m.id] : "idft";
+          for (const id of stayIds) assign[id] = "stay";
+          const res = Game.applyReorg20(assign);
+          this.renderGame();
+          if (res.vn) this.playScene(res.vn, () => this.toast(res.text));
+          else this.toast(res.text);
         },
       });
     };
-    runQueue(["SHY48", "CKG48"], {});
+
+    /* 阶段①（有保旗时）：先勾选留任旗号成员（≤16人） */
+    const keptTeam = KEPT.find(t => st.members.some(m => m.status === "branch" && m.branchTeam === t));
+    if (keptTeam) {
+      const targets = st.members.filter(m => m.status === "branch" && m.branchTeam === keptTeam);
+      const stayIds = new Set();
+      const c = this.card("分团安置名单 · " + keptTeam + " 留任拍板",
+        "「" + keptTeam + "」先勾选留任旗号的成员（至多 16 人；未勾选者进入下一步本部定队）——旗号状态：" + flagNote(keptTeam));
+      const counter = this.el("p", "modal-text", "");
+      const grid = this.el("div", "pick-grid");
+      const btn = this.el("button", "btn btn-primary modal-close", "留任名单敲定 → 本部定队");
+      const refresh = () => {
+        counter.textContent = "留任 " + stayIds.size + " / 16 人（该团共 " + targets.length + " 人）";
+        btn.disabled = stayIds.size > 16;
+      };
+      for (const m of targets) {
+        const b = this.el("button", "pick-btn", "");
+        const paint = () => {
+          b.classList.toggle("on", stayIds.has(m.id));
+          b.innerHTML = m.name + '<span class="pb-team">' + (stayIds.has(m.id) ? "✔ 留任旗号" : "未勾选 → 本部定队") + "</span>";
+        };
+        b.onclick = () => {
+          if (stayIds.has(m.id)) stayIds.delete(m.id); else stayIds.add(m.id);
+          paint(); refresh();
+        };
+        paint();
+        grid.appendChild(b);
+      }
+      refresh();
+      btn.onclick = () => { this.closeModal(); stageHead(stayIds); };
+      c.appendChild(counter); c.appendChild(grid); c.appendChild(btn);
+      this.modal(c);   // 不给关闭按钮——必须完成安置
+    } else stageHead(new Set());
   },
 
   /* 2020总选新机制·分团TOP1兼任本部安排窗（用户口径）：每个分团 TOP1 都可安排，
@@ -2107,6 +2164,27 @@ const UI = {
     });
   },
 
+  /* 【2020·11月】《燃野少年的天空》选角点将窗：配角名额 1~2 人（含影视部 HALL 成员）；
+     落地在 engine.applyRanye20（count=2 争取配角 / 1 龙套历练）。 */
+  showRanyePicker(count, onDone) {
+    const st = Game.st;
+    const pool = st.members.filter(m => m.status === "active" || m.status === "branch")
+      .sort((a, b) => (b.pop || 0) - (a.pop || 0));
+    this.showMultiPick({
+      title: "《燃野少年的天空》· 选角点将" + count + "人",
+      sub: (count >= 2 ? "争取到的两个配角名额" : "一个配角名额 + 若干不露脸的群像龙套") + "——全团在册成员（含分团、影视部）皆可选",
+      pool: pool, count: count,
+      confirmLabel: "参演名单敲定 →",
+      cardInfo: m => (m.status === "branch" ? m.branchTeam + " · " : (m.hall ? "影视部 · " : m.team + " · ")) + "人气" + (m.pop || 0) + (m.pwr != null ? " 实力" + m.pwr : ""),
+      onConfirm: ids => {
+        const res = Game.applyRanye20(count, ids);
+        this.renderGame();
+        this.toast(res.text);
+        if (onDone) onDone();
+      },
+    });
+  },
+
   /* TEB48 成员安置窗（2020 主线④·复刻线）：上调本部各队或返回日本；落地在 engine.applyTeb20 */
   showTeb20Picker() {
     const st = Game.st;
@@ -2146,7 +2224,7 @@ const UI = {
     ];
     this.showTeamAssignPicker({
       title: "一期生合约 · 逐人拍板",
-      sub: "全部一期生合约年内到期（赵嘉敏学业线除外）——续约（矲绊+6 人气+2）/ 毕业 / 转岗，请逐一安排",
+      sub: "全部一期生合约年内到期（赵嘉敏学业线除外）——续约（羁绊+6 人气+2）/ 毕业 / 转岗，请逐一安排",
       pool: targets,
       teams: teams,
       confirmLabel: "合约名单敲定 →",
@@ -2322,6 +2400,32 @@ const UI = {
     const cancel = this.el("button", "btn btn-ghost modal-close", "再考虑一下（不消耗行动）");
     cancel.onclick = () => this.closeModal();
     c.appendChild(cancel);
+    this.modal(c);
+  },
+
+  /* 【2016·3月】《纯洁心灵·逐梦演艺圈》同名主题曲 MV 队伍点将窗：点将一支队伍全员参演；
+     落地在 engine.applyZhumeng16。队伍列表由在册成员所在队伍动态生成（XII 保留时同理列出）。 */
+  showZhumeng16Picker(onDone) {
+    const st = Game.st;
+    Game.syncTeams(st);
+    const keys = [...new Set(st.members.filter(m => m.status === "active").map(m => m.team).filter(Boolean))];
+    const c = this.card("《纯洁心灵·逐梦演艺圈》 · 点将队伍",
+      "点将一支队伍，全员参演同名主题曲 MV。\n（全队每人人气+2 实力+1 羁绊+2；通告费 +20万 · 热度+3）");
+    const grid = this.el("div", "pick-grid");
+    for (const k of keys) {
+      const n = st.members.filter(m => m.status === "active" && m.team === k).length;
+      const b = this.el("button", "pick-btn", "");
+      b.innerHTML = (k.length <= 3 ? "Team " + k : k) + '<span class="pb-team">' + n + " 人在册</span>";
+      b.onclick = () => {
+        this.closeModal();
+        const res = Game.applyZhumeng16(k);
+        this.renderGame();
+        this.toast(res.text);
+        if (onDone) onDone();
+      };
+      grid.appendChild(b);
+    }
+    c.appendChild(grid);
     this.modal(c);
   },
 
@@ -3320,6 +3424,118 @@ const UI = {
 
   /* ---------------- 结局 ---------------- */
 
+  /* 【总结任期·翻页式】任意年份的年度结算画面（结局面板「总结任期」按钮，不再限定最新剧本年份）
+     都可打开；从 2016 开局到当前年份逐页回放，一年一页：决策记录 / 年度获利 / 年度喜爱成员 / 关键成绩。
+     数据源：st.termLog（UI 选项钩子 Game.logTermChoice 写入，全程累积）、
+     st.termArchive（跨年时引擎 termArchiveYear 归档，含资金/实力/喜爱/关键成绩快照）、
+     当前年用实时值算。老存档无归档的年份显示缺页提示，不凑空账。 */
+  showTermSummary() {
+    const st = Game.st;
+    const years = [];
+    for (let y = 2016; y <= parseInt(st.era, 10); y++) years.push(String(y));
+    let page = years.length - 1;   // 默认最后一页（当前年）
+
+    const cur = st.era;
+    const c = this.card("总结任期 · " + (st.playerName || ""),
+      "从 2016 开局到现在：拍板、账本与人，一年一页");
+    const titleEl = this.el("p", "modal-text", "");
+    titleEl.style.fontWeight = "bold";
+    const bodyEl = this.el("div", "");
+    const navEl = this.el("p", "modal-text", "");
+    c.appendChild(titleEl);
+    c.appendChild(bodyEl);
+    c.appendChild(navEl);
+
+    const renderPage = () => {
+      const era = years[page];
+      const isCur = era === cur;
+      const arc = isCur ? null : (st.termArchive || {})[era];
+      const yearLog = (st.termLog || []).filter(e => e.era === era);
+      titleEl.textContent = "―――― " + era + " ――――（第 " + (page + 1) + "/" + years.length + " 页）";
+      bodyEl.innerHTML = "";
+
+      if (!isCur && !arc) {
+        bodyEl.appendChild(this.el("p", "modal-text",
+          "该年归档缺失（旧版存档跨年时未记录），此页仅存当年的拍板流水。"));
+      }
+
+      /* 决策记录 */
+      if (yearLog.length) {
+        for (const e of yearLog)
+          bodyEl.appendChild(this.el("p", "modal-text", e.era + "年" + e.month + "月，你在「" + e.event + "」的事件中做出了「" + e.choice + "」的决定。"));
+      } else {
+        bodyEl.appendChild(this.el("p", "modal-text", "这一年没有留下逐项拍板的记录。"));
+      }
+
+      /* 年度获利（年末资金 - 年初资金） */
+      const mS = isCur ? (st.history && st.history["money" + (parseInt(era, 10) - 1)]) : (arc ? arc.moneyStart : null);
+      const mE = isCur ? st.money : (arc ? arc.moneyEnd : null);
+      if (mS != null && mE != null) {
+        const p = mE - mS;
+        bodyEl.appendChild(this.el("p", "modal-text", p >= 0
+          ? "你在" + era + "年为丝芭赚了 " + p + " 万（年初 " + mS + " 万 → 年末 " + mE + " 万）。"
+          : "你在" + era + "年为丝芭亏了 " + (-p) + " 万（年初 " + mS + " 万 → 年末 " + mE + " 万）。"));
+      } else if (isCur) {
+        bodyEl.appendChild(this.el("p", "modal-text", "该年账本缺了年初那一页（快速通道开局年份之前无流水）。"));
+      }
+
+      /* 年度喜爱成员 */
+      const fav = isCur ? (() => {
+        const bb = st.bondBase || {};
+        let top = null, topD = 0;
+        for (const m of st.members) {
+          if (m.status !== "active") continue;
+          const d = (m.bond || 0) - (bb[m.name] || 0);
+          if (d > topD) { topD = d; top = m; }
+        }
+        return top ? { name: top.name, d: topD } : null;
+      })() : (arc ? arc.favorite : null);
+      bodyEl.appendChild(this.el("p", "modal-text", fav
+        ? era + "年你对" + fav.name + "特别的关心（羁绊 +" + fav.d + "）。"
+        : "这一年，你把心思平摊给了每一个孩子。"));
+
+      /* 关键成绩：当前年实时算；历史年取归档快照（旧档无快照按 — 兕底） */
+      bodyEl.appendChild(this.el("p", "modal-text", "—— " + era + " 关键成绩 ——"));
+      const dash = "—";
+      const rows = [
+        ["拍板笔数（本年）", yearLog.length + " 项"],
+        ["总决选第一名", isCur ? (st.geResult && st.geResult.top1 ? st.geResult.top1 : dash)
+          : (arc && arc.top1 ? arc.top1 : (arc ? dash : "归档缺失"))],
+        ["金曲大赏", isCur ? (st.rtDone ? st.rtScore + " / 100" : dash)
+          : (arc && arc.rtScore === "cancelled" ? "已取消"
+            : arc && arc.rtScore != null ? arc.rtScore + " / 100" : (arc ? dash : "归档缺失"))],
+        ["全团平均实力", isCur ? Game.avgPwr(st) + "（年初 " + (st.pwrBase || 0) + "）"
+          : arc && arc.pwrEnd != null ? arc.pwrEnd + "（年初 " + arc.pwrStart + "）" : "归档缺失"],
+        ["年末热度 / 士气", isCur ? st.heat + " / " + st.morale
+          : arc && arc.heat != null ? arc.heat + " / " + arc.morale : (arc ? dash : "归档缺失")],
+      ];
+      for (const [k, v] of rows) {
+        const r = this.el("div", "settle-row");
+        r.appendChild(this.el("span", "", k));
+        r.appendChild(this.el("span", "sr-val", v));
+        bodyEl.appendChild(r);
+      }
+
+      /* 翻页导航 */
+      navEl.innerHTML = "";
+      const prev = this.el("button", "btn", "← " + (page > 0 ? years[page - 1] : ""));
+      prev.disabled = page <= 0;
+      prev.onclick = () => { if (page > 0) { page--; renderPage(); } };
+      const next = this.el("button", "btn", (page < years.length - 1 ? years[page + 1] : "") + " →");
+      next.disabled = page >= years.length - 1;
+      next.onclick = () => { if (page < years.length - 1) { page++; renderPage(); } };
+      navEl.appendChild(prev);
+      navEl.appendChild(document.createTextNode("  "));
+      navEl.appendChild(next);
+    };
+    renderPage();
+
+    const btn = this.el("button", "btn btn-primary modal-close", "合上任期纪念册 →");
+    btn.onclick = () => this.closeModal();
+    c.appendChild(btn);
+    this.modal(c);
+  },
+
   showEnding(grade) {
     const st = Game.st;
     const endingsSrc = st.era === "2027" ? STORY.endings27
@@ -3457,6 +3673,16 @@ const UI = {
         this.showPrologue();
       };
       this.$("btn-ending-restart").parentElement.insertBefore(btnNext, this.$("btn-ending-title"));
+    }
+    /* 【总结任期·翻页式】不再限定最新剧本年份：任意一年的结算画面都可打开总结任期，
+       从 2016 开局到当前年逐页回放（跨年由引擎 termArchiveYear 追加归档，无需判定最新年份） */
+    {
+      const oldTerm = document.getElementById("btn-ending-term");
+      if (oldTerm) oldTerm.remove();   // 防重复：残留按钮先移除
+      const btnTerm = this.el("button", "btn btn-primary", "总结任期 →");
+      btnTerm.id = "btn-ending-term";
+      btnTerm.onclick = () => this.showTermSummary();
+      this.$("btn-ending-restart").parentElement.insertBefore(btnTerm, this.$("btn-ending-title"));
     }
   },
 };

@@ -452,6 +452,32 @@ const STORY = {
         ],
       },
       {
+        /* 【2016·3月新增（用户口径）】毕志飞导演电影《纯洁心灵·逐梦演艺圈》同名主题曲 MV 邀约：
+           按用户口径，该电影去年才上映，年初豆瓣评分已一跌再跌；走出去的第一步，但需慎重。
+           选项一 pickMode="zhumeng16" 由 UI 弹出队伍点将窗，落地在 engine.applyZhumeng16；
+           选项二婉拒登记 decisions.zhumeng16="no"。 */
+        id: "m3_zhumeng16",
+        title: "3月 · 逐梦演艺圈的邀约",
+        pages: [
+          { nar: true, t: "三月中旬，一位自称毕志飞导演的年轻人登门拜访，手里抱着一份片约——《纯洁心灵·逐梦演艺圈》，一部讲表演系学生逐梦的电影，正在招募歌手演唱同名主题曲，并拍摄 MV。" },
+          { nar: true, t: "「偶像团体来唱这首歌，再合适不过了。」毕导的诚意很足。" },
+          { s: "王婧", cls: "speaker-wangjing", t: "（压低声音）总监，我查过了——这片子是去年上映的，豆瓣评分已经一跌再跌，现在还在往下掉。主题曲 MV 是一块可以谈的露出门面，但搭上这部片子的口碑……你自己掂量。" },
+          { s: "叶盛", cls: "speaker-yesheng", t: "（推了推眼镜）从道理上讲，这是走出去的第一步——院线电影的主题曲，多少人求都求不来。但您也别忘了那句老话：慎重，慎重。" },
+        ],
+        choices: [
+          { label: "接受邀请，点将一支队伍全员参演", hint: "全队每人人气+2 实力+1 羁绊+2；通告费+20万 热度+3",
+            pickMode: "zhumeng16" },
+          { label: "婉拒，专注自身", hint: "不接该外务，无收益无损失",
+            tag: "zhumeng16", value: "no",
+            effect: st => {
+              st.decisions.zhumeng16 = "no";
+              st.flags.zhumeng16Done = true;
+              Game.addLog(st, st.month, "婉拒《纯洁心灵·逐梦演艺圈》同名主题曲 MV 邀约。", "info");
+              return "你在会客室里客气地送走了毕导：「感谢看得起，但团里今年的重心在舞台和总选上，就不添乱了。」\n\n王婧送客回来，若有所思地看了你一眼：「评分还在跌。您这个决定，可能省了一场麻烦。」\n\n（决策已登记：zhumeng16=no。）";
+            } },
+        ],
+      },
+      {
         /* 【2016·3月新增（用户口径 2026-10-25）】全队伍团建链·第二棒：叶盛提议
            一视同仁、后续几月各队轮一遍团建——本月定为 Team NII（自动允许，
            无需拍板）。随后唐安琪前来请假：她与朋友的约定和团建冲突。
@@ -484,6 +510,14 @@ const STORY = {
             effect: st => {
               st.flags.tbNiiBld16 = true;
               st.decisions.tanqiQJ16 = "agree";
+              /* 暂休由本选项直接落地（原由 leaving2016 月初先行落地，时序上 refuse
+                 无法拦截——2026-10-25 修复，见 data_members.js leaving2016 注释） */
+              const tq = st.members.find(x => x.name === "唐安琪");
+              if (tq && tq.status === "active") {
+                tq.status = "rest";
+                tq.note = "3月末意外烧伤，专心治疗休养（2017 线康复后解约）";
+                Game.addLog(st, st.month, "唐安琪 暂休（3月末意外烧伤，专心治疗休养）", "bad");
+              }
               return "你在请假条上签了字：「和朋友约好的事就别改了，去吧——团建下次补上。」她连声道谢，鞠了一躬，轻快地退出了办公室。（你目送门合上，不知怎的，心里忽然掠过一丝说不清的不安——你说不上来是为什么，只是把她的名字在日历上又多圈了一笔。）\n\n" + Game.autoTeamBld(st, "NII") + "\n\n（决策已登记：tanqiQJ16=agree。）";
             } },
         ],
@@ -565,6 +599,7 @@ const STORY = {
           if (st.branch.announce) {
             return [
               { s: "叶盛", cls: "speaker-yesheng", t: "分团首月战报——北京场均上座率89%，广州更高些。两边的队长人选董事会也在酝酿了。" },
+              { s: "廖捷频", cls: "speaker-liao", t: "（视频接入，背景是悠唐的办公室）总监，北京总经理廖捷频，给您补一份细化战报：客流环比涨两成，队内磨合按上海的标准在带。BEJ48 的日常，我替您盯紧。" },
               { s: "王婧", cls: "speaker-wangjing", t: "好。分团的账我让人单独立了——从下个月起，它开始往总账上交钱，而不是只花钱。" },
               { nar: true, t: "（分团进入稳定运营，每月固定为总账带来收益。）" },
             ];
@@ -577,14 +612,18 @@ const STORY = {
       {
         /* 【2017 分团线伏笔】玩家选择 2017 年的归宿（tag: branchPost）。
            选 GNZ48 → 周马调往CKG48；选 CKG48 → 孟波调往GNZ48。
-           2017 年剧情更新时按 st.decisions.branchPost 实装。 */
+           2017 年剧情更新时按 st.decisions.branchPost 实装。
+           【NPC·廖捷频（用户口径）】2016线北京总经理：玩家未兼任 BEJ48 时（branchPost≠BEJ48），
+           她将于 2017 年正式出任 BEJ48 运营总监；玩家兼任则留守总经理辅佐。 */
         id: "m5_branch_post",
         title: "5月下旬 · 分团扩编联席会：你的下一站",
         gate: st => st.branch.announce || st.branch.stage >= 5,
         pages: st => [
-          { nar: true, t: "官宣后的第一次集团运营联席会，以视频会形式开到了广州和重庆——这是你第一次见到两位「同僚」：\n\n**周马**，GNZ48 运营总监，广州人，酒店管理出身，衬衫永远熨得平整；**孟波**，CKG48 筹备组长，重庆人，做演出票务起家，嗓门大、路子野。" },
+          { nar: true, t: "官宣后的第一次集团运营联席会，以视频会形式开到了广州、重庆和北京——这是你第一次见到几位「同僚」：\n\n**周马**，GNZ48 运营总监，广州人，酒店管理出身，衬衫永远熨得平整；**孟波**，CKG48 筹备组长，重庆人，做演出票务起家，嗓门大、路子野；**廖捷频**，BEJ48 北京总经理，财务出身，说话爱用数字打头——北京分团的日常运营，由她坐镇；**杜伟军**，CKG48 重庆总经理，文旅招商出身，重庆话与普通话切换自如，管钱管场管后勤一把好手——但他早已把话挑明：只任总经理，不接总监位。" },
           { s: "周马", cls: "speaker-zhouma", t: "（欠身）广州这边刚开完首演，业绩汇报发您邮箱了。另外——听说董事会有个大动作，要问您要人？" },
           { s: "孟波", cls: "speaker-mengbo", t: "（哈哈一笑）马哥，急啥子嘛。总监，重庆这边要先说好——2017年我这边全面铺开，你要是肯来，我给你当副手都干！" },
+          { s: "廖捷频", cls: "speaker-liao", t: "（翻开笔记本）北京这边，BEJ48 成军首月的报表我带来了。先说结论：能自给。细节——您要听三分钟的版本，还是三十页的版本？" },
+          { s: "杜伟军", cls: "speaker-du", t: "（等他们说完才开口，语速不快）重庆这边，杜伟军，总经理。筹备的归筹备（朝孟波那边抬了抬下巴），经营的归经营——账我来背，场子我来管。先说好：往后不管谁坐重庆总监那把椅子，我这个总经理都稳如磐石，不多事，也不让事。" },
           { s: "王婧", cls: "speaker-wangjing", t: "（敲了敲桌子）情况就是这样。2017年，董事会要把重心压到分团——北京、广州、重庆，还有筹备中的新城市，四盘棋一起下。所以有一件事，要你自己在联席会上表态：你的下一站，坐哪张桌子？" },
           { s: "叶盛", cls: "speaker-yesheng", t: "（在你旁边低声）总部这边离不开你，但分团是明年真正的战场。想清楚再答——这个决定，会写进你明年的人事档案。" },
         ],
@@ -593,19 +632,19 @@ const STORY = {
              其余分团与留守 → 周马、孟波正常留任各自职位 */
           { label: "出任 GNZ48（广州）运营总监", hint: "周马将调往重庆：热度+2 士气-3",
             tag: "branchPost", value: "GNZ48",
-            effect: st => { st.heat = Math.min(100, st.heat + 2); st.morale = Math.max(0, st.morale - 3); return "任命公示贴出：制作总监{name}将于2017年1月起出任GNZ48运营总监。周马收拾好办公室里那盆绿萝，主动请调重庆支援筹备：「广州的粉，重庆的辣，都是好日子——马哥我去开荒了。」（决策已登记：branchPost=GNZ48）"; } },
+            effect: st => { st.heat = Math.min(100, st.heat + 2); st.morale = Math.max(0, st.morale - 3); return "任命公示贴出：制作总监{name}将于2017年1月起出任GNZ48运营总监。周马收拾好办公室里那盆绿萝，主动请调重庆支援筹备：「广州的粉，重庆的辣，都是好日子——马哥我去开荒了。」北京方面，廖捷频将于明年正式出任 BEJ48 运营总监。（决策已登记：branchPost=GNZ48）"; } },
           { label: "主动请缨，调任 CKG48（重庆）运营总监", hint: "周马留任广州，孟波转任新团筹建：热度+2 士气-3",
             tag: "branchPost", value: "CKG48",
-            effect: st => { st.heat = Math.min(100, st.heat + 2); st.morale = Math.max(0, st.morale - 3); return "任命公示贴出：制作总监{name}将于2017年1月起出任CKG48运营总监。周马正常留任GNZ48——「广州交给我，放心。」孟波则领了新差事：转任新分团筹建顾问，把重庆趟出来的路子带去下一座城市。「开荒嘛，哪座城市辣就去哪座！」（决策已登记：branchPost=CKG48）"; } },
+            effect: st => { st.heat = Math.min(100, st.heat + 2); st.morale = Math.max(0, st.morale - 3); return "任命公示贴出：制作总监{name}将于2017年1月起出任CKG48运营总监。周马正常留任GNZ48——「广州交给我，放心。」孟波则领了新差事：转任新分团筹建顾问，把重庆趟出来的路子带去下一座城市。「开荒嘛，哪座城市辣就去哪座！」重庆总经理杜伟军带着账本来交接：「总监位归你，账归我——你只管唱好戏。」北京方面，廖捷频将于明年正式出任 BEJ48 运营总监。（决策已登记：branchPost=CKG48）"; } },
           { label: "出任 BEJ48（北京）运营总监", hint: "周马、孟波正常留任：热度+2 士气-3",
             tag: "branchPost", value: "BEJ48",
-            effect: st => { st.heat = Math.min(100, st.heat + 2); st.morale = Math.max(0, st.morale - 3); return "任命公示贴出：制作总监{name}将于2017年1月起出任BEJ48运营总监。周马与孟波正常留任广州、重庆——两位带头鼓了掌：北京那张桌子，等你来坐。（决策已登记：branchPost=BEJ48）"; } },
+            effect: st => { st.heat = Math.min(100, st.heat + 2); st.morale = Math.max(0, st.morale - 3); return "任命公示贴出：制作总监{name}将于2017年1月起出任BEJ48运营总监。周马与孟波正常留任广州、重庆——两位带头鼓了掌：北京那张桌子，等你来坐。廖捷频把总监印信推到你面前，转任常务总经理：「报表照发，拍板归你。」（决策已登记：branchPost=BEJ48）"; } },
           { label: "出任 SHY48（沈阳）运营总监", hint: "周马、孟波正常留任：热度+2 士气-3",
             tag: "branchPost", value: "SHY48",
-            effect: st => { st.heat = Math.min(100, st.heat + 2); st.morale = Math.max(0, st.morale - 3); return "任命公示贴出：制作总监{name}将于2017年1月起出任SHY48运营总监。周马、孟波正常留任广州、重庆。孟波拍桌：「东北老铁实在！明年我去沈阳找你喝酒！」（决策已登记：branchPost=SHY48）"; } },
+            effect: st => { st.heat = Math.min(100, st.heat + 2); st.morale = Math.max(0, st.morale - 3); return "任命公示贴出：制作总监{name}将于2017年1月起出任SHY48运营总监。周马、孟波正常留任广州、重庆。孟波拍桌：「东北老铁实在！明年我去沈阳找你喝酒！」北京方面，廖捷频将于明年正式出任 BEJ48 运营总监。（决策已登记：branchPost=SHY48）"; } },
           { label: "婉拒调任，专注上海总部", hint: "不加兼任，先守好本部",
             tag: "branchPost", value: "none",
-            effect: st => { st.morale = Math.min(100, st.morale + 2); return "你在联席会上摆了摆手：「2017年，本部还是主战场。」周马和孟波正常留任广州、重庆，对视一眼没再多劝——但王婧在会议纪要的页边，轻轻写了个「稳」字。（决策已登记：branchPost=none）"; } },
+            effect: st => { st.morale = Math.min(100, st.morale + 2); return "你在联席会上摆了摆手：「2017年，本部还是主战场。」周马和孟波正常留任广州、重庆，对视一眼没再多劝——但王婧在会议纪要的页边，轻轻写了个「稳」字。北京方面，廖捷频将于明年正式出任 BEJ48 运营总监。（决策已登记：branchPost=none）"; } },
         ],
       },
       {
@@ -820,8 +859,144 @@ const STORY = {
       },
     ],
 
-    /* ---------- 8月：夏日巡演 ---------- */
+    /* ---------- 8月：名册精简 + 违纪处分 + 夏日巡演 ---------- */
     8: [
+      {
+        /* 【2016·8月新增（用户口径 2026-10-25）】名册精简：分团布局期放宽了招人
+           门槛，名册拥挤、部分成员达不到要求——淘汰决定由玩家拍板。
+           ①提前毕业+补偿（10万/人）②提前毕业无补偿 ③再给一次机会。
+           选①②时：邓艳秋菲、钱艺、刘力玮、申月姣 8月由选项 effect 直接离团，
+           张韵雯 10月由 engine monthStart 按 flags.layoff16 追补离团。
+           五人均不挂离团表（见 data_members.js leaving2016 注释），全部事件控制，
+           避免唐安琪式「离团表先行落地」时序 bug。决策 layoff16。 */
+        id: "m8_layoff16",
+        title: "8月 · 名册精简",
+        gate: st => {
+          if (st.decisions.layoff16) return false;
+          const names = ["邓艳秋菲", "钱艺", "刘力玮", "申月姣", "张韵雯"];
+          return names.some(n => {
+            const m = st.members.find(x => x.name === n);
+            return m && m.status === "active";
+          });
+        },
+        pages: st => [
+          { s: "叶盛", cls: "speaker-yesheng", t: "（抱着一叠名册，在门口站了很久才进来）总监……之前为了铺分团，招人的门槛放得很低。现在名册挤了，可有些孩子——公演跟不上、训练也跟不上，真的达不到要求。" },
+          { s: "叶盛", cls: "speaker-yesheng", t: "继续留着，对她们自己也是一种煎熬。虽然很残忍……但这个决定，只能由您来下。名单我列好了：邓艳秋菲、钱艺、刘力玮、申月姣——这四个本月就到期限；张韵雯的情况类似，最晚十月也给个说法。" },
+        ],
+        choices: [
+          { label: "「让她们提前毕业吧。补偿金按规矩发。」", hint: "五人提前毕业并支付补偿（10万/人）：资金-50（8月4人-40、10月1人-10）士气-4",
+            tag: "layoff16", value: "paid",
+            effect: st => {
+              st.decisions.layoff16 = "paid";
+              st.flags.layoff16 = "paid";
+              const names = ["邓艳秋菲", "钱艺", "刘力玮", "申月姣"];
+              let n = 0;
+              for (const nm of names) {
+                const m = st.members.find(x => x.name === nm);
+                if (m && m.status === "active") {
+                  m.status = "left";
+                  m.note = "2016-08 名册精简提前毕业（公司支付补偿金10万）";
+                  Game.addLog(st, st.month, nm + " 提前毕业（名册精简，补偿金10万）。", "bad");
+                  n++;
+                }
+              }
+              st.money -= 10 * n; st.morale = Math.max(0, st.morale - 4);
+              return "补偿金签领单一张张签下去，每张背后都是一段没来得及展开的路。离团公告写得很温和：「感谢她们的付出，愿她们前程似锦。」\n\n有几个孩子偷偷哭了，也有人在最后的告别公演上笑得比谁都亮——至少，公司没有亏待她们，这一点大家都看在眼里。\n\n（决策已登记：layoff16=paid。8月 " + n + " 人已离团；张韵雯将于10月同一口径离团并支付补偿。）";
+            } },
+          { label: "「提前毕业，但公司没有义务再出这笔钱。」", hint: "五人提前毕业，无补偿：士气-8 热度+6（舆情波动）",
+            tag: "layoff16", value: "nopaid",
+            effect: st => {
+              st.decisions.layoff16 = "nopaid";
+              st.flags.layoff16 = "nopaid";
+              const names = ["邓艳秋菲", "钱艺", "刘力玮", "申月姣"];
+              let n = 0;
+              for (const nm of names) {
+                const m = st.members.find(x => x.name === nm);
+                if (m && m.status === "active") {
+                  m.status = "left";
+                  m.note = "2016-08 名册精简提前毕业（无补偿）";
+                  Game.addLog(st, st.month, nm + " 提前毕业（名册精简，无补偿）。", "bad");
+                  n++;
+                }
+              }
+              st.morale = Math.max(0, st.morale - 8); st.heat = Math.min(100, st.heat + 6);
+              return "公告发出去的当晚，贴吧和超话就炸了：「一句话就让走人，连补偿都没有？」\n\n队伍里的气氛低得像结了冰。有人照常排练，但你知道，有些孩子心里已经打了个寒颤——下一个会不会是自己。\n\n（决策已登记：layoff16=nopaid。8月 " + n + " 人已离团；张韵雯将于10月同一口径离团，无补偿。）";
+            } },
+          { label: "「再给她们一次机会。」", hint: "五人均不离团：训练度+6 士气+4（名册拥挤问题延后）",
+            tag: "layoff16", value: "chance",
+            effect: st => {
+              st.decisions.layoff16 = "chance";
+              st.flags.layoff16 = "chance";
+              st.train = Math.min(100, st.train + 6); st.morale = Math.min(100, st.morale + 4);
+              return "你在名册上圈掉了「毕业」两个字，改成「再观察一个季度」。\n\n叶盛愣了一下，随即用力点头：「我亲自盯她们的训练表。」被点名的几个孩子听说了消息，那天晚上的加练，没有一个人提前离开。\n\n（决策已登记：layoff16=chance。五人均保持在籍，名册精简暂缓。）";
+            } },
+        ],
+      },
+      {
+        /* 【2016·8月新增（用户口径 2026-10-25）】张菡筱社媒违纪事件：
+           多次在社媒发布有损公司的不良言论，构成严重违纪，屡次警告后仍不改正。
+           玩家三选一：graduate 提前毕业（不收取违约金）/ fire 开除并索要违约金 /
+           prep 下放预备生以观后效。
+           人员变动由本事件直接落地，不走通用离团（leaving2016 无张菡筱条目、
+           farewell.skip 亦无需登记）；张菡筱 4·20 移籍后为 BEJ48 成员（status
+           branch），本事件对其本部/分团两种在籍形态均兼容。 */
+        id: "m8_zhx16",
+        title: "8月 · 违纪处分",
+        gate: st => {
+          if (st.decisions.zhx16) return false;
+          const m = st.members.find(x => x.id === "zhanghanxiao");
+          return m && m.status !== "left" && m.status !== "rest";
+        },
+        pages: st => [
+          { s: "王婧", cls: "speaker-wangjing", t: "（把平板拍在你桌上）张菡筱的社交账号，这个月第三次了。言论里指名道姓地损公司，评论区已经挂上热搜边了——警告发过两轮，她照发不误。" },
+          { s: "王婧", cls: "speaker-wangjing", t: "合约里「严重违纪」那一条是能走的，法务那边的材料也备齐了。总监，处分怎么定，你说。" },
+        ],
+        choices: [
+          { label: "「让她提前毕业吧。好聚好散，别撕破脸。」", hint: "张菡筱提前毕业离团（不收取违约金）；热度+4 士气-2",
+            tag: "zhx16", value: "graduate",
+            effect: st => {
+              const m = st.members.find(x => x.id === "zhanghanxiao");
+              st.decisions.zhx16 = "graduate";
+              if (!m || m.status === "left" || m.status === "rest") return "张菡筱的处分还没落地，人已经先一步不在名单上了——法务合上了文件夹。（未生效）";
+              m.status = "left";
+              m.note = "2016-08 社媒严重违纪，屡次警告不改——提前毕业（不收取违约金）";
+              st.heat = Math.min(100, st.heat + 4); st.morale = Math.max(0, st.morale - 2);
+              Game.addLog(st, st.month, "张菡筱 提前毕业（社媒违纪，不收取违约金）。", "bad");
+              return "公告发得很简短：「张菡筱因个人原因，提前毕业。」没有违约金，没有追责声明——评论区骂了两天的公司，反倒夸了一句体面。\n\n她的储物柜第二天就清空了。Team XII 的孩子们没人说话，只是那天晚上的公演，齐舞跳得格外用力。\n\n（决策已登记：zhx16=graduate。张菡筱已离团，不收取违约金。）";
+            } },
+          { label: "「按合约办：开除，违约金一分不少。」", hint: "张菡筱开除离团，追缴违约金：资金+100万 士气-8 热度+6",
+            tag: "zhx16", value: "fire",
+            effect: st => {
+              const m = st.members.find(x => x.id === "zhanghanxiao");
+              st.decisions.zhx16 = "fire";
+              if (!m || m.status === "left" || m.status === "rest") return "法务刚要把解约函递出去，确认了一圈——张菡筱已经不在在册名单上了。（未生效）";
+              m.status = "left";
+              m.note = "2016-08 社媒严重违纪开除，解约违约金已追缴";
+              st.money += 100; st.morale = Math.max(0, st.morale - 8); st.heat = Math.min(100, st.heat + 6);
+              Game.addLog(st, st.month, "张菡筱 开除离团，追缴违约金 100 万。", "bad");
+              return "解约函当天就发了出去。违约金 100 万如数到账，王婧在报表上描了个红圈，难得没提预算。\n\n但热搜上「SNH48 开除成员」挂了整整一周；分队孩子们排练时气氛低得像下雨——处分是杀一做百，可百人会想：下一个会不会是自己。\n\n（决策已登记：zhx16=fire。张菡筱已开除离团，违约金已追缴。）";
+            } },
+          { label: "「先不下死手。下放预备生，以观后效。」", hint: "张菡筱下放预备生：其人气-6，士气-4（观察期，未离团）",
+            tag: "zhx16", value: "prep",
+            effect: st => {
+              const m = st.members.find(x => x.id === "zhanghanxiao");
+              st.decisions.zhx16 = "prep";
+              if (!m || m.status === "left" || m.status === "rest") return "处分决定还没宣布，人事那边先递来了消息——张菡筱已经不在在册名单上了。（未生效）";
+              if (m.status === "branch") {
+                m.branchLabel = "预备生";
+                m.note = "2016-08 社媒违纪下放预备生，以观后效";
+                Game.addLog(st, st.month, "张菡筱 下放 BEJ48 预备生，以观后效。", "normal");
+              } else {
+                m.team = "PREP";
+                m.note = "2016-08 社媒违纪下放预备生，以观后效";
+                Game.addLog(st, st.month, "张菡筱 下放预备生，以观后效。", "normal");
+              }
+              m.pop = Math.max(0, m.pop - 6);
+              st.morale = Math.max(0, st.morale - 4);
+              return "内部通报只有一句话：「张菡筱下放预备生，以观后效。」\n\n她的工牌换了颜色，站位从正式队员换到了队伍最边上。有人替她惋惜，也有人松了口气——至少，没到赶人走的那一步。\n\n（决策已登记：zhx16=prep。张菡筱在籍，降入预备生观察。）";
+            } },
+        ],
+      },
       {
         id: "m8_summer",
         title: "夏日巡演",
@@ -865,8 +1040,52 @@ const STORY = {
       },
     ],
 
-    /* ---------- 11月：金曲大赏预热 ---------- */
+    /* ---------- 11月：陈怡馨学业抉择 + 金曲大赏预热 ---------- */
     11: [
+      {
+        /* 【2016·11月新增（用户口径 2026-10-25）】陈怡馨表示要专注学业：
+           选项同赵嘉敏学业选项（6月 m6_zhaomin）——①协商解除合约（解约→
+           事件 effect 直接落地离团，不走通用离团）②保留合约支持学业（暂休留籍）。
+           离团表已无陈怡馨条目（见 data_members.js leaving2016 注释）。决策 cyx16。 */
+        id: "m11_cyx16",
+        title: "11月 · 学业与舞台",
+        gate: st => {
+          if (st.decisions.cyx16) return false;
+          const m = st.members.find(x => x.id === "chenyixin");
+          return m && m.status !== "left" && m.status !== "rest";
+        },
+        pages: st => [
+          { s: "叶盛", cls: "speaker-yesheng", t: "（把一份谈话记录放在你桌上，神色有些复杂）总监……陈怡馨约谈了人事。她说，想专心把学业完成——这大半年的巡演、公演连轴转，她的课已经落下太多了。" },
+          { s: "陈怡馨", cls: "", t: "总监，我不是不想留。只是书读一半就丢下，我爸妈那边……我自己心里也过不去。合约怎么办，我听公司的——但我想要一个能安心把书读完的答案。" },
+          { s: "王婧", cls: "speaker-wangjing", t: "（翻着合约附则）Team HII 的台柱之一。解约还是留籍，这一笔签下去，队里的气氛都会跟着变——总监，你定。" },
+        ],
+        choices: [
+          { label: "尊重她的学业，协商解除合约", hint: "陈怡馨解约离团：违约金+60万 热度-4 士气-4",
+            tag: "cyx16", value: "terminate",
+            effect: st => {
+              const m = st.members.find(x => x.id === "chenyixin");
+              st.decisions.cyx16 = "terminate";
+              if (!m || m.status === "left" || m.status === "rest") return "解约协议还没拟好，人事先递来消息——陈怡馨已经不在在册名单上了。（未生效）";
+              m.status = "left";
+              m.note = "2016-11 专注学业，协商解除合约";
+              st.money += 60; st.heat = Math.max(0, st.heat - 4); st.morale = Math.max(0, st.morale - 4);
+              Game.addLog(st, st.month, "陈怡馨 解约离团（专注学业），违约金60万到账。", "bad");
+              return "解约协议一周后签妥，违约金六十万如约到账。她在告别公演上鞠了很长的一个躬：「谢谢这条河载过我——等我把书读完，看还有没有缘份再回来。」\n\nTeam HII 的孩子们把她围在中间，哭成一片。舞台的灯照旧亮着，只是队列里从此空了一个位置。\n\n（决策已登记：cyx16=terminate。陈怡馨已离团。）";
+            } },
+          { label: "保留合约，支持她专注学业（暂休赴学）", hint: "陈怡馨暂休留籍：士气+2（公司体面，人心安定）",
+            tag: "cyx16", value: "study",
+            effect: st => {
+              const m = st.members.find(x => x.id === "chenyixin");
+              st.decisions.cyx16 = "study";
+              if (!m || m.status === "left" || m.status === "rest") return "批条还没签，人事先递来消息——陈怡馨已经不在在册名单上了。（未生效）";
+              m.status = "rest";
+              m.note = "2016-11 保留合约·暂休赴学，专注学业";
+              st.morale = Math.min(100, st.morale + 2);
+              Game.addLog(st, st.month, "陈怡馨 暂休（保留合约·暂休赴学，专注学业）。", "normal");
+              return "你在申请上批了「保留合约，暂休赴学」：课业期间薪水照发，位置永远给她留着。她愣了好几秒，眼圈一下子红了——「谢谢公司……我读完书，一定回来。」\n\n消息传开，排练室里有人小声说：「我们公司……还挺像样的。」\n\n（决策已登记：cyx16=study。陈怡馨暂休留籍。）";
+            } },
+        ],
+      },
       {
         id: "m11_rt",
         title: "金曲大赏投票开启",
@@ -1078,12 +1297,13 @@ const STORY = {
     title: "董事会紧急质询",
     pages: [
       { s: "王婧", cls: "speaker-wangjing", t: "（把财务报表推到桌子中央）第二个月了，总监。预算是承诺，不是建议。下一次，就没有下一次了。" },
+      { s: "杜伟军", cls: "speaker-du", t: "（列席，把一份分团场租回款表摆到你手边）总经理杜伟军，补一个数字：重庆场租回款能提前十天。能省的钱我帮您省，该给的账我替您争——但总监，报表上的坑，还得您自己填。" },
       { nar: true, t: "（警告：若再次出现月末赤字，将触发失败结局「资金链断裂」！）" },
     ],
   },
 
   /* 告别事件：leaving2016 中 story:true 且不在 skip 名单的成员，
-     月初触发通用告别小剧场（覆盖 11 月陈怡馨/王璐离团等） */
+     月初触发通用告别小剧场（覆盖 11 月王璐离团等；陈怡馨已改事件驱动） */
   farewell: {
     skip: ["孟玥", "宫泽佐江", "铃木玛莉亚", "赵嘉敏"],   // 已由月度脚本事件叙述，不再弹窗
     pages: m => [

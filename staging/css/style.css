@@ -597,6 +597,12 @@ body {
 /* 周马（GNZ48 运营总监）/ 孟波（CKG48 运营总监）—— 双线跨线 NPC */
 .vn-speaker.speaker-zhouma { background: linear-gradient(135deg, #f97316, #ea580c); }
 .vn-speaker.speaker-mengbo { background: linear-gradient(135deg, #f43f5e, #be123c); }
+/* 廖捷频（BEJ48 北京总经理/总监）—— 稳重的紫金 */
+.vn-speaker.speaker-liao { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+/* 邓森林（2017 线：SHY48 总监 / 新媒体部总监）—— 媒体蓝青 */
+.vn-speaker.speaker-deng { background: linear-gradient(135deg, #38bdf8, #0369a1); }
+/* 杜伟军（2016 线 CKG48 重庆总经理，只任总经理不接总监）—— 沉稳墨绿 */
+.vn-speaker.speaker-du { background: linear-gradient(135deg, #4ade80, #15803d); }
 
 /* 成员选择器 */
 .pick-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
