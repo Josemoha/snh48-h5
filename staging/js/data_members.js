@@ -139,14 +139,15 @@ const DATA = {
     { id: "zhangdansan", name: "张丹三", team: "X", gen: "四期生", join: "2015-01-31", pop: 30 },
     { id: "zhangyunwen", name: "张韵雯", team: "X", gen: "四期生", join: "2015-01-31", pop: 26 },
 
-    // ======== Team XII（35人，全部五期生，2015-12-04 入队，首任队长 9 月才任命） ========
+    // ======== Team XII（34人，全部五期生，2015-12-04 入队，首任队长 9 月才任命） ========
+    /* 【v0.14.6（用户口径）】杜雨微不再建卡（出于对逝者的尊重）：成员卡、
+       branchMovers.GNZ、branchRoster2017.GNZ48 均已移除，全年不再出现。 */
     { id: "zengaijia",   name: "曾艾佳", team: "XII", gen: "五期生", join: "2015-07-25", pop: 36 },
     { id: "chenke",      name: "陈珂",   team: "XII", gen: "五期生", join: "2015-07-25", pop: 38 },
     { id: "chenmeijun",  name: "陈美君", team: "XII", gen: "五期生", join: "2015-07-25", pop: 30 },
     { id: "chenyin",     name: "陈音",   team: "XII", gen: "五期生", join: "2015-07-25", pop: 22 },
     { id: "chenyuqi",    name: "陈雨琪", team: "XII", gen: "五期生", join: "2015-07-25", pop: 24 },
     { id: "chenyunling", name: "陈韫凌", team: "XII", gen: "五期生", join: "2015-07-25", pop: 26 },
-    { id: "duyuwei",     name: "杜雨微", team: "XII", gen: "五期生", join: "2015-07-25", pop: 22 },
     { id: "duanyixuan",  name: "段艺璇", team: "XII", gen: "五期生", join: "2015-07-25", pop: 46 },
     { id: "feiqinyuan",  name: "费沁源", team: "XII", gen: "五期生", join: "2015-07-25", pop: 40 },
     { id: "fengxueying", name: "冯雪莹", team: "XII", gen: "五期生", join: "2015-07-25", pop: 24 },
@@ -248,11 +249,11 @@ const DATA = {
 
   /* ---------------- 2016-04-20 分团移籍名单（分团剧情核心素材） ----------------
      史实：BEJ48/GNZ48 于 2016-04-20 宣布成立，68 人组成四队。
-     游戏中：若分团主线成功，这 21 名五期生从 SNH48 名单移入分团名单；
+     游戏中：若分团主线成功，这 20 名五期生从 SNH48 名单移入分团名单；
             另有六期生·分团方向培训生 47 人同日入队（作人数处理）。 */
   branchMovers: {
     BEJ: ["陈美君", "段艺璇", "冯雪莹", "胡晓慧", "宋思娴", "田姝丽", "熊素君", "徐佳丽", "张菡筱"],
-    GNZ: ["陈珂", "陈雨琪", "杜雨微", "高源婧", "李沁洁", "林嘉佩", "刘梦雅", "刘筱筱", "阳青颖", "曾艾佳", "张凯祺", "谢蕾蕾"],
+    GNZ: ["陈珂", "陈雨琪", "高源婧", "李沁洁", "林嘉佩", "刘梦雅", "刘筱筱", "阳青颖", "曾艾佳", "张凯祺", "谢蕾蕾"],
   },
 
   /* ---------------- 2017年1月分团在册名册（2017「本部新章」线考据补充） ----------------
@@ -331,7 +332,6 @@ const DATA = {
      GNZ48: [
        { name: "陈珂",   branchLabel: "Team G", gen: "五期生" },
        { name: "陈雨琪", branchLabel: "Team G", gen: "五期生" },
-       { name: "杜雨微", branchLabel: "Team G", gen: "五期生" },
        { name: "高源婧", branchLabel: "Team G", gen: "五期生", vice: true },
        { name: "李沁洁", branchLabel: "Team G", gen: "五期生" },
        { name: "林嘉佩", branchLabel: "Team G", gen: "五期生" },
@@ -392,6 +392,8 @@ const DATA = {
   /* ---------------- SHY48 / CKG48 成立名单（2017「本部新章」线，开业时建卡） ----------------
      考据：branch_gen_timeline.txt（snh48wiki.top 各期生公布时间线）——
      · SHY48 一期生：2017-01-07 公布首批 18 人（次批 02-19 公布 16 人，不建卡）；
+       【用户口径 2026-10-26 补挂】杨肖、南翎璞、李熙凝、寇承希同为一期生（2016-10 入
+       SHY48，游戏内随 SHY48 开业建卡；南琻璞系南翎璞笔误，一并改正）；
      · CKG48 一期生：2017-10-27 公布 33 人（与游戏内「首批三十三人集训」锚点一致），
        全量建卡；其中孟玥与 2016 年已毕业的 SNH48 NII 一期生孟玥重名——
        按用户口径（2026 补）同样建卡（id 前缀 bf17_ 区分，同名去重只挡非离团在册成员）。
@@ -399,7 +401,8 @@ const DATA = {
    branchFoundingRoster: {
      SHY48: [
        "陈婧文", "冯译莹", "付紫琪", "关思雨", "韩家乐", "赖梓惜", "李慧", "刘娇", "刘娜",
-       "卢天惠", "南琻璞", "秦玺", "孙敏", "王诗蒙", "徐静妍", "杨允涵", "赵佳蕊", "朱燕",
+       "卢天惠", "南翎璞", "秦玺", "孙敏", "王诗蒙", "徐静妍", "杨允涵", "赵佳蕊", "朱燕",
+       "杨肖", "李熙凝", "寇承希",   // 用户口径 2026-10-26 补挂（SHY48一期生 2016-10 入）
      ].map(n => ({ name: n, branchLabel: "预备生", gen: "SHY48一期生" })),
      CKG48: [
        "柏欣妤", "李恩锐", "李姗姗", "李泽亚", "雷宇霄", "毛译晗", "谯玉珍", "冉蔚", "田倩兰",
@@ -431,6 +434,17 @@ const DATA = {
     { month: 9, name: "熊沁娴", team: "PREP", gen: "八期生", join: "2017-09-08" },
     { month: 9, name: "葛佳慧", team: "PREP", gen: "八期生", join: "2017-09-10" },
     { month: 10, name: "马凡", team: "PREP", gen: "八期生", join: "2017-10" },   // 2020-01 离团（leaving2020 挂载）
+    /* 【分团补挂（用户口径 2026-10-26）】BEJ48二期生李烨/郑心雨/郑依灵/李沐遥（2017-03-11 入）、
+       GNZ48二期生陈乐添/刘小末（2017-04-29 入）——BEJ/GNZ 年初在册，按月建分团预备生简卡；
+       SHY48二期生陈奕君/逯芳竹（2017-04 入）——SHY48 已开业时建卡（同张羽涵口径）。 */
+    { month: 3, name: "李烨",   branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
+    { month: 3, name: "郑心雨", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
+    { month: 3, name: "郑依灵", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
+    { month: 3, name: "李沐遥", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
+    { month: 4, name: "陈乐添", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    { month: 4, name: "刘小末", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    { month: 4, name: "陈奕君", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04", note: "SHY48二期生" },
+    { month: 4, name: "逯芳竹", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04", note: "SHY48二期生" },
     { month: 4, name: "张羽涵", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },   // 2020-01 退团（leaving2020 挂载）
   ],
 
@@ -451,23 +465,60 @@ const DATA = {
     /* 唐安琪 2017-03 离团不再挂离团表（时序 bug 修复 2026-10-25）：离团表月初先行
        落地会导致「唐安琪的决定」抉择事件（gate 排除已离团）永不触发、只剩自动离团。
        现由 m3_17_tanqi 事件 effect 直接落地；旧档追补仍由 engine monthStart ⓪ 兑底。 */
-    { month: 4, name: "冯雪莹", team: "BEJ48", date: "2017-04",   type: "退团",     story: false, note: "BEJ48" },
-    { month: 4, name: "陈音",   team: "XII",  date: "2017-04",    type: "退团",     story: false },
-    { month: 4, name: "王金铭", team: "HII",  date: "2017-04-08", type: "移籍SHY48", branchTeam: "SHY48", story: false, note: "加入SHY48 Team HIII" },
-    { month: 5, name: "罗兰",   team: "NII",  date: "2017-05",    type: "退团",     story: false },
-    { month: 5, name: "徐真",   team: "NII",  date: "2017-05",    type: "退团",     story: false },
-    { month: 5, name: "邹佳佳", team: "XII",  date: "2017-05",    type: "退团",     story: false },
-    { month: 8, name: "董艳芸", team: "NII",  date: "2017-08",    type: "退团",     story: false },
-    { month: 8, name: "张雅梦", team: "NII",  date: "2017-08",    type: "退团",     story: false },
-    { month: 9, name: "赵韩倩", team: "SII",  date: "2017-09-10", type: "暂休",     story: false, note: "学业规划" },
-    { month: 10, name: "赵梦婷", team: "PREP", date: "2017-10",   type: "离团",     story: false },
+    /* 【2017 通用离团（用户口径 2026-10-26）】note 含「名册精简」的条目不走通用离团：
+       engine monthStart 登记到 layoff17Names，按卡况动态分配——本部/玩家兼任分团
+       成员进 layoff17Choice 由玩家拍板是否支付补偿（10 万/人），未兼任分团成员
+       自动支付（同 2016 线补偿口径）。详见 engine.applyLayoff17。
+       【用户口径 2026-10-26 补挂】下述原未建卡人员已按口径建卡（SHY48一期生随
+       开业建卡，其余见 joining2017 补挂条目），离团同步挂载：李烨/郑心雨（5月精简）、
+       杨肖/陈乐添（8月精简）、陈奕君/郑依灵/李沐遥/刘小末/逯芳竹（10月精简）、
+       樊曦月（12月精简）；南翎璞（8月通用）、李熙凝/寇承希（11月通用）。 */
+    { month: 2,  name: "单习文", team: "BEJ48", date: "2017-02",    type: "离团",     story: false, note: "名册精简" },
+    { month: 2,  name: "毕梦媛", team: "BEJ48", date: "2017-02",    type: "离团",     story: false, note: "名册精简" },
+    { month: 3,  name: "胡博文", team: "BEJ48", date: "2017-03",    type: "退团",     story: false, note: "BEJ48" },
+    { month: 3,  name: "易妍倩", team: "BEJ48", date: "2017-03",    type: "退团",     story: false, note: "BEJ48" },
+    { month: 4,  name: "冯雪莹", team: "BEJ48", date: "2017-04",    type: "退团",     story: false, note: "BEJ48" },
+    { month: 4,  name: "陈音",   team: "XII",  date: "2017-04",    type: "退团",     story: false },
+    { month: 4,  name: "林堃",   team: "BEJ48", date: "2017-04",    type: "离团",     story: false, note: "名册精简" },
+    { month: 4,  name: "王金铭", team: "HII",  date: "2017-04-08", type: "移籍SHY48", branchTeam: "SHY48", story: false, note: "加入SHY48 Team HIII" },
+    { month: 5,  name: "文妍",   team: "BEJ48", date: "2017-05",    type: "退团",     story: false, note: "BEJ48" },
+    { month: 5,  name: "罗兰",   team: "NII",  date: "2017-05",    type: "退团",     story: false },
+    { month: 5,  name: "向芸",   team: "GNZ48", date: "2017-05",    type: "退团",     story: false, note: "GNZ48" },
+    { month: 5,  name: "吴月黎", team: "BEJ48", date: "2017-05",    type: "退团",     story: false, note: "BEJ48" },
+    { month: 5,  name: "徐真",   team: "NII",  date: "2017-05",    type: "退团",     story: false },
+    { month: 5,  name: "李烨",   team: "BEJ48", date: "2017-05",    type: "离团",     story: false, note: "名册精简" },
+    { month: 5,  name: "郑心雨", team: "BEJ48", date: "2017-05",    type: "离团",     story: false, note: "名册精简" },
+    { month: 5,  name: "邹佳佳", team: "XII",  date: "2017-05",    type: "退团",     story: false },
+    { month: 8,  name: "杨肖",   team: "SHY48", date: "2017-08",    type: "离团",     story: false, note: "名册精简" },
+    { month: 8,  name: "陈乐添", team: "GNZ48", date: "2017-08",    type: "离团",     story: false, note: "名册精简" },
+    { month: 8,  name: "张心雨", team: "GNZ48", date: "2017-08",    type: "退团",     story: false, note: "GNZ48" },
+    { month: 8,  name: "董艳芸", team: "NII",  date: "2017-08",    type: "离团",     story: false, note: "名册精简" },
+    { month: 8,  name: "张雅梦", team: "NII",  date: "2017-08",    type: "退团",     story: false },
+    { month: 8,  name: "赵翊民", team: "GNZ48", date: "2017-08",    type: "退团",     story: false, note: "GNZ48" },
+    { month: 8,  name: "南翎璞", team: "SHY48", date: "2017-08",    type: "退团",     story: false, note: "SHY48" },
+    { month: 9,  name: "赵韩倩", team: "SII",  date: "2017-09-10", type: "暂休",     story: false, note: "学业规划" },
+    { month: 10, name: "陈奕君", team: "SHY48", date: "2017-10",    type: "离团",     story: false, note: "名册精简" },
+    { month: 10, name: "郑依灵", team: "BEJ48", date: "2017-10",    type: "离团",     story: false, note: "名册精简" },
+    { month: 10, name: "李沐遥", team: "BEJ48", date: "2017-10",    type: "离团",     story: false, note: "名册精简" },
+    { month: 10, name: "刘小末", team: "GNZ48", date: "2017-10",    type: "离团",     story: false, note: "名册精简" },
+    { month: 10, name: "逯芳竹", team: "SHY48", date: "2017-10",    type: "离团",     story: false, note: "名册精简" },
+    { month: 10, name: "牛聪聪", team: "BEJ48", date: "2017-10",    type: "退团",     story: false, note: "BEJ48" },
+    { month: 10, name: "赵梦婷", team: "PREP", date: "2017-10",   type: "离团",     story: false, note: "名册精简" },
     { month: 10, name: "刘炅然", team: "HII",  date: "2017-10-27", type: "兼任CKG48", story: false, note: "兼任 CKG48 Team K（保留本部在籍）" },
     { month: 10, name: "王露皎", team: "HII",  date: "2017-10-27", type: "移籍CKG48", branchTeam: "CKG48", story: false, note: "CKG48 Team K" },
+    { month: 11, name: "刘嘉怡", team: "GNZ48", date: "2017-11",    type: "退团",     story: false, note: "GNZ48" },
     { month: 11, name: "曾艳芬", team: "NII",  date: "2017-11",    type: "退团",     story: true },
+    { month: 11, name: "陈姣荷", team: "BEJ48", date: "2017-11",    type: "退团",     story: false, note: "BEJ48" },
     { month: 11, name: "刘筱筱", team: "GNZ48", date: "2017-11",   type: "退团",     story: false, note: "GNZ48" },
-    { month: 12, name: "沈之琳", team: "SII",  date: "2017-12",    type: "离团",     story: false },
+    { month: 11, name: "孙姗",   team: "BEJ48", date: "2017-11",    type: "退团",     story: false, note: "BEJ48" },
+    { month: 11, name: "李熙凝", team: "SHY48", date: "2017-11",    type: "退团",     story: false, note: "SHY48" },
+    { month: 11, name: "寇承希", team: "SHY48", date: "2017-11",    type: "退团",     story: false, note: "SHY48" },
+    { month: 11, name: "沈之琳", team: "SII",  date: "2017-11",    type: "离团",     story: false },
+    { month: 11, name: "周怡",   team: "NII",  date: "2017-11",    type: "离团",     story: false },
     { month: 12, name: "王柏硕", team: "HII",  date: "2017-12",    type: "离团",     story: false },
-    { month: 12, name: "周怡",   team: "NII",  date: "2017-12",    type: "离团",     story: false },
+    { month: 12, name: "姜涵",   team: "PREP", date: "2017-12",    type: "离团",     story: false, note: "名册精简" },
+    { month: 12, name: "许嘉怡", team: "PREP", date: "2017-12",    type: "离团",     story: false, note: "名册精简" },
+    { month: 12, name: "樊曦月", team: "CKG48", date: "2017-12",    type: "离团",     story: false, note: "名册精简" },
   ],
 
   /* ---------------- 2017 年史实节点（「本部新章」线锚点） ---------------- */

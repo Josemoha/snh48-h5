@@ -1021,6 +1021,21 @@ const UI = {
     const box = this.$("quest-cards");
     box.innerHTML = "";
 
+    /* 【全线通用】公演站位看板提示（用户口径 2026-10-26）：总选后显示拍板进度 */
+    if (st.geDone && !st.flags.stageSettled && Game.stageTeams(st).length) {
+      const teams = Game.stageTeams(st);
+      const stg = Game.stageInit(st);
+      const doneN = teams.filter(t => stg.done[t]).length;
+      const c = this.el("div", "quest-card");
+      const head = this.el("div", "quest-head", this.el("span", "quest-name", "公演站位调整"));
+      head.appendChild(this.el("span", "quest-tag " + (doneN >= teams.length ? "q-done" : "q-open"), doneN >= teams.length ? "已完成" : "进行中"));
+      c.appendChild(head);
+      c.appendChild(this.el("div", "quest-detail",
+        "已拍板 " + doneN + " / " + teams.length + " 队" +
+        (teams.length - doneN > 0 ? "，还有 " + (teams.length - doneN) + " 队未拍板（每队 1 行动点；年末未拍板队伍将按总选成绩自动排站）" : "（可重排，每队 1 行动点）")));
+      box.appendChild(c);
+    }
+
     /* ============ 2026 线：四条主线看板 ============ */
     if (st.era === "2026") {
       const mkCard = (name, tag, tagCls, body) => {
@@ -1536,6 +1551,30 @@ const UI = {
     this.modal(c);
   },
 
+  /* 【2017】名册精简补偿拍板窗（layoff17Pick）：逐批拍板是否支付补偿金（10 万/人，同 2016 线口径）；
+     不支付：士气-4 热度-3，涉分团在册成员羁绊-4，涉本部在册成员羁绊-2。 */
+  showLayoff17Picker(names) {
+    const c = this.card("名册精简 · 补偿金拍板",
+      "待裁成员：" + names.join("、") + "。按补偿口径，补偿金为 10 万/人——支付，还是不支付？");
+    const box = this.el("div", "modal-choices ft-group");
+    const mk = (label, hint, pay) => {
+      const b = this.el("button", "ft-opt", "");
+      b.innerHTML = "<b>" + label + "</b><span>" + hint + "</span>";
+      b.onclick = () => {
+        this.closeModal();
+        const r = Game.applyLayoff17(names, pay);
+        Game.st.flags.layoff17Choice = [];
+        this.renderGame();
+        this.toast(r.text);
+      };
+      box.appendChild(b);
+    };
+    mk("「按补偿口径足额支付。」", "资金-" + names.length * 10 + " 万（10 万/人）；士气+2（体面转身）", true);
+    mk("「公司没有义务再出这笔钱。」", "省下补偿金；士气-4 热度-3，涉分团在册成员羁绊-4，涉本部在册成员羁绊-2", false);
+    c.appendChild(box);
+    this.modal(c);
+  },
+
   onAction(id) {
     if (id === "visit") { this.showMemberPicker(); return; }
     if (id === "coach") { this.showCoachPicker(); return; }   // 2017：先选特训对象
@@ -1553,6 +1592,11 @@ const UI = {
     if (res.tone === "origPick") { this.showOrigPicker(); return; }
     /* 【2020】疫情裁撤补偿拍板：弹支付/不支付窗，落地在 Game.applyLayoff20(names, pay) */
     if (res.tone === "layoff20Pick") { this.showLayoff20Picker(res.names); return; }
+    /* 【2017】名册精简补偿拍板：弹支付/不支付窗，落地在 Game.applyLayoff17(names, pay) */
+    if (res.tone === "layoff17Pick") { this.showLayoff17Picker(res.names); return; }
+    /* 【全线通用】公演站位调整：先弹队伍选择窗，选队后进入站位编辑窗 */
+    if (res.tone === "stageTeamPick") { this.showStageTeamPicker(); return; }
+    if (res.tone === "stageEdit") { this.showStageEditor(res.team); return; }
     /* 复刻《双面偶像》（2018）：先弹承办队伍选择窗 */
     if (res.tone === "pickTeam18") { this.showSm18TeamPicker(); return; }
     /* 队伍团建（全线通用）：弹队伍选择窗，选队后落地（Game.doAction('teamBld', {team})） */
@@ -2400,6 +2444,178 @@ const UI = {
     const cancel = this.el("button", "btn btn-ghost modal-close", "再考虑一下（不消耗行动）");
     cancel.onclick = () => this.closeModal();
     c.appendChild(cancel);
+    this.modal(c);
+  },
+
+  /* ========================================================================
+     【全线通用】公演站位调整（用户口径 2026-10-26）：
+     逐队拍板（每队 1 行动点，一次只显示一队，含分团）；
+     大歌 16 人站位（≤16 人时全员必须有站位，>16 人至多 16 个站位）+
+     solo/双人/三人/四人/五人 unit 各一（每人至多 2 个 unit，同 unit 好感度上升）；
+     一键安排按总选成绩自动排站。 ======================================================================== */
+  showStageTeamPicker() {
+    const st = Game.st;
+    const teams = Game.stageTeams(st);
+    const stg = Game.stageInit(st);
+    const c = this.card("公演站位调整 · 选择队伍",
+      "总选落幕，公演站位可以重新排了。逐队拍板：大歌 16 人站位 + solo/双人/三人/四人/五人 unit 各一。\n（每队 1 行动点；年末仍未拍板的队伍，将默认按总选成绩自动排站）");
+    const grid = this.el("div", "pick-grid");
+    for (const t of teams) {
+      const n = Game.teamRoster(st, t).length;
+      const b = this.el("button", "pick-btn", "");
+      const label = t.length <= 3 ? "Team " + t : t;
+      b.innerHTML = label + '<span class="pb-team">' + (stg.done[t] ? "已拍板 ✓（可重排） · " : "未拍板 · ") + n + " 人</span>";
+      b.onclick = () => {
+        this.closeModal();
+        const r = Game.doAction("stageSet", { team: t });
+        if (r && r.tone === "stageEdit") this.showStageEditor(t);
+        else if (r && r.text) { this.renderGame(); this.toast(r.text); }
+      };
+      grid.appendChild(b);
+    }
+    c.appendChild(grid);
+    const cancel = this.el("button", "btn btn-ghost modal-close", "返回（不消耗行动）");
+    cancel.onclick = () => this.closeModal();
+    c.appendChild(cancel);
+    this.modal(c);
+  },
+
+  showStageEditor(team) {
+    const st = Game.st;
+    const roster = Game.teamRoster(st, team);
+    const stg = Game.stageInit(st);
+    /* 编辑态：pos {id:rank} / units {solo,duo,trio,quad,quint} / sel 当前选中成员 */
+    const pos = {}, units = { solo: [], duo: [], trio: [], quad: [], quint: [] };
+    if (stg.done[team] && stg.pos[team]) {
+      for (const id in stg.pos[team]) pos[id] = stg.pos[team][id];
+      for (const k in units) units[k] = (stg.units[team] && stg.units[team][k] || []).slice();
+    }
+    let sel = null;
+    const geRank = {};
+    const top = (st.geResult && Array.isArray(st.geResult.top48)) ? st.geResult.top48 : [];
+    for (const r of top) if (r.team === team) geRank[r.name] = r.rank;
+    /* 队内基准排名（stageBaseline：总选名次在前，未入名单同级垫底）——拍板反馈即以此为基准 */
+    const base = Game.stageBaseline(st, team);
+    const rankInTeam = {};
+    base.forEach((id, i) => { rankInTeam[id] = i + 1; });
+    const sizes = { solo: 1, duo: 2, trio: 3, quad: 4, quint: 5 };
+    const uLabels = { solo: "solo unit", duo: "双人 unit", trio: "三人 unit", quad: "四人 unit", quint: "五人 unit" };
+    const byId = id => roster.find(m => m.id === id);
+    const nameOf = id => { const m = byId(id); return m ? m.name : "?"; };
+    const unitCount = id => ["solo","duo","trio","quad","quint"].reduce((s,k) => s + (units[k].indexOf(id) >= 0 ? 1 : 0), 0);
+
+    const c = this.card("公演站位 · " + (team.length <= 3 ? "Team " + team : team), "");
+    const body = this.el("div", "stage-editor");
+    c.appendChild(body);
+    const errBox = this.el("div", "", "");
+    errBox.style.cssText = "color:#c0392b;font-size:12px;min-height:16px;margin:4px 0";
+
+    const render = () => {
+      body.innerHTML = "";
+      const placedN = Object.keys(pos).length;
+      const info = this.el("div", "", "");
+      info.style.cssText = "font-size:12px;color:#666;margin-bottom:6px";
+      info.textContent = "在册 " + roster.length + " 人 · 已排站位 " + placedN + "/16" +
+        (roster.length > 16 ? "（超员：只有 16 个站位，其余欠席）" : "（全员必须有站位）");
+      body.appendChild(info);
+
+      /* 站位槽 16 格 */
+      const grid = this.el("div", "stage-pos-grid");
+      grid.style.cssText = "display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px";
+      for (let r = 1; r <= 16; r++) {
+        const id = Object.keys(pos).find(k => pos[k] === r);
+        const cell = this.el("div", "stage-slot", "");
+        cell.style.cssText = "border:1px solid #ccc;border-radius:6px;padding:4px 2px;text-align:center;font-size:12px;min-height:34px;cursor:pointer;color:#333;background:" + (id ? "#eef5ff" : "#fafafa");
+        if (id) {
+          cell.innerHTML = "<b>" + r + "</b> " + nameOf(id);
+          cell.onclick = () => { delete pos[id]; render(); };
+        } else {
+          cell.innerHTML = "<b>" + r + "</b> 号位";
+          cell.onclick = () => { if (sel && !Object.keys(pos).some(k => pos[k] === r)) { pos[sel] = r; sel = null; render(); } };
+        }
+        grid.appendChild(cell);
+      }
+      body.appendChild(grid);
+
+      /* unit 五行 */
+      for (const k of ["solo", "duo", "trio", "quad", "quint"]) {
+        const row = this.el("div", "stage-unit-row");
+        row.style.cssText = "display:flex;align-items:center;gap:4px;margin-bottom:4px;font-size:12px";
+        const lab = this.el("div", "", uLabels[k]);
+        lab.style.cssText = "width:70px;flex:none;color:#555";
+        row.appendChild(lab);
+        for (let i = 0; i < sizes[k]; i++) {
+          const id = units[k][i];
+          const cell = this.el("div", "stage-slot", "");
+          cell.style.cssText = "border:1px dashed #aaa;border-radius:6px;padding:3px 6px;cursor:pointer;color:#333;background:" + (id ? "#fff7e6" : "#fafafa");
+          if (id) {
+            cell.textContent = nameOf(id);
+            cell.onclick = () => { units[k].splice(units[k].indexOf(id), 1); render(); };
+          } else {
+            cell.textContent = "+";
+            cell.onclick = () => {
+              if (!sel) return;
+              if (unitCount(sel) >= 2) { errBox.textContent = nameOf(sel) + " 已编入 2 个 unit（每人至多两个）。"; return; }
+              units[k].push(sel); sel = null; render();
+            };
+          }
+          row.appendChild(cell);
+        }
+        body.appendChild(row);
+      }
+
+      /* 成员点将区 */
+      const memLab = this.el("div", "", "点将（点击成员选中，再点站位/unit 落位；点已落位项可移除）：");
+      memLab.style.cssText = "font-size:12px;color:#555;margin:6px 0 4px";
+      body.appendChild(memLab);
+      const chips = this.el("div", "stage-chips");
+      chips.style.cssText = "display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px";
+      for (const m of roster) {
+        const chip = this.el("div", "stage-chip", "");
+        const placed = pos[m.id] ? pos[m.id] + "号位" : "";
+        const uc = unitCount(m.id);
+        const rk = rankInTeam[m.id] || "?";
+        chip.style.cssText = "border:1px solid " + (sel === m.id ? "#e67e22" : "#bbb") + ";border-radius:14px;padding:3px 8px;font-size:12px;cursor:pointer;color:#333;background:" + (sel === m.id ? "#fdebd0" : placed ? "#d6eaf8" : "#f4f4f4") + ";" + (uc ? "box-shadow:0 0 0 2px #f7dc6f inset;" : "");
+        chip.innerHTML = "<b>" + m.name + "</b> <span style=\"color:#1a5276\">队内#" + rk + "</span>" +
+          (geRank[m.name] ? ' <span style="color:#2471a3">GE#' + geRank[m.name] + "</span>" : ' <span style="color:#888">未入名单</span>') +
+          (placed ? " · " + placed : "") + (uc ? " · unit×" + uc : "");
+        chip.onclick = () => { sel = sel === m.id ? null : m.id; errBox.textContent = ""; render(); };
+        chips.appendChild(chip);
+      }
+      body.appendChild(chips);
+      body.appendChild(errBox);
+    };
+    render();
+
+    const btnRow = this.el("div", "stage-btns");
+    btnRow.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;margin-top:8px";
+    const mkBtn = (label, cls, fn) => {
+      const b = this.el("button", "btn " + cls, label);
+      b.onclick = fn; btnRow.appendChild(b); return b;
+    };
+    mkBtn("一键安排（按总选成绩）", "btn-ghost", () => {
+      const a = Game.autoStageAssign(st, team);
+      for (const k in pos) delete pos[k];
+      for (const k in a.pos) pos[k] = a.pos[k];
+      for (const k in units) units[k] = a.units[k].slice();
+      sel = null; errBox.textContent = ""; render();
+    });
+    mkBtn("清空", "btn-ghost", () => {
+      for (const k in pos) delete pos[k];
+      for (const k in units) units[k] = [];
+      sel = null; errBox.textContent = ""; render();
+    });
+    mkBtn("确定拍板（1 行动点）", "btn-primary", () => {
+      const err = Game.validateStage(st, team, { pos: pos, units: units });
+      if (err) { errBox.textContent = err; return; }
+      const res = Game.doAction("stageSet", { team: team, assign: { pos: pos, units: units } });
+      this.closeModal();
+      this.renderGame();
+      if (res && res.text) this.toast(res.text);
+      /* 拍完一队回主界面，行动点留给玩家自由安排；继续排站需再次点击行动 */
+    });
+    mkBtn("返回", "btn-ghost", () => this.closeModal());
+    c.appendChild(btnRow);
     this.modal(c);
   },
 

@@ -924,6 +924,111 @@ STORY.monthly17 = {
         ];
       },
     },
+    {
+      /* 【2017·9月新增（用户口径 2026-10-26）】陈怡馨学业完成回归（同赵嘉敏学业线处理，
+         仅分队一项，可分至分团；不设队长/兼任/小分队等后续安排）。
+         前提：2016-11 cyx16=study（保留合约·暂休赴学）；cyx16=terminate（已解约）则不触发。
+         分团去向 gate：BEJ48/GNZ48 年初在册恒可选；SHY48/CKG48 需已开业（CKG48 十月末
+         开业，九月事件时点自然隐藏）。决策 cyxTeam17。 */
+      id: "m9_17_cyx_back",
+      title: "9月 · 陈怡馨的归队",
+      gate: st => {
+        if (st.decisions.cyxTeam17) return false;
+        if (st.decisions.cyx16 !== "study") return false;
+        const m = st.members.find(x => x.id === "chenyixin");
+        return !!m && m.status === "rest";
+      },
+      pages: [
+        { nar: true, t: "九月末，一份学位证明和一封亲笔信一起送到你桌上——陈怡馨，毕业了。\n\n信不长，最后一句是：「说好的回来，我做到了。」" },
+        { s: "陈怡馨", cls: "", t: "总监，书读完了。这一年我一天都没敢松——课业之外，功也没断过。只要公司点头，我随时可以归队。去哪支队伍，都听您的。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（翻着名册）她的名字一直留着——暂休赴学，不是离团。总监，队伍您定：本部四队加 XII，或者派驻分团，都行。" },
+      ],
+      choices: [
+        { label: "回归 Team HII", hint: "回到原来的队伍（士气+3 热度+2）",
+          tag: "cyxTeam17", value: "HII",
+          effect: st => {
+            const m = st.members.find(x => x.id === "chenyixin");
+            st.decisions.cyxTeam17 = "HII";
+            if (m) { m.status = "active"; m.team = "HII"; m.note = "2017-09 学业完成归队（Team HII）"; }
+            st.morale = Math.min(100, st.morale + 3); st.heat = Math.min(100, st.heat + 2);
+            return "名单贴出：陈怡馨，Team HII——一切像没变过，又什么都变了。郝婉晴第一个冲过来抱住她：「可算回来了！」\n\n（名单更新：陈怡馨 归队。士气+3，热度+2。）";
+          } },
+        { label: "转入 Team SII", hint: "本部老牌劲旅（士气+3 热度+2）",
+          tag: "cyxTeam17", value: "SII",
+          effect: st => {
+            const m = st.members.find(x => x.id === "chenyixin");
+            st.decisions.cyxTeam17 = "SII";
+            if (m) { m.status = "active"; m.team = "SII"; m.note = "2017-09 学业完成归队（Team SII）"; }
+            st.morale = Math.min(100, st.morale + 3); st.heat = Math.min(100, st.heat + 2);
+            return "名单贴出：陈怡馨，Team SII。新队友们把队规一条条讲给她听——她听得比谁都认真。\n\n（名单更新：陈怡馨 归队。士气+3，热度+2。）";
+          } },
+        { label: "转入 Team NII", hint: "本部人气最盛的队伍（士气+3 热度+2）",
+          tag: "cyxTeam17", value: "NII",
+          effect: st => {
+            const m = st.members.find(x => x.id === "chenyixin");
+            st.decisions.cyxTeam17 = "NII";
+            if (m) { m.status = "active"; m.team = "NII"; m.note = "2017-09 学业完成归队（Team NII）"; }
+            st.morale = Math.min(100, st.morale + 3); st.heat = Math.min(100, st.heat + 2);
+            return "名单贴出：陈怡馨，Team NII。冯薪朵代表全队来接人：「欢迎，咱队添丁了。」\n\n（名单更新：陈怡馨 归队。士气+3，热度+2。）";
+          } },
+        { label: "转入 Team X", hint: "起点最低、冲劲最足的队伍（士气+3 热度+2）",
+          tag: "cyxTeam17", value: "X",
+          effect: st => {
+            const m = st.members.find(x => x.id === "chenyixin");
+            st.decisions.cyxTeam17 = "X";
+            if (m) { m.status = "active"; m.team = "X"; m.note = "2017-09 学业完成归队（Team X）"; }
+            st.morale = Math.min(100, st.morale + 3); st.heat = Math.min(100, st.heat + 2);
+            return "名单贴出：陈怡馨，Team X。全队拉着她拍了张合照，配文：“新家人，报到！”\n\n（名单更新：陈怡馨 归队。士气+3，热度+2。）";
+          } },
+        { label: "转入 Team XII", hint: "最年轻的队伍，需要一位镇场的老将（士气+3 热度+2）",
+          tag: "cyxTeam17", value: "XII",
+          effect: st => {
+            const m = st.members.find(x => x.id === "chenyixin");
+            st.decisions.cyxTeam17 = "XII";
+            if (m) { m.status = "active"; m.team = "XII"; m.note = "2017-09 学业完成归队（Team XII）"; }
+            st.morale = Math.min(100, st.morale + 3); st.heat = Math.min(100, st.heat + 2);
+            return "名单贴出：陈怡馨，Team XII。娃娃们围着三期生前辈问个不停，她笑着说先教会大家怎么把功补回来。\n\n（名单更新：陈怡馨 归队。士气+3，热度+2。）";
+          } },
+        { label: "派驻 BEJ48（北京）", hint: "分团正式队员（士气+3 热度+2）",
+          tag: "cyxTeam17", value: "BEJ48",
+          effect: st => {
+            const m = st.members.find(x => x.id === "chenyixin");
+            st.decisions.cyxTeam17 = "BEJ48";
+            if (m) { m.status = "branch"; m.team = "BEJ48"; m.branchTeam = "BEJ48"; m.branchLabel = ""; m.note = "2017-09 学业完成归队，派驻 BEJ48"; }
+            st.morale = Math.min(100, st.morale + 3); st.heat = Math.min(100, st.heat + 2);
+            return "调函发往北京：陈怡馨，派驻 BEJ48。悠唐星梦剧院连夜把她的应援色挂上了墙——三期生前辈的到来，让 Team B/E 的孩子们都振了振腰杆。\n\n（名单更新：陈怡馨 归队，派驻 BEJ48。士气+3，热度+2。）";
+          } },
+        { label: "派驻 GNZ48（广州）", hint: "分团正式队员（士气+3 热度+2）",
+          tag: "cyxTeam17", value: "GNZ48",
+          effect: st => {
+            const m = st.members.find(x => x.id === "chenyixin");
+            st.decisions.cyxTeam17 = "GNZ48";
+            if (m) { m.status = "branch"; m.team = "GNZ48"; m.branchTeam = "GNZ48"; m.branchLabel = ""; m.note = "2017-09 学业完成归队，派驻 GNZ48"; }
+            st.morale = Math.min(100, st.morale + 3); st.heat = Math.min(100, st.heat + 2);
+            return "调函发往广州：陈怡馨，派驻 GNZ48。周马潇洒地回了句「放心，人我接好了」——南方剧场的第一排，当晚就多了几盏新的灯牌。\n\n（名单更新：陈怡馨 归队，派驻 GNZ48。士气+3，热度+2。）";
+          } },
+        { label: "派驻 SHY48（沈阳）", hint: "需 SHY48 已开业：分团正式队员（士气+3 热度+2）",
+          tag: "cyxTeam17", value: "SHY48",
+          gate: st => st.branch17 && st.branch17.shyOpen,
+          effect: st => {
+            const m = st.members.find(x => x.id === "chenyixin");
+            st.decisions.cyxTeam17 = "SHY48";
+            if (m) { m.status = "branch"; m.team = "SHY48"; m.branchTeam = "SHY48"; m.branchLabel = ""; m.note = "2017-09 学业完成归队，派驻 SHY48"; }
+            st.morale = Math.min(100, st.morale + 3); st.heat = Math.min(100, st.heat + 2);
+            return "调函发往沈阳：陈怡馨，派驻 SHY48。东北的粉丝们用最亮的灯牌欢迎她：「老妹儿，可算来了！」\n\n（名单更新：陈怡馨 归队，派驻 SHY48。士气+3，热度+2。）";
+          } },
+        { label: "派驻 CKG48（重庆）", hint: "需 CKG48 已开业：分团正式队员（士气+3 热度+2）",
+          tag: "cyxTeam17", value: "CKG48",
+          gate: st => st.branch17 && st.branch17.ckgOpen,
+          effect: st => {
+            const m = st.members.find(x => x.id === "chenyixin");
+            st.decisions.cyxTeam17 = "CKG48";
+            if (m) { m.status = "branch"; m.team = "CKG48"; m.branchTeam = "CKG48"; m.branchLabel = ""; m.note = "2017-09 学业完成归队，派驻 CKG48"; }
+            st.morale = Math.min(100, st.morale + 3); st.heat = Math.min(100, st.heat + 2);
+            return "调函发往重庆：陈怡馨，派驻 CKG48。刚开业的城市剧院来了一位能压场的前辈，孟波在电话里笑出了声。\n\n（名单更新：陈怡馨 归队，派驻 CKG48。士气+3，热度+2。）";
+          } },
+      ],
+    },
   ],
 
   /* ---------- 10月：CKG48 首演 + 五周年 ---------- */

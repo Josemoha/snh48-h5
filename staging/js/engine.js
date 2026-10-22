@@ -39,7 +39,7 @@ const Game = {
       playerName: playerName || "总监",
       era: era,
       month: 1,
-      ap: 3,
+      ap: 4,
       money: is26 ? 380 : 600,
       heat: is26 ? 30 : 35,
       morale: is26 ? 62 : 72,
@@ -188,7 +188,7 @@ const Game = {
       playerName: src.playerName,
       era: "2017",
       month: 1,
-      ap: 3,
+      ap: 4,
       money: src.money,
       heat: src.heat,
       morale: src.morale,
@@ -323,7 +323,7 @@ const Game = {
       playerName: src.playerName,
       era: "2027",
       month: 1,
-      ap: 3,
+      ap: 4,
       money: src.money,
       heat: src.heat,
       morale: src.morale,
@@ -930,7 +930,7 @@ const Game = {
       playerName: src.playerName,
       era: "2018",
       month: 1,
-      ap: 3,
+      ap: 4,
       money: src.money,
       heat: src.heat,
       morale: src.morale,
@@ -1006,7 +1006,7 @@ const Game = {
       playerName: src.playerName,
       era: "2019",
       month: 1,
-      ap: 3,
+      ap: 4,
       money: src.money,
       heat: src.heat,
       morale: src.morale,
@@ -2051,7 +2051,7 @@ const Game = {
       playerName: src.playerName,
       era: "2020",
       month: 1,
-      ap: 3,
+      ap: 4,
       money: src.money,
       heat: src.heat,
       morale: src.morale,
@@ -3351,6 +3351,231 @@ const Game = {
     return { text: text, tone: "main" };
   },
 
+  /* 【2017】名册精简补偿落地（用户口径 2026-10-26）：
+     names = 待裁成员名（已按卡况过滤）；pay=true 支付补偿金 10 万/人（同 2016 线口径，
+     资金支出，士气+2 体面转身）；pay=false 不支付（士气-4 热度-3；涉分团则该分团在册
+     成员羁绊-4，涉本部则本部在册成员羁绊-2）。
+     调用方：月首离团表（未兼任分团自动支付）与 UI layoff17Pick 拍板窗。
+     决策标签 decisions.layoff17 追加 { names, pay } 记录。 */
+  applyLayoff17(names, pay) {
+    const st = this.st;
+    const left = [];
+    for (const nm of (names || [])) {
+      const m = st.members.find(x => x.name === nm && x.status !== "left" && x.status !== "rest");
+      if (!m || m.hall) continue;
+      m.status = "left";
+      m.note = st.year + "-" + (st.month < 10 ? "0" : "") + st.month + " 名册精简" + (pay ? "（公司支付补偿金10万）" : "（无补偿）");
+      this.addLog(st, st.month, nm + " 名册精简" + (pay ? "（补偿金10万）" : "（无补偿）") + "。", "bad");
+      left.push(m);
+    }
+    if (!left.length) return { text: "名单上的成员均已不在册。", tone: "blocked" };
+    const nmList = left.map(x => x.name).join("、");
+    let text = "";
+    if (pay) {
+      st.money = Math.max(0, st.money - 10 * left.length);
+      st.morale = Math.min(100, st.morale + 2);
+      this.addLog(st, st.month, "名册精简：" + nmList + " 离团（支付补偿金 " + 10 * left.length + " 万）。", "bad");
+      text = "补偿金签领单一张张签下去，每张背后都是一段没来得及展开的路。离团公告写得很温和：「感谢她们的付出，愿她们前程似锦。」\n\n（已支付补偿金：资金-" + 10 * left.length + "，士气+2。" + nmList + " 已离团。）";
+    } else {
+      st.morale = Math.max(0, st.morale - 4); st.heat = Math.min(100, st.heat + 3);
+      for (const m of left) {
+        if (m.status === "branch" || m.branchTeam) {
+          for (const x of st.members) if (x.branchTeam === (m.branchTeam || m.team) && x.status !== "left" && x.status !== "rest") x.bond = Math.max(0, (x.bond || 0) - 4);
+        } else {
+          for (const x of st.members) if (!x.branchTeam && x.status !== "left" && x.status !== "rest") x.bond = Math.max(0, (x.bond || 0) - 2);
+        }
+      }
+      this.addLog(st, st.month, "名册精简：" + nmList + " 离团（未支付补偿金，士气与信任受损）。", "bad");
+      text = "你在补偿金那一栏画了斜线：今年没有这笔预算。" + nmList + " 静静地办完了离团手续，没有鲜花也没有告别公演。消息传开，排练室安静了很久。\n\n（未支付补偿金：士气-4 热度-3；涉分团在册成员羁绊-4，涉本部在册成员羁绊-2。）";
+    }
+    st.decisions.layoff17 = (st.decisions.layoff17 || []).concat([{ names: left.map(x => x.name), pay: pay }]);
+    this.save();
+    return { text: text, tone: "main" };
+  },
+
+  /* ========================================================================
+     【全线通用·新系统】公演站位调整（用户口径 2026-10-26）
+     --------------------------------------------------------------------------
+     · 总选完成后解锁（st.geDone）；逐队拍板，每队 1 行动点，一次只显示一队（含分团）。
+     · 大歌 16 人站位：人数 ≤16 时每人必须有站位；人数 >16 时至多 16 个站位（超员欠席）。
+     · unit：solo/双人/三人/四人/五人各一；同 unit 成员相互好感度上升（rel +3/对）；
+       每名成员至多同时编入 2 个 unit。
+     · 规则（拍板即时反馈）：以队内总选名次为基准序（未入总选名单者同级、排在队内末尾）——
+       总选第一未站一号位 → 其羁绊-8；基准序比站位靠后 ≥3 位（破格提拔）→ 羁绊+2；
+       基准序比站位靠前 ≥3 位（明显压后）→ 羁绊-6；±2 以内不产生增减。
+     · 年末结算（endMonth 12月，先于年度评分与跨年继承）：本年度未主动拍板的队伍默认
+       一键安排（按总选成绩）；按年末站位结算人气加成——1号位+6、2号位+5、3号位+4、
+       4~5号位+3、6~8号位+2、9~12号位+1、13~16号位+0（站位越靠前提升越多）。
+     ======================================================================== */
+  stageGain(pos) { return pos <= 3 ? [6, 5, 4][pos - 1] : pos <= 5 ? 3 : pos <= 8 ? 2 : pos <= 12 ? 1 : 0; },
+
+  /* 参与公演站位的队伍（含分团；预备生/殿堂不列） */
+  stageTeams(st) {
+    st = st || this.st;
+    const keys = [...new Set(st.members.map(m => this.teamKeyOf(m)).filter(k => k && k !== "PREP" && k !== "HALL"))];
+    const order = ["SII", "NII", "HII", "X", "XII", "FT", "BEJ48", "GNZ48", "SHY48", "CKG48", "TEB48"];
+    keys.sort((a, b) => {
+      const ia = order.indexOf(a), ib = order.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1);
+    });
+    return keys;
+  },
+
+  stageInit(st) {
+    if (!st.stage) st.stage = { pos: {}, units: {}, done: {}, manual: {} };
+    return st.stage;
+  },
+
+  /* 队内总选基准序：top48 中该队成员按名次在前；未入名单者视为同级，按人气降序续后 */
+  stageBaseline(st, team) {
+    const roster = this.teamRoster(st, team);
+    const top = (st.geResult && Array.isArray(st.geResult.top48)) ? st.geResult.top48 : [];
+    const inGE = [];
+    for (const r of top) {
+      const m = roster.find(x => x.name === r.name && (r.team === team));
+      if (m && inGE.indexOf(m.id) < 0) inGE.push(m.id);
+    }
+    const rest = roster.filter(m => inGE.indexOf(m.id) < 0)
+      .sort((a, b) => (b.pop || 0) - (a.pop || 0) || (a.name < b.name ? -1 : 1))
+      .map(m => m.id);
+    return inGE.concat(rest);
+  },
+
+  /* 一键安排：按基准序填站位；unit 按基准序顺次填满五种编制（允许复用，每人≤2个） */
+  autoStageAssign(st, team) {
+    const base = this.stageBaseline(st, team);
+    const pos = {};
+    base.slice(0, Math.min(16, base.length)).forEach((id, i) => { pos[id] = i + 1; });
+    const units = { solo: [], duo: [], trio: [], quad: [], quint: [] };
+    const sizes = { solo: 1, duo: 2, trio: 3, quad: 4, quint: 5 };
+    const cnt = {};
+    if (base.length >= 3) {
+      let p = 0;
+      for (const k of ["solo", "duo", "trio", "quad", "quint"]) {
+        let guard = 0;
+        while (units[k].length < sizes[k] && guard < 200) {
+          guard++;
+          const id = base[p % base.length]; p++;
+          if ((cnt[id] || 0) >= 2 || units[k].indexOf(id) >= 0) continue;
+          units[k].push(id); cnt[id] = (cnt[id] || 0) + 1;
+        }
+        if (units[k].length < sizes[k]) units[k] = [];   // 人数不足以填满 → 该 unit 留空
+      }
+    }
+    return { pos: pos, units: units };
+  },
+
+  /* 拍板校验：返回错误文案或 null */
+  validateStage(st, team, assign) {
+    const roster = this.teamRoster(st, team);
+    const ids = roster.map(m => m.id);
+    const pos = (assign && assign.pos) || {};
+    const ranks = [];
+    for (const id in pos) {
+      if (ids.indexOf(id) < 0) return "站位名单中有非本队成员。";
+      const r = pos[id];
+      if (!Number.isInteger(r) || r < 1 || r > 16) return "站位号必须在 1~16 号位之间。";
+      if (ranks.indexOf(r) >= 0) return r + " 号位重复。";
+      ranks.push(r);
+    }
+    if (roster.length <= 16 && ranks.length < roster.length) return "队伍人数不足 16 人——每名成员都必须分配到站位。";
+    if (roster.length > 16 && ranks.length > 16) return "公演站位只有 16 个——超员成员只能欠席。";
+    const units = (assign && assign.units) || {};
+    const sizes = { solo: 1, duo: 2, trio: 3, quad: 4, quint: 5 };
+    const ucnt = {};
+    for (const k in sizes) {
+      const arr = units[k];
+      if (!arr || !arr.length) continue;
+      if (arr.length !== sizes[k]) return "unit 编制不符：solo/双人/三人/四人/五人各一个。";
+      for (const id of arr) {
+        if (ids.indexOf(id) < 0) return "unit 名单中有非本队成员。";
+        if (arr.indexOf(id) < arr.lastIndexOf(id)) return "同一 unit 内成员不能重复。";
+        ucnt[id] = (ucnt[id] || 0) + 1;
+        if (ucnt[id] > 2) return roster.find(x => x.id === id).name + " 已编入 2 个 unit（每人至多两个）。";
+      }
+    }
+    return null;
+  },
+
+  /* 拍板落地：写站位/unit、unit 内好感度+3/对、按基准序即时反馈羁绊；auto=年末默认一键 */
+  applyStage(st, team, assign, opts) {
+    opts = opts || {};
+    const err = this.validateStage(st, team, assign);
+    if (err) return { err: err };
+    const s = this.stageInit(st);
+    s.pos[team] = assign.pos; s.units[team] = assign.units;
+    s.done[team] = true; if (!opts.auto) s.manual[team] = true;
+    const nameOf = id => { const m = st.members.find(x => x.id === id); return m ? m.name : id; };
+    /* unit 内好感度 */
+    for (const k in assign.units) {
+      const arr = assign.units[k];
+      for (let i = 0; i < arr.length; i++) for (let j = i + 1; j < arr.length; j++) this.relAdd(st, arr[i], arr[j], 3);
+    }
+    /* 羁绊反馈（基准序 vs 站位） */
+    const base = this.stageBaseline(st, team);
+    const msgs = [];
+    for (const id in assign.pos) {
+      const m = st.members.find(x => x.id === id);
+      if (!m) continue;
+      const b = (base.indexOf(id) >= 0 ? base.indexOf(id) : base.length) + 1;
+      const p = assign.pos[id];
+      const d = b - p;
+      if (d >= 2) { m.bond = this.clamp((m.bond || 0) + 2, 0, 100); msgs.push(nameOf(id) + " 被破格提拔（基准" + b + "→" + p + "号位）羁绊+2"); }
+      else if (d <= -3) { m.bond = Math.max(0, (m.bond || 0) - 6); msgs.push(nameOf(id) + " 站位明显低于总选成绩（基准" + b + "→" + p + "号位）羁绊-6"); }
+    }
+    const t1id = base[0];
+    const t1 = t1id != null ? st.members.find(x => x.id === t1id) : null;
+    if (t1 && assign.pos[t1.id] != null && assign.pos[t1.id] !== 1) {
+      t1.bond = Math.max(0, (t1.bond || 0) - 8);
+      msgs.unshift("「总选第一」" + t1.name + " 未站一号位，羁绊-8");
+    }
+    /* 欠席反馈（仅超员队）：基准序在前 16 的成员未获站位 → 视为明显压后 */
+    for (let i = 0; i < base.length && i < 16; i++) {
+      if (assign.pos[base[i]] != null) continue;
+      const m = st.members.find(x => x.id === base[i]);
+      if (!m) continue;
+      m.bond = Math.max(0, (m.bond || 0) - 6);
+      msgs.push(nameOf(base[i]) + " 未能站上公演站位（基准第" + (i + 1) + "）羁绊-6");
+    }
+    return { ok: true, msgs: msgs };
+  },
+
+  /* 年末结算（endMonth 12月调用，先于年度评分与跨年继承）：
+     未拍板队伍默认一键安排 → 全部队按年末站位结算人气加成 */
+  settleStage(st) {
+    if (!st.geDone || st.flags.stageSettled === st.era) return;
+    st.flags.stageSettled = st.era;
+    const teams = this.stageTeams(st);
+    const autoTeams = [];
+    for (const t of teams) {
+      const s = this.stageInit(st);
+      if (!s.done[t]) {
+        const r = this.applyStage(st, t, this.autoStageAssign(st, t), { auto: true });
+        if (r.ok) autoTeams.push(t);
+      }
+    }
+    const gains = [];
+    let total = 0;
+    const s = this.stageInit(st);
+    for (const t of teams) {
+      const pos = s.pos[t];
+      if (!pos || !s.done[t]) continue;
+      let g = 0;
+      for (const id in pos) {
+        const m = st.members.find(x => x.id === id);
+        if (!m) continue;
+        const v = this.stageGain(pos[id]);
+        if (v) { m.pop = (m.pop || 0) + v; g += v; }
+      }
+      if (g) { gains.push(t + " +" + g); total += g; }
+    }
+    if (autoTeams.length || total) {
+      this.addLog(st, st.month, "年末公演站位结算：" +
+        (autoTeams.length ? "未调整队伍已按总选成绩自动排站（" + autoTeams.join("、") + "）。" : "") +
+        (total ? "站位人气加成合计 +" + total + "（" + gains.join("、") + "）。" : ""), "main");
+    }
+  },
+
   /* 【2020·10月事件】GNZ48 首次分团内大重组（用户口径，2020-10 史实锚点，按用户口径挂载）：
      仅玩家兼任 GNZ48 总监（2016「下一站」选 GNZ48 → flags.concur17.GNZ48）时触发。
      分班公演收官、恢复队伍公演：Team G / Team NIII / Team Z 重新编成，
@@ -3657,7 +3882,7 @@ const Game = {
     st.flags.monthStarted = st.month;
 
     const steps = [];
-    st.ap = 3;
+    st.ap = 4;
 
     // ⓪ 旧存档追补：错过月度事件装载的唐安琪（v0.9.1 前建的档已过 3 月时不会再触发）
     //    · 2016 线 4 月起仍在籍 → 补为暂休（3月末意外烧伤）；
@@ -3773,6 +3998,13 @@ const Game = {
         st.flags.layoff20Names = (st.flags.layoff20Names || []).concat(lv.name);
         continue;
       }
+      /* 【2017】名册精简（用户口径 2026-10-26，多月份散点）：不走通用离团，
+         先登记待裁名单，离团表循环结束后按成员卡现状动态分配落地
+         （见下方 layoff17 分配块）。 */
+      if (st.era === "2017" && (lv.note || "").indexOf("名册精简") >= 0) {
+        st.flags.layoff17Names = (st.flags.layoff17Names || []).concat(lv.name);
+        continue;
+      }
       /* 【2019】去年点将出征鹅厂选秀的成员不随史实表离团——封闭集训/限定团线
          承载她们的年内在籍（6月成团者已转暂休，上面 rest 已跳过；未成团派遣
          成员留在队里等 7 月总选加成结算）。 */
@@ -3848,9 +4080,41 @@ const Game = {
       if (choice.length) st.flags.layoff20Choice = (st.flags.layoff20Choice || []).concat(choice);
     }
 
+    /* 【2017】名册精简落地·动态分配（用户口径 2026-10-26）：逐人查卡判定归属——
+       本部成员（active，含 PREP）或玩家兼任分团（concur17）成员 → layoff17Choice，
+       由玩家拍板是否支付补偿；未兼任分团成员 → 默认自动支付 10 万/人（同 2016 线口径）。 */
+    if (st.era === "2017" && (st.flags.layoff17Names || []).length) {
+      const pend = st.flags.layoff17Names;
+      st.flags.layoff17Names = [];
+      const concur = st.flags.concur17 || {};
+      const choice = [], auto = [];
+      for (const nm of pend) {
+        const mm = st.members.find(x => x.name === nm && x.status !== "left" && x.status !== "rest");
+        if (!mm || mm.hall) continue;
+        const domain = mm.status === "branch" ? (mm.branchTeam || mm.team) : "本部";
+        if (domain === "本部" || (concur && concur[domain])) choice.push(nm);
+        else auto.push(nm);
+      }
+      if (auto.length) this.applyLayoff17(auto, true);
+      if (choice.length) st.flags.layoff17Choice = (st.flags.layoff17Choice || []).concat(choice);
+    }
+
     // ③ 分团成立后的固定月收益提示（2016 线，5月起在结算体现，这里只提示首月）
     if (st.era === "2016" && st.branch.announce && st.month === st.branch.announceMonth + 1) {
       this.addLog(st, st.month, "分团进入稳定运营期，每月为总账带来 35 万收入。", "gold");
+    }
+
+    /* 【全线通用】总选后·马跃提醒重排公演站位（用户口径 2026-10-26）：
+       总选完成后首月初一次性引导剧情，指引玩家使用「公演站位调整」。 */
+    if (st.geDone && !st.flags.stageIntro && !st.flags.stageSettled && this.stageTeams(st).length) {
+      st.flags.stageIntro = true;
+      steps.push({ type: "vn", title: "总选之后 · 一年成绩单", pages: [
+        { nar: true, t: "总选举的灯光刚落，舞台总监马跃抱着一叠资料敲开了总监办公室的门。" },
+        { s: "马跃", cls: "", t: "总监，总选举是一年成绩单的报告——名次是粉丝给的答案，但奖励不能缺席：接下来的公演站位，得重新安排了。" },
+        { s: "马跃", cls: "", t: "大歌十六个站位，solo 到五人的 unit 也各留了一个。站得越靠前，人气涨得越猛——但站位若和总选成绩差得离谱，孩子们心里会有意见。站位表已经放到「公演站位调整」里了，一支队伍一支队伍来，每队占一点行动力。" },
+        { s: "马跃", cls: "", t: "当然，您要是忙不过来，年末我按总选成绩默认排好。但有些话……还是由您亲口安排的好。" },
+        { nar: true, t: "（本月起行动区新增「公演站位调整」：逐队拍板，每队 1 行动点；年末仍未拍板的队伍将按总选成绩自动排站。）" },
+      ] });
     }
     return steps;
   },
@@ -3949,6 +4213,10 @@ const Game = {
       ];
       if (st.flags.aji) {
         acts.splice(7, 0, { id: "tv", name: "卫视联动（阿吉）", desc: "阿吉的卫视资源图谱：综艺与晚会舞台（热度+8，花费15万）" });
+      }
+      /* 【2017】名册精简补偿拍板（layoff17Choice 非空时出现；动态分配后待拍板名单） */
+      if ((st.flags.layoff17Choice || []).length) {
+        acts.push({ id: "layoff17", main: true, name: "名册精简补偿拍板", desc: "待拍板：" + st.flags.layoff17Choice.join("、") + "（支付 10 万/人 / 不支付）" });
       }
       return acts;
     }
@@ -4193,6 +4461,16 @@ const Game = {
         : "为指定队伍安排团建：磨合度+6 士气+2 队友关系小幅升温（耗资15万）",
       disabled: !ok, disabledTip: ok ? "" : lockPeak ? "政策原因：聚众活动不能进行（1~3月）" : "资金不足（需≥15万）",
     });
+    /* 【全线通用】队伍团建（v0.13.1）+ 公演站位调整（用户口径 2026-10-26：总选后解锁，逐队拍板） */
+    const stageTeamsAvail = st.geDone && !st.flags.stageSettled ? this.stageTeams(st) : [];
+    if (stageTeamsAvail.length) {
+      const stg = this.stageInit(st);
+      const doneN = stageTeamsAvail.filter(t => stg.done[t]).length;
+      acts.push({
+        id: "stageSet", name: "公演站位调整",
+        desc: "逐队拍板大歌 16 人站位与五个 unit（每队 1 行动点）：已拍板 " + doneN + "/" + stageTeamsAvail.length + " 队",
+      });
+    }
     return acts;
   },
 
@@ -4288,6 +4566,28 @@ const Game = {
         /* 【2020】疫情裁撤补偿拍板：不耗行动点，转交 UI 拍板窗（支付/不支付） */
         if (!(st.flags.layoff20Choice || []).length) return { text: "当前没有待拍板的裁撤补偿。", tone: "blocked" };
         return { text: "", tone: "layoff20Pick", names: st.flags.layoff20Choice.slice() };
+      }
+      case "layoff17": {
+        /* 【2017】名册精简补偿拍板：不耗行动点，转交 UI 拍板窗（支付/不支付） */
+        if (!(st.flags.layoff17Choice || []).length) return { text: "当前没有待拍板的名册精简补偿。", tone: "blocked" };
+        return { text: "", tone: "layoff17Pick", names: st.flags.layoff17Choice.slice() };
+      }
+      case "stageSet": {
+        /* 【全线通用】公演站位调整（用户口径 2026-10-26）：
+           无 payload → 队伍选择窗（不耗 AP）；{team} → 编辑窗（不耗 AP）；
+           {team, assign} → 落地该队拍板（耗 1 AP，校验失败不耗 AP）。 */
+        if (!st.geDone) return { text: "总选尚未落幕——公演站位调整在总选完成后开放。", tone: "blocked" };
+        if (!payload || !payload.team) return { text: "", tone: "stageTeamPick" };
+        if (!this.teamRoster(st, payload.team).length) return { text: "该队伍当前没有在册成员。", tone: "blocked" };
+        if (!payload.assign) return { text: "", tone: "stageEdit", team: payload.team };
+        const stgRes = this.applyStage(st, payload.team, payload.assign, {});
+        if (stgRes.err) return { text: stgRes.err, tone: "blocked" };
+        const stg = this.stageInit(st);
+        const teamsAll = this.stageTeams(st);
+        const doneN = teamsAll.filter(t => stg.done[t]).length;
+        res = { text: payload.team + " 公演站位已拍板（" + doneN + "/" + teamsAll.length + " 队完成）。" +
+          (stgRes.msgs.length ? "\n" + stgRes.msgs.join("；") + "。" : " 队内无人对站位有异议。"), tone: "good" };
+        break;
       }
       case "teb19": {
         if (st.decisions.teb19Push !== "go") return { text: "TEB48 今年没有立项——序章时未拍板推进。", tone: "blocked" };
@@ -4955,6 +5255,9 @@ const Game = {
 
     /* ⑦ 十二月：金曲大赏结算（2020 疫情年改为线上直播收费，收益减半；2026/2027 线若被取消则改为年末总结会）+ 年度结局 */
     if (st.month === 12) {
+      /* 【全线通用】公演站位·年末结算（用户口径 2026-10-26）：未拍板队伍默认一键安排，
+         按年末站位结算人气加成——先于年度评分与跨年继承，数值计入下一年。 */
+      this.settleStage(st);
       if ((st.era === "2026" || st.era === "2027") && st.rtCancelled) {
         const closeNar = st.era === "2027" ? STORY.rtCancelledClose27(st) : STORY.rtCancelledClose(st);
         steps.push({ type: "vn", title: "年末总结会", pages: closeNar.map(p => ({ ...p, t: this.fmt(p.t) })) });
@@ -5496,7 +5799,7 @@ const Game = {
   advanceMonth() {
     const st = this.st;
     st.month += 1;
-    st.ap = 3;
+    st.ap = 4;
     this.save();
   },
 
