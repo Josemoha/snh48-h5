@@ -51,7 +51,10 @@
    4 月起：支出恢复正常、收益减半（上座率受限，云公演补位）。
 
    决策标签（st.decisions）：mengbo20（孟波出资保住的旗号：CKG48/SHY48/null）/
-     self20Flag（兼任总监自费保留的旗号：keep/null）/ fengLove20（冯薪朵恋爱风波处置：
+     self20Flag（兼任总监自费保留的旗号：keep/null）/ deng19Media（邓森林转任新媒体部总监，
+     仅 keep 线且 SHY48 彻底解散（keptBranchFlags20 不含 SHY48）且原任 SHY48 总监时登记，
+     同 2019 giveup+保旗线第四轮口径，供 STORY.dengRole17 回看席位）/
+     fengLove20（冯薪朵恋爱风波处置：
      standard=依例执行·暂休 / talk=当面恳谈，成败在事件内当场结算）/
      unitFill20（3月小分队补员：fill=逐队补足空缺至编制上限 / skip=维持现状）。
    旗标（st.flags）：reorg20Done / covid20Done / cloud20Done / teb20Done / gen1Done /
@@ -175,6 +178,38 @@ STORY.prologue20 = {
           apply: st => {
             st.decisions.self20Flag = null;
             return "你在停运通知上签了字。沈阳的孩子们还不知道——但很快，安置名单会摆上你的桌面。\n\n（决策已登记：self20Flag=null。SHY48 彻底解散，成员由总监安置。）";
+          } },
+      ],
+    },
+    /* —— 第三轮：人事令·新媒体的椅子（仅 keep 线且 SHY48 彻底解散时；
+       邓森林时任 SHY48 总监即 dengRole17="shy" 时触发——此时孟波至多保 CKG48 的旗号，
+       SHY48 随停运彻底撤销总监席位，宣布邓森林转任新媒体部总监（阿吉的上司）。
+       branchPost=SHY48/CKG48 时邓森林 2017 年起已在媒体位，本整轮跳过；
+       branchPost=SHY48 自留旗号（self20Flag）线亦无需本节点。同 2019 giveup+保旗线
+       第四轮口径，共用 tag deng19Media。 —— */
+    {
+      gate: st => st.decisions.branch19Keep === "keep"
+        && st.decisions.mengbo20 !== undefined
+        && Game.keptBranchFlags20(st).indexOf("SHY48") < 0
+        && typeof STORY.dengRole17 === "function" && STORY.dengRole17(st) === "shy",
+      title: "人事令 · 新媒体的椅子",
+      pages: st => {
+        const ckgKept = st.decisions.mengbo20 === "CKG48";
+        return [
+          { nar: true, t: ckgKept
+            ? "孟波保下了重庆的那块牌子，视频那头的灯灭了。可沈阳没有第二个孟波——SHY48 的剧场今年春天彻底停摆，SHY48 总监的席位，随着剧场的封条一起走到了尽头。"
+            : "两块牌子都没能保住。视频会议的接入列表一个个暗下去——沈阳的剧场今年春天彻底停摆，SHY48 总监的席位，随着剧场的封条一起走到了尽头。" },
+          { s: "叶盛", cls: "speaker-yesheng", t: "（把人事令放到你面前）总监，邓森林当年是带着新媒体的班子被点出去的——沈阳收官，董事会想把他调回来，接新媒体部总监的位子。今年线上是唯一的战场，阿吉那一摊子事，正好也该有个正牌上司盯着。您签个字。" },
+        ];
+      },
+      choices: [
+        /* 单选项：人事令由董事会拟定，总监签字生效——选项承载 tag deng19Media */
+        { label: "「签。让懂舞台的人，去点线上的灯。」",
+          hint: "邓森林转任新媒体部总监（阿吉的正牌上司）；SHY48 总监席位随停运撤销",
+          tag: "deng19Media", value: "media",
+          apply: st => {
+            st.decisions.deng19Media = true;
+            return "人事令当天走完了流程：SHY48 总监席位随剧场停运一并撤销，邓森林调任集团新媒体部总监——当年是他点将阿吉顶上新媒体的日常，如今他自己坐回了那间办公室，成了阿吉的正牌上司。\n\n今年线上的灯比哪一年都要紧。他在交接邮件里只写了一句话：「灯灭的地方，人不能散——沈阳的账我记着，线上的灯，我来点。」\n\n（决策已登记：deng19Media=true。邓森林转任新媒体部总监，SHY48 总监席位随停运撤销。）";
           } },
       ],
     },

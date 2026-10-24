@@ -2633,6 +2633,35 @@ const Game = {
     return st.members.filter(m => this.teamKeyOf(m) === key);
   },
 
+  /* 【公演站位·用户口径 2026-10-24】成员兼任队伍（站位通用）：
+     · 剧情兼任：冯薪朵兼任 BEJ48（d.fengXinDuo19="bej"，本部在籍）；
+     · 2020 分团 TOP1 兼任本部（d.ge20Branch1=[{name,branch,team}]，兼任不调动、保留分团在册）。
+     返回兼任目标队伍 key（主队之外的另一队）或 null。兼任成员可同时进入两队站位名单。 */
+  memberConcurTeam(st, m) {
+    if (!m || m.hall) return null;
+    if (m.status !== "active" && m.status !== "branch") return null;
+    const home = this.teamKeyOf(m);
+    if (!home) return null;
+    const d = st.decisions || {};
+    if (m.name === "冯薪朵" && d.fengXinDuo19 === "bej" && home !== "BEJ48") return "BEJ48";
+    if (m.status === "branch" && Array.isArray(d.ge20Branch1)) {
+      const e = d.ge20Branch1.find(x => x && x.name === m.name && x.team && x.branch === m.branchTeam);
+      if (e && e.team !== home) return e.team;
+    }
+    return null;
+  },
+
+  /* 站位花名册：本队在册 + 兼任成员（兼任成员同时出现在主队与兼任队伍两份名单中，
+     主队必须落席，兼任队伍可选落席）。仅公演站位链路使用，不影响团建/关系等 roster 消费。 */
+  stageRoster(st, team) {
+    const roster = this.teamRoster(st, team).slice();
+    for (const m of st.members) {
+      if (roster.indexOf(m) >= 0) continue;
+      if (this.memberConcurTeam(st, m) === team) roster.push(m);
+    }
+    return roster;
+  },
+
   /* 磨合度初始值：成员人气/实力越均匀（离散度越低），初始磨合越高。
      无实力系统的年代线（2016/2026）只按人气均匀度计。 */
   calcChem(st, key) {
@@ -3428,7 +3457,7 @@ const Game = {
 
   /* 队内总选基准序：top48 中该队成员按名次在前；未入名单者视为同级，按人气降序续后 */
   stageBaseline(st, team) {
-    const roster = this.teamRoster(st, team);
+    const roster = this.stageRoster(st, team);
     const top = (st.geResult && Array.isArray(st.geResult.top48)) ? st.geResult.top48 : [];
     const inGE = [];
     for (const r of top) {
@@ -3467,7 +3496,8 @@ const Game = {
 
   /* 拍板校验：返回错误文案或 null */
   validateStage(st, team, assign) {
-    const roster = this.teamRoster(st, team);
+    const roster = this.stageRoster(st, team);
+    const must = roster.filter(m => this.memberConcurTeam(st, m) !== team);   // 主队成员（兼任队伍中的兼任成员可缺席）
     const ids = roster.map(m => m.id);
     const pos = (assign && assign.pos) || {};
     const ranks = [];
@@ -3478,8 +3508,8 @@ const Game = {
       if (ranks.indexOf(r) >= 0) return r + " 号位重复。";
       ranks.push(r);
     }
-    if (roster.length <= 16 && ranks.length < roster.length) return "队伍人数不足 16 人——每名成员都必须分配到站位。";
-    if (roster.length > 16 && ranks.length > 16) return "公演站位只有 16 个——超员成员只能欠席。";
+    if (must.length <= 16 && ranks.length < must.length) return "队伍人数不足 16 人——每名成员都必须分配到站位。";
+    if (ranks.length > 16) return "公演站位只有 16 个——超员成员只能欠席。";
     const units = (assign && assign.units) || {};
     const sizes = { solo: 1, duo: 2, trio: 3, quad: 4, quint: 5 };
     const ucnt = {};
@@ -3534,6 +3564,7 @@ const Game = {
       if (assign.pos[base[i]] != null) continue;
       const m = st.members.find(x => x.id === base[i]);
       if (!m) continue;
+      if (this.memberConcurTeam(st, m) === team) continue;   /* 兼任成员在兼任队伍未落席不判不满（用户口径 2026-10-24） */
       m.bond = Math.max(0, (m.bond || 0) - 6);
       msgs.push(nameOf(base[i]) + " 未能站上公演站位（基准第" + (i + 1) + "）羁绊-6");
     }
@@ -3557,6 +3588,15 @@ const Game = {
     const gains = [];
     let total = 0;
     const s = this.stageInit(st);
+    /* 兼任成员可能同时出现在两队站位名单：只按最靠前的站位结算一次（用户口径 2026-10-24） */
+    const best = {};
+    for (const t of teams) {
+      const pos = s.pos[t];
+      if (!pos || !s.done[t]) continue;
+      for (const id in pos) {
+        if (best[id] == null || pos[id] < best[id]) best[id] = pos[id];
+      }
+    }
     for (const t of teams) {
       const pos = s.pos[t];
       if (!pos || !s.done[t]) continue;
@@ -3564,6 +3604,7 @@ const Game = {
       for (const id in pos) {
         const m = st.members.find(x => x.id === id);
         if (!m) continue;
+        if (best[id] !== pos[id]) continue;   // 非该成员最靠前站位，已按更靠前队结算
         const v = this.stageGain(pos[id]);
         if (v) { m.pop = (m.pop || 0) + v; g += v; }
       }
@@ -5064,13 +5105,23 @@ const Game = {
     const branchCost = Math.round(brCount * this.BRANCH_UPKEEP_UNIT * 10) / 10;
     const top7 = t7.sum;
     const fixed = this.FIXED_EXPENSE[st.era] != null ? this.FIXED_EXPENSE[st.era] : 30;
+    /* 【2016·5月社媒事件（用户口径 2026-10-24）】罚停半年工资：flags.wageWaive16
+       登记的成员 7~12 月不计工资支出（分团成员按 0.35 万/人·月估算，本部 0.5）。 */
+    let wageWaive = 0;
+    if (st.era === "2016" && st.month >= 7 && st.month <= 12 && Array.isArray(st.flags.wageWaive16)) {
+      for (const nm of st.flags.wageWaive16) {
+        const m = st.members.find(x => x.name === nm && x.status !== "left");
+        if (m) wageWaive += (m.status === "branch" ? this.BRANCH_UPKEEP_UNIT : this.SALARY_UNIT);
+      }
+    }
+    wageWaive = Math.round(wageWaive * 10) / 10;
     income = Math.round(income);
-    const rawExpense = salary + top7 + branchCost + fixed;
+    const rawExpense = salary + top7 + branchCost + fixed - wageWaive;
     /* 2020 疫情年：1~3 月公司半速运转，支出减半 */
     const expense = Math.round(st.era === "2020" && st.month <= 3 ? rawExpense * 0.5 : rawExpense);
     return {
       income, expense, net: income - expense,
-      detail: { salary, top7, top7Count: t7.n, branchCost, fixed, hqCount, brCount },
+      detail: { salary, top7, top7Count: t7.n, branchCost, fixed, hqCount, brCount, wageWaive },
     };
   },
 

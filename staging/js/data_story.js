@@ -689,6 +689,147 @@ const STORY = {
             } },
         ],
       },
+      {
+        /* 【2016·5月（用户口径 2026-10-24，同人剧情）】GNZ48 新人社媒攻击前辈事件：
+           胡怡莹在李艺彤总选宣言下公开不当言论，引导粉丝、队友联合攻击前辈，
+           造成不良影响（李艺彤人气-6 热度+4 士气-2）。双事件按 jpMode 分岔：
+           · 复刻线（m5_hyy16_rep）：日方介入，要求开除胡怡莹并处罚参与队友——
+             胡怡莹强制解约（追缴违约金 60 万），玩家仅决定周倩玉：repTop=顶格解约
+             （违约金 60 万）/ repPrep=下放预备生+罚停半年工资（下半年工资支出少计 1 人）；
+           · 原创线（m5_hyy16_orig）：玩家决定两人：origTop=顶格解约（违约金 60 万×2）/
+             origWatch=留籍观察+罚停半年工资 / origPrep=下放预备生+罚停半年工资
+             （后两项下半年工资支出少计 2 人）。
+           罚停工资由 flags.wageWaive16 登记（7~12 月 settle 减支出）；人员变动由
+           事件 effect 直接落地，不走通用离团（leaving2016 无条目）。 */
+        id: "m5_hyy16_rep",
+        title: "5月 · 广州的舆情",
+        gate: st => {
+          if (st.decisions.hyy16) return false;
+          if (((st.decisions && st.decisions.jpMode) || st.jpMode) !== "replicate") return false;
+          const hyy = st.members.find(x => x.name === "胡怡莹" && x.status === "branch");
+          const zqy = st.members.find(x => x.name === "周倩玉" && x.status === "branch");
+          return !!(hyy && zqy);
+        },
+        pages: st => [
+          { s: "王婧", cls: "speaker-wangjing", t: "（把平板转过来，脸色不好看）广州出事了。胡怡莹在李艺彤的总选宣言下面公开发布不当言论，用语很难听——更麻烦的是，有人扒出她在带节奏，GNZ48 队里还有人跟着转发攻击前辈。现在外面已经挂上热搜了。" },
+          { s: "叶盛", cls: "speaker-yesheng", t: "李艺彤受了池鱼之灾，人气掉了一截。总监，这不是普通口角——是新人踩着前辈博出位，粉丝圈子已经炸了。" },
+          { s: "山本学", cls: "speaker-akb", t: "（视频里，他很少见地没有笑）总监先生，秋叶原方面已经看到了这条新闻。48 系的规矩，前辈就是前辈——这样的行为，在名古屋是要直接解约的。日方的要求很明确：胡怡莹，开除；参与的队友，也必须处罚。请给我们一个交代。" },
+          { s: "王婧", cls: "speaker-wangjing", t: "（低声）法务的解约材料已经备齐，违约金按合约能追回来。周倩玉是跟得最凶的一个，日方点了名——怎么罚，您来定。" },
+        ],
+        choices: [
+          { label: "「按日方要求办：两人都顶格处罚，解约。」", hint: "胡怡莹、周倩玉解约，各追缴违约金：资金+120 士气-8 热度+6",
+            tag: "hyy16", value: "repTop",
+            effect: st => {
+              st.decisions.hyy16 = "repTop";
+              let n = 0;
+              for (const nm of ["胡怡莹", "周倩玉"]) {
+                const m = st.members.find(x => x.name === nm && x.status === "branch");
+                if (!m) continue;
+                m.status = "left";
+                m.note = "2016-05 社媒攻击前辈顶格处罚解约（追缴违约金 60 万）";
+                Game.addLog(st, st.month, nm + " 解约离团，追缴违约金 60 万。", "bad");
+                n++;
+              }
+              st.money += 60 * n; st.morale = Math.max(0, st.morale - 8); st.heat = Math.min(100, st.heat + 6);
+              const lt = st.members.find(x => x.name === "李艺彤");
+              if (lt) lt.pop = Math.max(0, (lt.pop || 0) - 6);
+              return "解约函当天就发往广州。违约金如数到账，热搜挂了整整一周——「分团新人作死」的段子满天飞，东京方面看到了交代，但队里的孩子们安静了很久：处分是杀一做百，可百人会想，下一个会不会是自己。李艺彤没有说什么，只是那段时间的公演，她笑得比平时更用力。\n\n（决策已登记：hyy16=repTop。胡怡莹、周倩玉已解约离团，违约金共 " + (60 * n) + " 万已追缴；李艺彤人气-6。）";
+            } },
+          { label: "「胡怡莹解约；周倩玉下放预备生，罚停半年工资。」", hint: "胡怡莹解约（违约金 60 万）；周倩玉下放 GNZ48 预备生并罚停 7~12 月工资（下半年工资支出少计 1 人）士气-4",
+            tag: "hyy16", value: "repPrep",
+            effect: st => {
+              st.decisions.hyy16 = "repPrep";
+              const hy = st.members.find(x => x.name === "胡怡莹" && x.status === "branch");
+              if (hy) {
+                hy.status = "left";
+                hy.note = "2016-05 社媒攻击前辈，日方要求解约（追缴违约金 60 万）";
+                st.money += 60;
+                Game.addLog(st, st.month, "胡怡莹 解约离团，追缴违约金 60 万。", "bad");
+              }
+              const zqy = st.members.find(x => x.name === "周倩玉" && x.status === "branch");
+              if (zqy) {
+                zqy.branchLabel = "预备生"; zqy.captain = false; zqy.vice = false;
+                zqy.note = (zqy.note ? zqy.note + "；" : "") + "2016-05 社媒事件下放预备生，罚停 7~12 月工资";
+              }
+              st.flags.wageWaive16 = ["周倩玉"];
+              st.morale = Math.max(0, st.morale - 4); st.heat = Math.min(100, st.heat + 4);
+              const lt = st.members.find(x => x.name === "李艺彤");
+              if (lt) lt.pop = Math.max(0, (lt.pop || 0) - 6);
+              return "日方对胡怡莹的解约结果表示认可，违约金如数到账；周倩玉则被摘下 Team G 的队名，转入 GNZ48 预备生——半年工资分文不发，通告表上她的名字被挪到了最末尾。公告发出当晚，两个账号删光了微博，但该来的批评一条没少。李艺彤那边，公司补发了一份律师函，她的人气还是掉了一截。\n\n（决策已登记：hyy16=repPrep。胡怡莹解约（违约金 60 万已追缴）；周倩玉下放预备生并罚停 7~12 月工资（下半年工资支出少计 1 人）；李艺彤人气-6。）";
+            } },
+        ],
+      },
+      {
+        id: "m5_hyy16_orig",
+        title: "5月 · 广州的舆情",
+        gate: st => {
+          if (st.decisions.hyy16) return false;
+          if (((st.decisions && st.decisions.jpMode) || st.jpMode) === "replicate") return false;
+          const hyy = st.members.find(x => x.name === "胡怡莹" && x.status === "branch");
+          const zqy = st.members.find(x => x.name === "周倩玉" && x.status === "branch");
+          return !!(hyy && zqy);
+        },
+        pages: st => [
+          { s: "王婧", cls: "speaker-wangjing", t: "（把平板转过来，脸色不好看）广州出事了。胡怡莹在李艺彤的总选宣言下面公开发布不当言论，用语很难听——更麻烦的是，有人扒出她在带节奏，GNZ48 队里还有人跟着转发攻击前辈。现在外面已经挂上热搜了。" },
+          { s: "叶盛", cls: "speaker-yesheng", t: "李艺彤受了池鱼之灾，人气掉了一截。跟得最凶的是同队的周倩玉，转发、点赞、小号互动，全被扒出来了。这是踩着前辈往上爬，总监。" },
+          { s: "王婧", cls: "speaker-wangjing", t: "法务把两人合约里的违纪条款都标好了。东京那边这回没有插嘴——怎么罚、罚到哪一步，您自己定。但外头都在看着，太轻了压不住舆情，太重了寒了人心。" },
+        ],
+        choices: [
+          { label: "「两人都顶格处罚：解约，违约金照追。」", hint: "胡怡莹、周倩玉解约，各追缴违约金：资金+120 士气-8 热度+6",
+            tag: "hyy16", value: "origTop",
+            effect: st => {
+              st.decisions.hyy16 = "origTop";
+              let n = 0;
+              for (const nm of ["胡怡莹", "周倩玉"]) {
+                const m = st.members.find(x => x.name === nm && x.status === "branch");
+                if (!m) continue;
+                m.status = "left";
+                m.note = "2016-05 社媒攻击前辈顶格处罚解约（追缴违约金 60 万）";
+                Game.addLog(st, st.month, nm + " 解约离团，追缴违约金 60 万。", "bad");
+                n++;
+              }
+              st.money += 60 * n; st.morale = Math.max(0, st.morale - 8); st.heat = Math.min(100, st.heat + 6);
+              const lt = st.members.find(x => x.name === "李艺彤");
+              if (lt) lt.pop = Math.max(0, (lt.pop || 0) - 6);
+              return "解约函当天就发往广州。违约金如数到账，热搜挂了整整一周——杀一做百的处分立住了规矩，可队里的孩子们安静了很久：百人会想，下一个会不会是自己。李艺彤没有说什么，只是那段时间的公演，她笑得比平时更用力。\n\n（决策已登记：hyy16=origTop。胡怡莹、周倩玉已解约离团，违约金共 " + (60 * n) + " 万已追缴；李艺彤人气-6。）";
+            } },
+          { label: "「不下死手。两人留籍观察，罚停半年工资。」", hint: "两人留籍（Team G），罚停 7~12 月工资：下半年工资支出少计 2 人 士气-2",
+            tag: "hyy16", value: "origWatch",
+            effect: st => {
+              st.decisions.hyy16 = "origWatch";
+              let n = 0;
+              for (const nm of ["胡怡莹", "周倩玉"]) {
+                const m = st.members.find(x => x.name === nm && x.status === "branch");
+                if (!m) continue;
+                m.note = (m.note ? m.note + "；" : "") + "2016-05 社媒事件留籍观察，罚停 7~12 月工资";
+                n++;
+              }
+              st.flags.wageWaive16 = ["胡怡莹", "周倩玉"];
+              st.morale = Math.max(0, st.morale - 2); st.heat = Math.min(100, st.heat + 4);
+              const lt = st.members.find(x => x.name === "李艺彤");
+              if (lt) lt.pop = Math.max(0, (lt.pop || 0) - 6);
+              return "公告措辞很克制：「涉事成员深刻反省，留籍察看，停发半年工资。」外头的批评声没有停，但至少名册上没有少人——广州的孩子照常排练，只是胡怡莹和周倩玉的储物柜前，再没人敢讨论前辈半个字。李艺彤的人气还是掉了一截，公司补发的律师函没能挽回来。\n\n（决策已登记：hyy16=origWatch。两人留籍观察，罚停 7~12 月工资（下半年工资支出少计 2 人）；李艺彤人气-6。）";
+            } },
+          { label: "「两人都下放预备生，罚停半年工资。」", hint: "两人下放 GNZ48 预备生，罚停 7~12 月工资：下半年工资支出少计 2 人 士气-4",
+            tag: "hyy16", value: "origPrep",
+            effect: st => {
+              st.decisions.hyy16 = "origPrep";
+              let n = 0;
+              for (const nm of ["胡怡莹", "周倩玉"]) {
+                const m = st.members.find(x => x.name === nm && x.status === "branch");
+                if (!m) continue;
+                m.branchLabel = "预备生"; m.captain = false; m.vice = false;
+                m.note = (m.note ? m.note + "；" : "") + "2016-05 社媒事件下放预备生，罚停 7~12 月工资";
+                n++;
+              }
+              st.flags.wageWaive16 = ["胡怡莹", "周倩玉"];
+              st.morale = Math.max(0, st.morale - 4); st.heat = Math.min(100, st.heat + 4);
+              const lt = st.members.find(x => x.name === "李艺彤");
+              if (lt) lt.pop = Math.max(0, (lt.pop || 0) - 6);
+              return "Team G 的队名从两人的资料里摘了下去，GNZ48 预备生的名单上多了两个名字。半年工资分文不发，通告表上她们的名字被挪到了最末尾。队伍里的空气紧了很久——但至少，规矩立住了。李艺彤的人气还是掉了一截。\n\n（决策已登记：hyy16=origPrep。两人下放预备生并罚停 7~12 月工资（下半年工资支出少计 2 人）；李艺彤人气-6。）";
+            } },
+        ],
+      },
     ],
 
     /* ---------- 6月：总选冲刺（策略选择）+ 团建轮值收尾 ---------- */

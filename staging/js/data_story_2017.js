@@ -28,9 +28,14 @@
 
    【NPC 席位（用户口径）】邓森林：默认 SHY48 总监；玩家兼任 SHY48（branchPost=SHY48）
      或孟波兼任（branchPost=CKG48，筹建顾问接手沈阳）时，转任新媒体部总监（阿吉上司），
-     判定函数 STORY.dengRole17(st)；登场：1月阿吉事件 / SHY48 开业 / 2月战报。
+     判定函数 STORY.dengRole17(st)；2019 giveup+保旗线他原任 SHY48 总监时
+     （decisions.deng19Media，2019 序章第四轮登记）此后亦视作新媒体部总监；
+     登场：1月阿吉事件 / SHY48 开业 / 2月战报。
    廖捷频：2016 线即任北京总经理；玩家未兼任 BEJ48 时 2017 年正式出任 BEJ48 运营总监
      （兼任则留守总经理辅佐）；2016 线登场见 data_story.js。
+     【2017·7（用户口径 2026-10-24）】若她任总监，因涉嫌重大经济违规被集团停职调查
+     （m7_17_liao）：玩家接手（branchPost=BEJ48+concur17.BEJ48，tag 同兼任口径）
+     或杜伟军北上接任（liao17=du）。
    ========================================================================== */
 
 "use strict";
@@ -38,8 +43,11 @@
 /* 【NPC·邓森林（用户口径）】2017 线席位判定：
    默认出任 SHY48 总监；若玩家兼任 SHY48（branchPost=SHY48）或孟波兼任
    （branchPost=CKG48 时孟波转任新分团筹建顾问、接手沈阳），则他转任
-   新媒体部总监（阿吉的上司）。返回 "shy" | "media"。 */
+   新媒体部总监（阿吉的上司）。另：2019 giveup+孟波保旗线若他原任 SHY48 总监
+   （SHY48 随停运撤销总监席位），2019 序章第四轮登记 decisions.deng19Media，
+   此后同样视作新媒体部总监。返回 "shy" | "media"。 */
 STORY.dengRole17 = st => {
+  if (st && st.decisions && st.decisions.deng19Media) return "media";   // 2019 giveup+保旗线：SHY48 停运后转任新媒体部总监
   const post = st && st.decisions && st.decisions.branchPost;
   return (post === "SHY48" || post === "CKG48") ? "media" : "shy";
 };
@@ -647,6 +655,45 @@ STORY.monthly17 = {
       title: "7月29日 · 「我心翱翔」第四届总决选",
       pages: [
         { nar: true, t: "7月29日，上海梅赛德斯-奔驰文化中心。\n\n「我心翱翔」——第四届偶像年度人气总决选。四支分团的旗帜第一次与五支本部队旗同场升起，一万八千支应援棒汇成一片会呼吸的海。\n\n今晚的总决选，可能诞生这条河的第一个连霸传奇。（结果见结算画面）" },
+      ],
+    },
+    {
+      /* 【2017·7月（用户口径 2026-10-24）】廖捷频停职调查事件：仅廖捷频担任 BEJ48 总监时
+         触发（玩家未兼任 BEJ48，即 branchPost≠BEJ48 且无 concur17.BEJ48）。
+         廖捷频涉嫌重大经济违规被集团调查，BEJ48 需要新总监：高层属意杜伟军但他本人
+         不愿出任，于是找玩家商量。①同意接手：tag 同兼任口径（branchPost=BEJ48 +
+         flags.concur17["BEJ48"]=true）；②婉拒：BEJ48 总监变更为杜伟军（调离重庆总经理，
+         ——修订杜伟军「不接总监位」口径：仅 CKG48 总监恒不出任，BEJ48 总监在婉拒线会接任）。
+         决策标签 liao17（takeover/du）。 */
+      id: "m7_17_liao",
+      title: "7月 · 北京的急讯",
+      gate: st => {
+        if (st.decisions.liao17) return false;
+        if (st.decisions.branchPost === "BEJ48") return false;   // 玩家已兼任：廖捷频时任常务总经理，非总监
+        return !(st.flags.concur17 && st.flags.concur17["BEJ48"]);
+      },
+      pages: st => [
+        { s: "王婧", cls: "speaker-wangjing", t: "（快步进来，反手带上了门）总监，高层的急讯——廖捷频女士涉嫌重大经济违规，集团已经立案，人正在配合调查。停职通知今晚就会发到北京。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "事情比想象中重。她在 BEJ48 的账上做了不止一年的手脚——调查归调查，但北京那边不能没有总监。悠唐的场子、六十多个孩子，一天都停不得。" },
+        { s: "王婧", cls: "speaker-wangjing", t: "高层原本属意杜伟军顶上——他管钱管场是一把好手。但他本人不愿出任，还是那句老话：只任总经理，不接总监位。所以……（看向你）他们想问问您，愿不愿意接手北京。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（低声）您手上已经有本部一副担子。接，就是双线作战；不接，高层就只能请杜伟军北上——这两位怎么落子，您来定。" },
+      ],
+      choices: [
+        { label: "「北京我接。廖捷频的账，一查到底。」", hint: "您兼任 BEJ48 总监（tag 同兼任口径：branchPost=BEJ48、concur17.BEJ48 登记）；廖捷频停职调查",
+          tag: "branchPost", value: "BEJ48",
+          effect: st => {
+            st.decisions.liao17 = "takeover";
+            st.decisions.branchPost = "BEJ48";
+            if (!st.flags.concur17) st.flags.concur17 = {};
+            st.flags.concur17["BEJ48"] = true;
+            return "任命当晚就发了出去：制作总监{name}兼任 BEJ48 运营总监，即日起常驻悠唐——上海北京，双线开弓。廖捷频停职配合调查，离任交接那天下着雨，她把那本翻旧了的笔记本留在桌上，一句话也没多说。北京的孩子在公告栏前站了很久——总决选的灯还没熄，总监已经换了人。\n\n（决策已登记：branchPost=BEJ48（同兼任口径，concur17.BEJ48 已登记）；liao17=takeover。廖捷频停职调查。）";
+          } },
+        { label: "「上海走不开。请杜伟军先生北上接任。」", hint: "婉拒接手：BEJ48 总监变更为杜伟军（调离重庆总经理，重庆总经理另派）；廖捷频停职调查",
+          tag: "liao17", value: "du",
+          effect: st => {
+            st.decisions.liao17 = "du";
+            return "高层亲自去了重庆。杜伟军听完来意，沉默了半晌，最后只说了一句：「那边的账，我交给集团派来的人——北京的场子，我来管。」他入主悠唐那天，把重庆带来的算盘往桌上一放：「账我来背，场子我来管——北京，也一样。」廖捷频案仍在调查中，BEJ48 的报表，换了一双更紧的手。\n\n（决策已登记：liao17=du。BEJ48 总监变更为杜伟军（调离重庆总经理，重庆总经理另派）；廖捷频停职调查。）";
+          } },
       ],
     },
   ],

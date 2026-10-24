@@ -61,12 +61,18 @@
      · 复刻线：日方表示可提供资金资助——保住 SHY48/CKG48 需扣除去年年末资金的 1/4；
      · 非复刻线：无日方资助——保住分团需扣除去年年末资金的 1/2；
      · 放弃分团：SHY48/CKG48 停运（月收入终止），两团成员全部进入二次组阁池；
-       未编入本部、亦未分配到其余分团的成员，移籍 IDFT。
+       未编入本部、亦未分配到其余分团的成员，移籍 IDFT；
+     · 放弃分团 + 孟波保旗（branchFlag19）落地后，若邓森林时任 SHY48 总监
+       （dengRole17="shy"，即 branchPost 非 SHY48/CKG48——此时孟波保的是 CKG48，
+       SHY48 随停运彻底撤销总监席位），插入第四轮「人事令」：宣布邓森林转任
+       新媒体部总监（阿吉的上司；tag deng19Media）。
 
    决策标签（st.decisions）：teb19Push（go/hold）/ teb19Squad（派遣移籍名单，存姓名）/
      branch19Keep（keep/giveup）/ branchFlag19（孟波保旗，仅 giveup 线：单选项承载 tag，
      实际值在 apply 内按 branchPost 同 2020 年线口径落定为分团名 SHY48/CKG48——
-     队伍解散、旗号保留，二次组阁时该团至多 16 人留任为旗号预备生队伍，无剧场收入）/ geStrategy / summerMode19 / recruit19（招新归属表，存id）/
+     队伍解散、旗号保留，二次组阁时该团至多 16 人留任为旗号预备生队伍，无剧场收入）/
+     deng19Media（邓森林转任新媒体部总监，仅 giveup+保旗线且原任 SHY48 总监时登记，
+     供 STORY.dengRole17 回看席位）/ geStrategy / summerMode19 / recruit19（招新归属表，存id）/
      rtWarn19（9月大赏评审表态）/ demoon19（DEMOON 选人方式：vote=粉丝打投·史实名单 /
      pick=官方钦点·玩家点将）/ unitsDemoon（DEMOON 成军名单，存姓名）。
    旗标（st.flags）：teb19Open（TEB48 开业）/ branchesKept19 / branchesClosed19 /
@@ -112,7 +118,9 @@ STORY.prologue19 = {
     { id: "hype19", label: "「选秀的余温还没散——让它烧一整年。」", hint: "造势派：热度+8，叶盛负担-10", apply: st => { st.heat = Math.min(100, st.heat + 8); st.burden = Math.max(0, st.burden - 10); } },
   ],
 
-  /* 序章后的两轮路线抉择（UI.showPrologue 支持 pathChoices 数组顺序播放） */
+  /* 序章后的多轮路线抉择（UI.showPrologue 支持 pathChoices 数组顺序播放）：
+     第一轮 TEB48 去留（仅复刻线）→ 第二轮分团撤资危机 → 第三轮孟波保旗（仅 giveup）
+     → 第四轮邓森林转任新媒体部总监（仅 giveup+保旗线且原任 SHY48 总监） */
   pathChoices: [
     /* —— 第一轮：TEB48 去留（仅复刻线；非复刻线整轮跳过） —— */
     {
@@ -176,6 +184,31 @@ STORY.prologue19 = {
             const br = st.decisions.branchPost === "CKG48" ? "SHY48" : "CKG48";
             st.decisions.branchFlag19 = br;
             return "散会还没走出会议室，孟波把合同扫描件发了过来：「" + br + " 这块牌子是我看着立起来的。队伍我养不起——旗号，我出钱保。十六个孩子，留给我；其余的，拜托总监了。」\n\n你在合同上签了字——孟总亲自出资，集团没有理由拒绝。\n\n（决策已登记：branchFlag19=" + br + "。" + br + " 解散队伍、保留旗号——二次组阁时该团至多 16 人留任为旗号预备生队伍（无剧场收入）；其余成员由总监安置。）";
+          } },
+      ],
+    },
+    /* —— 第四轮：人事令·新媒体的椅子（仅放弃分团线且孟波保旗落地后；
+       邓森林时任 SHY48 总监即 dengRole17="shy" 时触发——此时孟波保的是 CKG48，
+       SHY48 随停运彻底撤销总监席位，宣布邓森林转任新媒体部总监（阿吉的上司）。
+       玩家兼任 SHY48 / 孟波兼任（branchPost=SHY48/CKG48）时邓森林 2017 年起
+       已在新媒体部，本整轮跳过。 —— */
+    {
+      gate: st => st.decisions.branch19Keep === "giveup"
+        && !!st.decisions.branchFlag19
+        && typeof STORY.dengRole17 === "function" && STORY.dengRole17(st) === "shy",
+      title: "人事令 · 新媒体的椅子",
+      pages: st => [
+        { nar: true, t: "孟波的合同刚落定，叶盛又抱着一份文件走了进来——投影上是一纸人事令：沈阳的灯今年春天就要彻底熄了，SHY48 总监的席位，随着剧场的封条一起走到了尽头。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把人事令放到你面前）总监，邓森林当年是带着新媒体的班子被点出去的——沈阳收官，董事会想把他调回来，接新媒体部总监的位子。阿吉那一摊子事，正好也该有个正牌上司盯着。您签个字。" },
+      ],
+      choices: [
+        /* 单选项：人事令由董事会拟定，总监签字生效——选项承载 tag deng19Media */
+        { label: "「签。让懂舞台的人，去点线上的灯。」",
+          hint: "邓森林转任新媒体部总监（阿吉的正牌上司）；SHY48 总监席位随停运撤销",
+          tag: "deng19Media", value: "media",
+          apply: st => {
+            st.decisions.deng19Media = true;
+            return "人事令当天走完了流程：SHY48 总监席位随剧场停运一并撤销，邓森林调任集团新媒体部总监——当年是他点将阿吉顶上新媒体的日常，如今他自己坐回了那间办公室，成了阿吉的正牌上司。\n\n他在交接邮件里只写了一句话：「灯灭的地方，人不能散——沈阳的账我记着，线上的灯，我来点。」\n\n（决策已登记：deng19Media=true。邓森林转任新媒体部总监，SHY48 总监席位随停运撤销。）";
           } },
       ],
     },

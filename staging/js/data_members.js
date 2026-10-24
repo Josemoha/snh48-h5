@@ -191,6 +191,14 @@ const DATA = {
        直落 GNZ48 Team G（分团正式成员，非预备生）；分团官宣后方入册，
        分团主线失败则不入册。9 月离团见 leaving2016（走通用）。 */
     { month: 4, name: "王馨悦",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team G", note: "2016-04-20 GNZ48 成立即入团，直落 Team G" },
+    /* 【补挂建卡（用户口径 2026-10-24）】胡怡莹：SNH48六期生（2016-03-26 同其他六期生
+       同批招募），4·20 分团成立移籍 GNZ48 Team G——同王馨悦直落口径：分团官宣后方入册，
+       分团主线失败则不入册。 */
+    { month: 4, name: "胡怡莹",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team G", note: "2016-03 六期生同批招募，4·20 分团成立移籍 GNZ48 Team G" },
+    /* 【补挂建卡（用户口径 2026-10-24，二批）】周倩玉：SNH48六期生（2016-03-26 同批招募），
+       4·20 分团成立移籍 GNZ48 Team G——同胡怡莹/王馨悦直落口径；
+       5 月社媒事件（m5_hyy16）处罚对象，需要独立卡位。 */
+    { month: 4, name: "周倩玉",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team G", note: "2016-03 六期生同批招募，4·20 分团成立移籍 GNZ48 Team G" },
     { month: 3, name: "孙珍妮",   team: "HII", gen: "六期生", join: "2016-03-26" },
     { month: 3, name: "王金铭",   team: "HII", gen: "六期生", join: "2016-03-26" },
     { month: 3, name: "林忆宁",   team: "X",   gen: "六期生", join: "2016-03-26" },
@@ -322,7 +330,7 @@ const DATA = {
        { name: "单习文", branchLabel: "预备生", gen: "BEJ48一期生" },
        { name: "石羽莎", branchLabel: "预备生", gen: "BEJ48一期生" },
        { name: "孙语姗", branchLabel: "预备生", gen: "BEJ48一期生" },
-       { name: "王雨烜", branchLabel: "预备生", gen: "BEJ48一期生" },
+       { name: "王雨煊", branchLabel: "预备生", gen: "BEJ48一期生" },   // 原卡名王雨烜系笔误，按用户口径 2026-10-24 更正
        { name: "叶苗苗", branchLabel: "预备生", gen: "BEJ48一期生" },
        { name: "杨晔",   branchLabel: "预备生", gen: "BEJ48一期生" },
        { name: "张怀瑾", branchLabel: "预备生", gen: "BEJ48一期生" },
@@ -437,15 +445,20 @@ const DATA = {
     /* 【分团补挂（用户口径 2026-10-26）】BEJ48二期生李烨/郑心雨/郑依灵/李沐遥（2017-03-11 入）、
        GNZ48二期生陈乐添/刘小末（2017-04-29 入）——BEJ/GNZ 年初在册，按月建分团预备生简卡；
        SHY48二期生陈奕君/逯芳竹（2017-04 入）——SHY48 已开业时建卡（同张羽涵口径）。 */
+    /* 【分团补挂（用户口径 2026-10-24，2020 离团批次配套）】GNZ48二期生张秋怡（2017-04 入）、
+       SHY48三期生司珀琳（2017-10 入）、GNZ48四期生徐佳音（2017-11 入）——同上口径建分团预备生简卡。 */
     { month: 3, name: "李烨",   branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
     { month: 3, name: "郑心雨", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
     { month: 3, name: "郑依灵", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
     { month: 3, name: "李沐遥", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
     { month: 4, name: "陈乐添", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
     { month: 4, name: "刘小末", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    { month: 4, name: "张秋怡", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04", note: "GNZ48二期生" },   // 用户口径 2026-10-24 补挂
     { month: 4, name: "陈奕君", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04", note: "SHY48二期生" },
     { month: 4, name: "逯芳竹", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04", note: "SHY48二期生" },
     { month: 4, name: "张羽涵", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },   // 2020-01 退团（leaving2020 挂载）
+    { month: 10, name: "司珀琳", branchTeam: "SHY48", gen: "SHY48三期生", join: "2017-10", note: "SHY48三期生" },   // 用户口径 2026-10-24 补挂（SHY48 已开业时建卡）
+    { month: 11, name: "徐佳音", branchTeam: "GNZ48", gen: "GNZ48四期生", join: "2017-11", note: "GNZ48四期生" },   // 用户口径 2026-10-24 补挂
   ],
 
   /* ---------------- 2017 年内离团 / 移籍 / 兼任变动（2017「本部新章」线用） ----------------
@@ -570,6 +583,7 @@ const DATA = {
     { month: 4,  name: "余梦露", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
     { month: 4,  name: "邹冰清", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
     { month: 4,  name: "周桐冉", branchTeam: "CKG48", gen: "CKG48二期生", join: "2018-04-07" },
+    { month: 4,  name: "熊鑫",   branchTeam: "BEJ48", gen: "BEJ48四期生", join: "2018-04", note: "BEJ48四期生" },   // 用户口径 2026-10-24 补挂（2020 离团批次配套）
     { month: 6,  name: "程宇璐", branchTeam: "BEJ48", gen: "BEJ48五期生", join: "2018-06-07" },
     { month: 6,  name: "李丽满", branchTeam: "BEJ48", gen: "BEJ48五期生", join: "2018-06-07" },
     { month: 6,  name: "任蔓琳", branchTeam: "BEJ48", gen: "BEJ48五期生", join: "2018-06-21" },
@@ -777,6 +791,21 @@ const DATA = {
        2020-10 陈盼（九期生·预备生）离团，张嘉予（六期生）疫情裁撤；
        2020-12 刘晨雪（十四期生·预备生，joining2020 建卡）离团，李钊（四期生）毕业。
        以上均按用户口径挂载（2026-10-25 批次）。
+     【用户口径 2026-10-24 批次（通用离团 + 疫情裁撤补充挂载）】
+     · 通用离团：2020-02 鄢羽蝶（GNZ48六期生）；2020-03 邓熳慧（GNZ48六期生）；
+       2020-04 林溪荷（BEJ48六期生）/葛司琪（BEJ48一期生）；2020-05 黄琬璎（CKG48一期生）；
+       2020-06 王雨煊（BEJ48一期生；原卡名王雨烜系笔误，按用户口径 2026-10-24 更正卡名）；
+       2020-08 魏小燕（CKG48二期生）；2020-11 顼凘炀（BEJ48六期生）。
+     · 疫情裁撤：2020-04 陈欣妤（GNZ48六期生）/熊文婕（BEJ48七期生，2019 招新拍板
+       建卡，未招录自动跳过）/武晓迪（SHY48四期生）；2020-08 张睿怡（BEJ48八期生，
+       joining2020 建卡）；2020-09 吕蕊（BEJ48七期生，同熊文婕）；
+       2020-12 莫昕（GNZ48七期生，joining2020 建卡）/谢慧先（GNZ48八期生，同上）。
+     · 补挂建卡后挂载（用户口径 2026-10-24 二批）：张秋怡（GNZ48二期生，2017-04 入，
+       joining2017 补挂）/司珀琳（SHY48三期生，2017-10 入，joining2017 补挂）/
+       徐佳音（GNZ48四期生，2017-11 入，joining2017 补挂）/熊鑫（BEJ48四期生，2018-04 入，
+       joining2018 补挂）——离团：2020-03 张秋怡 / 2020-06 司珀琳 / 2020-07 徐佳音 / 2020-09 熊鑫。
+     · 本批次条目均不写 branchTeam（无重名冲突；兼容 2019 giveup/2020 解散线
+       分团卡移籍 IDFT 后 branchTeam 清空的情形，按名命中）。
      【裁撤补偿口径（动态分配，v0.13.11）】裁撤成员由引擎按卡况动态判定归属：
        本部成员或玩家兼任分团（concur17）成员 → layoff20Choice 由玩家拍板是否支付
        补偿金（15 万/人）；未兼任分团成员 → 默认自动支付。口径详见 engine.applyLayoff20。
@@ -790,27 +819,46 @@ const DATA = {
     { month: 1,  name: "马凡",   date: "2020-01", type: "离团", story: false, note: "八期生（预备生）" },
     { month: 1,  name: "张羽涵", branchTeam: "SHY48", date: "2020-01", type: "退团", story: false, note: "SHY48二期生" },
     { month: 2,  name: "孟玥",   branchTeam: "CKG48", date: "2020-02", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 2,  name: "鄢羽蝶", date: "2020-02", type: "退团", story: false, note: "GNZ48六期生" },   // 用户口径 2026-10-24（通用离团）
     { month: 3,  name: "陈亿杉", branchTeam: "BEJ48", date: "2020-03", type: "退团", story: false, note: "BEJ48七期生（疫情裁撤）" },
     { month: 3,  name: "曾洁",   branchTeam: "BEJ48", date: "2020-03", type: "退团", story: false, note: "BEJ48七期生（疫情裁撤）" },
     { month: 3,  name: "杜亚轩", branchTeam: "BEJ48", date: "2020-03", type: "退团", story: false, note: "BEJ48七期生（疫情裁撤）" },
+    { month: 3,  name: "邓熳慧", date: "2020-03", type: "退团", story: false, note: "GNZ48六期生" },   // 用户口径 2026-10-24（通用离团）
+    { month: 3,  name: "张秋怡", date: "2020-03", type: "退团", story: false, note: "GNZ48二期生" },   // 用户口径 2026-10-24 二批（joining2017 补挂建卡）
     { month: 4,  name: "何晓玉", date: "2020-04", type: "毕业", story: false, note: "二期生" },
     { month: 4,  name: "戚予珠", date: "2020-04", type: "离团", story: false, note: "十期生（疫情裁撤）" },
     { month: 4,  name: "陈俊羽", branchTeam: "SHY48", date: "2020-04", type: "退团", story: false, note: "SHY48三期生（疫情裁撤）" },
     { month: 4,  name: "王诗蒙", branchTeam: "SHY48", date: "2020-04", type: "退团", story: false, note: "SHY48一期生（疫情裁撤）" },
+    { month: 4,  name: "林溪荷", date: "2020-04", type: "退团", story: false, note: "BEJ48六期生" },   // 以下 5 人：用户口径 2026-10-24 批次
+    { month: 4,  name: "葛司琪", date: "2020-04", type: "退团", story: false, note: "BEJ48一期生" },
+    { month: 4,  name: "陈欣妤", date: "2020-04", type: "退团", story: false, note: "GNZ48六期生（疫情裁撤）" },
+    { month: 4,  name: "熊文婕", date: "2020-04", type: "退团", story: false, note: "BEJ48七期生（疫情裁撤）" },   // 2019 招新拍板建卡，未招录自动跳过
+    { month: 4,  name: "武晓迪", date: "2020-04", type: "退团", story: false, note: "SHY48四期生（疫情裁撤）" },
     { month: 5,  name: "周睿林", date: "2020-05", type: "离团", story: false, note: "十期生（预备生）" },
     { month: 5,  name: "熊沁娴", date: "2020-05", type: "离团", story: false, note: "八期生（预备生）" },
     { month: 5,  name: "易嘉爱", date: "2020-05", type: "毕业", story: false, note: "二期生" },
+    { month: 5,  name: "黄琬璎", date: "2020-05", type: "退团", story: false, note: "CKG48一期生" },   // 用户口径 2026-10-24（通用离团）
     { month: 6,  name: "鲁静萍", date: "2020-06", type: "离团", story: false, note: "十期生（疫情裁撤）" },
     { month: 6,  name: "王贝妮", date: "2020-06", type: "离团", story: false, note: "十三期生（疫情裁撤）" },   // 十三期生走 2019 招新拍板建卡，未招录则自动跳过
+    { month: 6,  name: "王雨煊", date: "2020-06", type: "退团", story: false, note: "BEJ48一期生" },   // 用户口径 2026-10-24（通用离团；卡名已由王雨烜更正）
+    { month: 6,  name: "司珀琳", date: "2020-06", type: "退团", story: false, note: "SHY48三期生" },   // 用户口径 2026-10-24 二批（joining2017 补挂建卡）
+    { month: 7,  name: "徐佳音", date: "2020-07", type: "退团", story: false, note: "GNZ48四期生" },   // 用户口径 2026-10-24 二批（joining2017 补挂建卡）
     { month: 8,  name: "宋雨珊", date: "2020-08", type: "毕业", story: false, note: "五期生" },
     { month: 8,  name: "汪佳翎", date: "2020-08", type: "毕业", story: false, note: "四期生" },
     { month: 8,  name: "冯晓菲", date: "2020-08", type: "毕业", story: false, note: "四期生" },
     { month: 8,  name: "江真仪", date: "2020-08", type: "毕业", story: false, note: "七期生" },
     { month: 8,  name: "王欣颜甜甜", date: "2020-08", type: "离团", story: false, note: "九期生（疫情裁撤）" },
+    { month: 8,  name: "魏小燕", date: "2020-08", type: "退团", story: false, note: "CKG48二期生" },   // 用户口径 2026-10-24（通用离团）
+    { month: 8,  name: "张睿怡", date: "2020-08", type: "退团", story: false, note: "BEJ48八期生（疫情裁撤）" },   // joining2020 建卡
+    { month: 9,  name: "吕蕊",   date: "2020-09", type: "退团", story: false, note: "BEJ48七期生（疫情裁撤）" },   // 2019 招新拍板建卡，未招录自动跳过
+    { month: 9,  name: "熊鑫",   date: "2020-09", type: "退团", story: false, note: "BEJ48四期生" },   // 用户口径 2026-10-24 二批（joining2018 补挂建卡）
     { month: 10, name: "陈盼",   date: "2020-10", type: "离团", story: false, note: "九期生（预备生）" },
     { month: 10, name: "张嘉予", date: "2020-10", type: "离团", story: false, note: "六期生（疫情裁撤）" },
+    { month: 11, name: "顼凘炀", date: "2020-11", type: "退团", story: false, note: "BEJ48六期生" },   // 用户口径 2026-10-24（通用离团）
     { month: 12, name: "刘晨雪", date: "2020-12", type: "离团", story: false, note: "十四期生（疫情裁撤）" },
     { month: 12, name: "李钊",   date: "2020-12", type: "毕业", story: false, note: "四期生" },
+    { month: 12, name: "莫昕",   date: "2020-12", type: "退团", story: false, note: "GNZ48七期生（疫情裁撤）" },   // joining2020 建卡；以下 2 人：用户口径 2026-10-24 批次
+    { month: 12, name: "谢慧先", date: "2020-12", type: "退团", story: false, note: "GNZ48八期生（疫情裁撤）" },
   ],
 
   /* ---------------- 2020 年史实入团表（2020「共渡」线，引擎按月建卡） ----------------

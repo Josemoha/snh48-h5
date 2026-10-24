@@ -2482,7 +2482,7 @@ const UI = {
 
   showStageEditor(team) {
     const st = Game.st;
-    const roster = Game.teamRoster(st, team);
+    const roster = Game.stageRoster(st, team);   /* 含兼任成员（剧情兼任/分团TOP1兼任本部） */
     const stg = Game.stageInit(st);
     /* 编辑态：pos {id:rank} / units {solo,duo,trio,quad,quint} / sel 当前选中成员 */
     const pos = {}, units = { solo: [], duo: [], trio: [], quad: [], quint: [] };
@@ -2577,6 +2577,7 @@ const UI = {
         const rk = rankInTeam[m.id] || "?";
         chip.style.cssText = "border:1px solid " + (sel === m.id ? "#e67e22" : "#bbb") + ";border-radius:14px;padding:3px 8px;font-size:12px;cursor:pointer;color:#333;background:" + (sel === m.id ? "#fdebd0" : placed ? "#d6eaf8" : "#f4f4f4") + ";" + (uc ? "box-shadow:0 0 0 2px #f7dc6f inset;" : "");
         chip.innerHTML = "<b>" + m.name + "</b> <span style=\"color:#1a5276\">队内#" + rk + "</span>" +
+          (Game.memberConcurTeam(st, m) === team ? ' <span style="color:#7d3c98">兼任</span>' : '') +
           (geRank[m.name] ? ' <span style="color:#2471a3">GE#' + geRank[m.name] + "</span>" : ' <span style="color:#888">未入名单</span>') +
           (placed ? " · " + placed : "") + (uc ? " · unit×" + uc : "");
         chip.onclick = () => { sel = sel === m.id ? null : m.id; errBox.textContent = ""; render(); };
