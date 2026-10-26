@@ -3911,6 +3911,40 @@ const Game = {
     return out;
   },
 
+  /* 【分团直落/新期生补建追补（时序 bug 修复）】
+     月初入队处理（monthStart）对分团卡的在业检查（2016 分团官宣 st.branch.announce /
+     2017 SHY/CKG 开业 branch17.shyOpen/ckgOpen）先于 endMonth 的官宣/开业判定执行——
+     当月 monthStart 检查时旗标恒为 false，当月（及此前面数月漏过的）branchTeam 批次
+     会整批漏建，导致相关剧情事件（如 2016-05 m5_hyy16、2016-09 王馨悦离团）gate
+     找不到卡而不触发。官宣/开业落地后调用本方法按口径追补：j.month ≤ 当前月、
+     同名在册去重、卡片形状与 monthStart 入队同口径；分团主线失败（未官宣/未开业）
+     仍不入册。 */
+  catchupBranchJoins(st, era, team) {
+    const joinSrc = era === "2016" ? DATA.joining2016
+      : era === "2017" ? DATA.joining2017
+      : era === "2018" ? DATA.joining2018
+      : era === "2020" ? (DATA.joining2020 || []) : [];
+    let n = 0;
+    for (const j of joinSrc) {
+      if (!j.branchTeam) continue;
+      if (team && j.branchTeam !== team) continue;
+      if (j.month > st.month) continue;
+      if (st.members.some(x => x.name === j.name && x.status !== "left")) continue;
+      st.members.push(era === "2016" ? {
+        id: "j" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
+        pop: this.rnd(10, 20), bond: 12, status: "branch", branchTeam: j.branchTeam,
+        branchLabel: j.branchLabel || "预备生", note: j.note,
+      } : {
+        id: "j" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
+        pop: 0, bond: 0, status: "branch", branchTeam: j.branchTeam, branchLabel: "预备生",
+        note: j.note,
+      });
+      this.addLog(st, st.month, j.branchTeam + " 新成员入团：" + j.name + "（" + j.gen + " · " + (era === "2016" ? (j.branchLabel || "预备生") : "预备生") + "）", "good");
+      n++;
+    }
+    return n;
+  },
+
   /* ============================ 月初 ============================ */
 
   /* 返回需要 UI 播放的步骤（告别小剧场等），随后玩家开始行动。
@@ -3924,6 +3958,15 @@ const Game = {
 
     const steps = [];
     st.ap = 4;
+
+    // ⓪” 旧存档追补（时序 bug 修复 2026-10-27）：修复前官宣/开业当月的分团直落/
+    //    新期生批次整批漏建（2016 王馨悦/胡怡莹/周倩玉、2017 SHY48 二期生等）。
+    //    已过官宣/开业节点的进行中旧档重进时在此补建（同名在册去重，幂等、无副作用）。
+    if (st.era === "2016" && st.branch && st.branch.announce) this.catchupBranchJoins(st, "2016");
+    if (st.era === "2017" && st.branch17) {
+      if (st.branch17.shyOpen) this.catchupBranchJoins(st, "2017", "SHY48");
+      if (st.branch17.ckgOpen) this.catchupBranchJoins(st, "2017", "CKG48");
+    }
 
     // ⓪ 旧存档追补：错过月度事件装载的唐安琪（v0.9.1 前建的档已过 3 月时不会再触发）
     //    · 2016 线 4 月起仍在籍 → 补为暂休（3月末意外烧伤）；
@@ -3965,7 +4008,9 @@ const Game = {
            不再生成第二张卡（曾致 2018 组阁预备生栏整列重复） */
         if (st.members.some(x => x.name === j.name && x.status !== "left")) continue;
         /* 【2016】分团方向直落成员（用户口径 2026-10-25：王馨悦 4·20 直落 GNZ48
-           Team G）：分团官宣后方入册（官宣晚于史实月份则顺延到官宣当月落地）；
+           Team G）：分团官宣后方入册（官宣晚于史实月份则顺延到官宣当月落地，
+           由 endMonth 官宣判定处 catchupBranchJoins 追补——本处检查时当月官宣
+           尚未落地，4 月批次在这里永远拦不到）；
            分团主线失败（未官宣）则不入册。branchLabel 有值则直落正式队。 */
         if (st.era === "2016" && j.branchTeam) {
           if (!(st.branch && st.branch.announce)) continue;
@@ -5187,6 +5232,11 @@ const Game = {
         if (m) { m.status = "branch"; m.branchTeam = DATA.branchMovers.BEJ.includes(name) ? "BEJ48" : "GNZ48"; }
       }
       this.addLog(st, st.month, movers.length + " 名成员移籍分团（BEJ48/GNZ48），成为分团创始成员。", "main");
+      /* 【补建追补】joining2016 分团直落成员（王馨悦/胡怡莹/周倩玉）：4 月月初入队
+         处理先于本官宣判定执行，检查 announce 恒为 false 而整批漏建（曾致补挂卡
+         永不落盘、m5_hyy16 等事件不触发）。官宣落地此处按口径追补；主线失败
+         （未官宣）则本块整体不执行，维持不入册。 */
+      this.catchupBranchJoins(st, "2016");
       /* 选址为沈阳/重庆时：官宣后追加「第二座支流」宣布事件（2017 分团线伏笔，
          并登记 st.decisions.nextBranch 供后续剧情回收）。
          配对关系：沈阳=SHY48，重庆=CKG48（2026-09-18 用户修正：直接配对，不交叉） */
@@ -5209,6 +5259,10 @@ const Game = {
         this.addLog(st, st.month, "SHY48 沈阳星梦剧院开业首演落幕！此后每月为总账带来 20 万收入。", "main");
         steps.push({ type: "vn", title: "SHY48 · 开业首演", pages: STORY.openShy(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
         this.deployBranch(st, "SHY48");
+        /* 【补建追补】开业当月（或此前月份）月初检查 shyOpen 恒为 false 的
+           SHY48 新期生批次（如 4 月二期的陈奕君/逯芳竹/张羽涵）在此追补；
+           SHY48 未开业则本块不执行，维持不入册。 */
+        this.catchupBranchJoins(st, "2017", "SHY48");
       }
       if (!b17.ckgOpen && b17.ckg >= 3 && st.month >= 10) {
         b17.ckgOpen = true;
@@ -5218,6 +5272,9 @@ const Game = {
         this.addLog(st, st.month, "CKG48 重庆星梦剧院开业首演落幕！此后每月为总账带来 25 万收入。", "main");
         steps.push({ type: "vn", title: "CKG48 · 开业首演", pages: STORY.openCkg(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
         this.deployBranch(st, "CKG48");
+        /* 【补建追补】同 SHY48：开业当月漏检的 CKG48 新期生批次在此追补
+           （joining2017 现无 CKG48 条目，预留口径一致性）。 */
+        this.catchupBranchJoins(st, "2017", "CKG48");
       } else if (!b17.ckgOpen && b17.ckg >= 3 && st.month === 9 && !st.flags.ckgReadyLogged) {
         st.flags.ckgReadyLogged = true;
         this.addLog(st, st.month, "CKG48 筹备全部就绪——按史实节奏，开业首演安排在 10 月末。", "normal");
