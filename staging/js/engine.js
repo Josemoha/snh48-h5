@@ -79,6 +79,7 @@ const Game = {
     const st = this.st;
     const pro = st.era === "2027" ? STORY.prologue27
       : st.era === "2026" ? STORY.prologue26
+      : st.era === "2021" ? STORY.prologue21
       : st.era === "2020" ? STORY.prologue20
       : st.era === "2019" ? STORY.prologue19
       : st.era === "2018" ? STORY.prologue18
@@ -443,6 +444,29 @@ const Game = {
       this.carryTo2020();
       return this.st;
     }
+    if (era === "2021") {
+      /* 快速通道 2021：伪造 2020 全年 → carryTo2021。
+         补选：2019 序章分团/TEB48/请缨 + 2020 一期生合约安置（gen1，默认全员续约）；
+         浪彩少女 AW9（正式成员按史实锚点自动挂载 + 预备役按人气自动点将）、
+         2020 连霸基准 ge2020Top1（按人气预填）均在 fastSim2020 内落定。 */
+      this.fastState2016(playerName, choices);
+      this.carryTo2017();
+      this.fastSim2017(choices);
+      this.carryTo2018();
+      const stF = this.st;
+      const xk21 = choices.xiiKeep18 === "keep" ? "keep" : "dissolve";
+      stF.decisions.xiiKeep18 = xk21;
+      stF.flags.xiiKept18 = xk21 === "keep";
+      if (xk21 === "keep") stF.morale = this.clamp(stF.morale + 4, 0, 100);
+      else stF.money += 20;
+      this.fastSim2018(choices);
+      this.carryTo2019();
+      this.fastSim2019(choices);
+      this.carryTo2020();
+      this.fastSim2020(choices);
+      this.carryTo2021();
+      return this.st;
+    }
     return this.newGame(playerName, null, era);
   },
 
@@ -771,6 +795,53 @@ const Game = {
     return st;
   },
 
+  /* 【快速通道·2020 全年】在 fastState2016 → … → fastSim2019 → carryTo2020 的
+     状态上快进 2020 一年（2021 快速通道专用）。
+     · 人员变动：fastSimJoinLeave("2020")（joining2020 建卡 / leaving2020 疫情裁撤等散点离团）；
+     · 一期生合约（2020 主线⑤）：补选 gen1，默认全员续约留任；grad=全员谢幕毕业；
+     · 浪彩少女 AW9（2020-09 史实锚点）：正式成员自动挂载（不在籍跳过），
+       预备役按人气自动点将 9 人（复用 setAW9Reserve 落地）；
+     · 连霸基准 ge2020Top1 按人气预填；
+     · 年末盘面取疫情年线上口径合理中位值。 */
+  fastSim2020(choices) {
+    const st = this.st;
+    this.fastSimJoinLeave(st, "2020");
+
+    /* —— 一期生合约（2020 主线⑤）快速默认 —— */
+    st.decisions.gen1Fast20 = true;
+    for (const m of st.members) {
+      if (m.gen !== "一期生" || m.hall || m.status === "left" || m.status === "rest") continue;
+      if (choices.gen1 === "grad") {
+        m.status = "left"; m.honorGrad = true;
+        m.note = (m.note ? m.note + "；" : "") + "2020 一期生合约期满毕业（快速通道默认）";
+      } else {
+        m.note = (m.note ? m.note + "；" : "") + "2020 一期生合约续签（快速通道默认）";
+      }
+    }
+
+    /* —— 浪彩少女 AW9（2020-09 史实锚点 + 预备役按人气自动点将）—— */
+    const histIn = [];
+    for (const name of this.AW9_HIST) {
+      const m = st.members.find(x => x.name === name);
+      if (m && (m.status === "active" || m.status === "branch") && !m.hall) histIn.push(m);
+    }
+    const reservePool = st.members
+      .filter(m => (m.status === "active" || m.status === "branch") && !m.hall && histIn.indexOf(m) < 0)
+      .sort((a, b) => (b.pop || 0) - (a.pop || 0) || (a.name < b.name ? -1 : 1));
+    this.setAW9Reserve(reservePool.slice(0, 9).map(m => m.id));
+
+    /* —— 连霸基准（按人气预填，2021 总选连霸判定用）—— */
+    const ranked = st.members.filter(m => m.status === "active" && !m.hall)
+      .sort((a, b) => (b.pop || 0) - (a.pop || 0) || (a.name < b.name ? -1 : 1));
+    st.decisions.ge2020Top1 = ranked[0] ? ranked[0].name : null;
+
+    /* 年末经营盘面（疫情年线上口径合理中位值） */
+    st.money = 700;
+    st.heat = 50; st.morale = 68; st.train = 45; st.burden = 46;
+    st.month = 12;
+    return st;
+  },
+
   /* 【快速通道·2018】首次大组阁自动编制：
      预备生留任、分团候选留任；XII 去留按补选（解散时成员默认落编）；
      其余本部正式成员按人气降序轮替填入各队（下限13、上限20，溢出落编）。
@@ -838,11 +909,14 @@ const Game = {
     const joinSrc = era === "2016" ? DATA.joining2016
       : era === "2017" ? DATA.joining2017
       : era === "2018" ? DATA.joining2018
+      : era === "2019" ? (DATA.joining2019 || [])   // 【2019】补挂的十二期生刘丽千（fast 通道同步）
+      : era === "2020" ? (DATA.joining2020 || [])   // 【2020】疫情年史实入团（分团简卡）
       : era === "2026" ? DATA2026.joining2026 : [];
     const leaveSrc = era === "2016" ? DATA.leaving2016
       : era === "2017" ? DATA.leaving2017
       : era === "2018" ? DATA.leaving2018
-      : era === "2019" ? (DATA.leaving2019 || []) : [];
+      : era === "2019" ? (DATA.leaving2019 || [])
+      : era === "2020" ? (DATA.leaving2020 || []) : [];
     for (let month = 1; month <= 12; month++) {
       for (const j of joinSrc) {
         if (j.month !== month) continue;
@@ -1660,6 +1734,50 @@ const Game = {
     };
   },
 
+  /* 【限定团期满归队】（月初结算，修复 2026-XX）。
+     成团事件口径均为「暂休一年，随团活动；一年之后，随时欢迎回家」：
+     · unit19（2018 选秀限定团，2019-06 成团）→ 2020-06 起期满归队；
+     · unit20（2019 双选秀限定团，2020-08 成团）→ 2021-08 起期满归队。
+     幂等：只恢复 status="rest" 且备注含「跟随限定团活动」的成员（即本成团事件划入者）；
+     已因其他事件离团/毕业/升堂者跳过，不虚构在籍。归队后保留原队伍归属（暂休期间
+     不清队），flags.unit19Formed/unit20Formed 保留（防止成团事件 gate 重开），
+     仅清空 members 并登记 returned，供 UI 展示与回归断言。
+     归队加成（Agent 拟定口径，可调）：限定团一年的外部镜头与舞台历练，
+     人气+8、实力+5（pwr 无上限封顶，不 clamp；人气按 0~100 clamp）。
+     跨档追补：若旧档已跳过到期月（如 2020 年末档直接进 2021），后续年份月初同样回收。 */
+  limitUnitReturnCheck(st) {
+    st = st || this.st;
+    const jobs = [];
+    if (st.flags.unit19Formed && st.unit19 && Array.isArray(st.unit19.members) && st.unit19.members.length &&
+        !st.unit19.returned &&
+        ((st.era === "2020" && st.month >= 6) || st.era === "2021" || st.era === "2026" || st.era === "2027")) jobs.push("unit19");
+    if (st.flags.unit20Formed && st.unit20 && Array.isArray(st.unit20.members) && st.unit20.members.length &&
+        !st.unit20.returned &&
+        ((st.era === "2021" && st.month >= 8) || st.era === "2026" || st.era === "2027")) jobs.push("unit20");
+    for (const key of jobs) {
+      const unit = st[key];
+      const back = [];
+      for (const nm of unit.members) {
+        const m = st.members.find(x => x.name === nm);
+        if (m && m.status === "rest" && m.note && m.note.indexOf("跟随限定团活动") >= 0) {
+          m.status = "active";
+          m.pop = this.clamp((m.pop || 0) + 8, 0, 100);   // 限定团曝光：人气+8
+          m.pwr = (m.pwr || 0) + 5;                        // 限定团历练：实力+5
+          m.note = m.note + "；" + st.era + "-" + (st.month < 10 ? "0" : "") + st.month + " 限定团期满归队（实力+5 人气+8）";
+          back.push(nm);
+        }
+      }
+      if (back.length) {
+        unit.members = [];
+        unit.returned = true;
+        this.addLog(st, st.month, "限定团期满归队：" + back.join("、") + "——一年的限定活动落幕，她们回到了这条河的舞台（归队加成：实力+5 人气+8）。", "good");
+      } else {
+        // 无可回收成员（均已因其他事件离队）：登记 returned 防止每月重复扫描
+        unit.returned = true;
+      }
+    }
+  },
+
   /* 【2019 主线⑤】借选秀余温布局外务（需 2018 选秀首轮录制完成） */
   advanceOutreach19() {
     const st = this.st, o = st.outreach19;
@@ -2106,6 +2224,305 @@ const Game = {
     return st;
   },
 
+  /* 【2021 主线①】电商领域：三段推进（直播间搭建→首播→常态化运营）。完成后月收入 +15 万。 */
+  advanceAw9Shop21() {
+    const st = this.st, c = st.aw9shop21;
+    if (c.done) return { text: "AW9 电商直播常态化运营中。", tone: "blocked" };
+    if (c.stage === 0) {
+      c.stage = 1;
+      return { text: "直播间搭建完成：九个机位、货架与提词板就位。", tone: "main", vn: STORY.scenes21.aw9ShopStart };
+    }
+    if (c.stage === 1) {
+      c.stage = 2;
+      st.money += 45;
+      st.heat = this.clamp(st.heat + 5, 0, 100);
+      return { text: "首播收官：GMV 战报出炉，粉丝涌进直播间。（资金+45万 热度+5）", tone: "main", vn: STORY.scenes21.aw9ShopLive };
+    }
+    c.done = true; st.flags.aw9Shop21Done = true;
+    this.addLog(st, st.month, "★主线①「拓展和发展电商领域」达成：AW9 电商直播常态化——此后每月 +15 万收入；满员机制生效。", "main");
+    this.save();
+    return { text: "常态化运营落地：选品会、复盘会、粉丝群新品投票排进周计划。（此后每月收入+15万）", tone: "main", vn: STORY.scenes21.aw9ShopDaily };
+  },
+
+  /* 【2021 主线②】疫苗：两段推进（集体预约→第二针收官） */
+  advanceVaccine21() {
+    const st = this.st, c = st.vaccine21;
+    if (c.done) return { text: "全团两针接种已完成。", tone: "blocked" };
+    if (c.stage === 0) {
+      if (st.money < 15) return { text: "资金不足（集体预约与组织需15万）。", tone: "blocked" };
+      st.money -= 15; c.stage = 1;
+      return { text: "集体预约完成：第一批接种陆续展开。（资金-15万）", tone: "main", vn: STORY.scenes21.vaccine21Book };
+    }
+    c.done = true; st.flags.vaccine21Done = true;
+    st.morale = this.clamp(st.morale + 4, 0, 100);
+    for (const m of this.activeMembers(st)) m.bond = this.clamp(m.bond + 2, 0, 100);
+    this.addLog(st, st.month, "★主线②「注射疫苗」达成：全团两针接种率 100%。", "main");
+    this.save();
+    return { text: "第二针收官，接种率百分之百。这件事没有热度，但是今年最值得的一笔支出。（士气+4 全员羁绊+2）", tone: "main", vn: STORY.scenes21.vaccine21Done };
+  },
+
+  /* 【2021 主线③】海外选秀：两段推进（名额与点将→出征集训）。
+     第一段转交 UI 点将窗（tone="gp21pick"，5 人），落地在 setGp21Squad。 */
+  advanceGp21() {
+    const st = this.st, c = st.gp21;
+    if (c.done) return { text: "出征集训已完成，静待节目进展。", tone: "blocked" };
+    if (c.stage === 0) return { text: "", tone: "gp21pick" };
+    c.done = true; st.flags.gp21Done = true;
+    for (const n of (st.decisions.gp21Squad || [])) {
+      const m = st.members.find(x => x.name === n);
+      if (m && m.pwr != null) m.pwr = Math.min(90, m.pwr + 3);
+    }
+    st.morale = this.clamp(st.morale + 2, 0, 100);
+    this.addLog(st, st.month, "★主线③「备战海外选秀」达成：出征集训完成（" + (st.decisions.gp21Squad || []).join("、") + "）。", "main");
+    this.save();
+    return { text: "封闭集训营收官：五个孩子把三个月压缩成一张课表。（所选五人实力+3 士气+2）", tone: "main", vn: STORY.scenes21.gp21Camp };
+  },
+
+  /* 【2021 主线③·点将回调】海外选秀五人名单（UI.showGp21Picker） */
+  setGp21Squad(ids) {
+    const st = this.st;
+    const names = ids.map(id => { const m = st.members.find(x => x.id === id); return m ? m.name : null; }).filter(Boolean);
+    if (names.length !== 5) return { text: "名单无效：需点将五人。", tone: "blocked" };
+    st.decisions.gp21Squad = names;
+    st.gp21.stage = 1;
+    this.addLog(st, st.month, "海外选秀出征名单确定：" + names.join("、") + "。", "main");
+    this.save();
+    return { text: "点将完成：" + names.join("、") + " ——五个名额，一条河的声援。下一步：出征集训。", tone: "main", vn: STORY.scenes21.gp21Pick };
+  },
+
+  /* 【2021 主线④】年度活动筹备（与邓森林）：单段推进 */
+  advanceEventPlan21() {
+    const st = this.st, c = st.eventplan21;
+    if (c.done) return { text: "年度活动的风险预案与筹备排期已定稿。", tone: "blocked" };
+    c.done = true; st.flags.eventPlan21Done = true;
+    this.addLog(st, st.month, "★主线④「与邓总监商议年度活动的筹备」达成：风险预案与筹备排期定稿（总选 4~7 月筹备、8 月开榜）。", "main");
+    this.save();
+    return { text: "风险预案与筹备排期定稿：线上线下双轨、打投数据双备份。（flags.eventPlan21Done；4 月总选筹备解锁）", tone: "main", vn: STORY.scenes21.eventPlan21Risk };
+  },
+
+  /* 【2021·AW9 满员机制·点将回调】预备役补员（UI.showAw9r21Picker，1 人） */
+  setAw9r21Pick(ids) {
+    const st = this.st;
+    const m = st.members.find(x => x.id === ids[0]);
+    if (!m || (m.status !== "active" && m.status !== "branch")) return { text: "点将无效。", tone: "blocked" };
+    if (!Array.isArray(st.decisions.unitsAW9R)) st.decisions.unitsAW9R = [];
+    if (st.decisions.unitsAW9R.indexOf(m.name) >= 0) return { text: "该成员已在预备役。", tone: "blocked" };
+    st.decisions.unitsAW9R.push(m.name);
+    m.bond = this.clamp(m.bond + 2, 0, 100);
+    this.addLog(st, st.month, "AW9 预备役补员：" + m.name + "（总监点将，按用户口径满员机制）。", "main");
+    this.save();
+    return { text: m.name + " 入列 AW9 预备役——灯不能灭，人得备齐。（羁绊+2）", tone: "main" };
+  },
+
+  /* 【2021·方案一·组队回调】《最佳拍档》总选组队名单（UI.showGePairs21Picker）。
+     pairs = [[名,名],...]；名单存 decisions.gePairs21，8 月开榜时按组分结算（resolveGEPartner21）。 */
+  setGePairs21(pairs) {
+    const st = this.st;
+    const valid = (pairs || []).filter(p => Array.isArray(p) && p.length === 2 && p[0] !== p[1]);
+    st.decisions.gePairs21 = valid;
+    this.addLog(st, st.month, "《最佳拍档》组队名单登记：" + (valid.length ? valid.map(p => p.join(" & ")).join("、") : "全员个人参赛") + "。", "main");
+    this.save();
+    return { text: "组队名单登记完成：共 " + valid.length + " 组搭档（组内双方羁绊均≥70 时，开榜额外加成）。", tone: "main" };
+  },
+
+  /* ==================== 2021《最佳拍档》组队机制（两线通用，用户口径 2026-XX） ====================
+     无论 geMode21=partner（改造总选）还是 classic（独立综艺），组队方式统一：
+     ① 4月：玩家钦点 5 队（全团可选、两两组队、不可跨团——每组两人须同团）；
+     ② 余下成员按好感度（成员间关系值，羁绊/人气顺延）团内自动组队，结果 4 月末公布；
+     ③ 未组队者进入「单身赛道」；5 月起至期限前（partner 线 7 月 / classic 线 5 月）
+        玩家可为单身成员补配拍档（不限同团）；
+     ④ 期限月首：单身人数为奇数时剔除人气最低者（不参加拍档活动）；其余未配对者按
+        好感度自动配对（团内优先，跨团兜底）。最终名单汇总 decisions.gePairs21
+        （partner 线供 resolveGEPartner21 结算；classic 线留档待独立综艺口径）。 */
+  bp21Deadline() {
+    const st = this.st;
+    return st.decisions && st.decisions.geMode21 === "partner" ? 8 : 6;
+  },
+
+  bp21KeyOf(m) {
+    return m.status === "branch" ? (m.branchTeam || m.team) : m.status === "idft" ? "IDFT" : m.team;
+  },
+
+  bp21Pool(st) {
+    return st.members.filter(m => (m.status === "active" || m.status === "branch" || m.status === "idft") && !m.hall);
+  },
+
+  /* 好感度排序分：成员间关系值为主，羁绊/人气为次（仅用于同分顺延） */
+  bp21RelScore(st, a, b) {
+    const r = this.relGet(st, a.id, b.id);
+    return (r == null ? 0 : r) * 1000 + ((a.bond || 0) + (b.bond || 0)) * 0.5 + ((a.pop || 0) + (b.pop || 0)) / 1000;
+  },
+
+  /* 团内贪心组队：反复取当前未组队者中好感度最高的一对（关系最好的已被组则自然顺延） */
+  bp21AutoPairs(st, excludeNames) {
+    const ex = {}; (excludeNames || []).forEach(n => { ex[n] = true; });
+    const byTeam = {};
+    for (const m of this.bp21Pool(st)) {
+      if (ex[m.name]) continue;
+      const k = this.bp21KeyOf(m);
+      (byTeam[k] = byTeam[k] || []).push(m);
+    }
+    const pairs = [];
+    for (const k in byTeam) {
+      const list = byTeam[k].slice();
+      while (list.length >= 2) {
+        let bi = -1, bj = -1, bs = -1;
+        for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+          const s = this.bp21RelScore(st, list[i], list[j]);
+          if (s > bs) { bs = s; bi = i; bj = j; }
+        }
+        pairs.push([list[bi].name, list[bj].name]);
+        list.splice(bj, 1); list.splice(bi, 1);
+      }
+    }
+    return pairs;
+  },
+
+  /* ④ 期限月首：单身赛道收口——奇数剔除人气最低者，其余自动配对（团内优先、跨团兜底），汇总 gePairs21 */
+  bp21AutoFill(st) {
+    st.flags.b21Filled21 = true;
+    const used = {};
+    const take = arr => { for (const p of (arr || [])) if (Array.isArray(p)) p.forEach(n => { used[n] = true; }); };
+    take(st.decisions.gePicked21); take(st.decisions.geAutoPairs21); take(st.decisions.geSupPairs21);
+    let singles = this.bp21Pool(st).filter(m => !used[m.name] && (st.decisions.geB21Dropped || []).indexOf(m.name) < 0);
+    /* 奇数：剔除人气最低者（不参加拍档活动） */
+    const dropped = [];
+    if (singles.length % 2 === 1) {
+      const low = singles.slice().sort((a, b) => (a.pop || 0) - (b.pop || 0))[0];
+      dropped.push(low.name);
+      st.decisions.geB21Dropped = (st.decisions.geB21Dropped || []).concat(low.name);
+      singles = singles.filter(m => m !== low);
+    }
+    /* 自动配对：先团内贪心，余者跨团按好感度兜底 */
+    const fill = [];
+    const grab = list => {
+      while (list.length >= 2) {
+        let bi = -1, bj = -1, bs = -1;
+        for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+          const s = this.bp21RelScore(st, list[i], list[j]);
+          if (s > bs) { bs = s; bi = i; bj = j; }
+        }
+        fill.push([list[bi].name, list[bj].name]);
+        list.splice(bj, 1); list.splice(bi, 1);
+      }
+    };
+    const byTeam = {};
+    for (const m of singles) { const k = this.bp21KeyOf(m); (byTeam[k] = byTeam[k] || []).push(m); }
+    for (const k in byTeam) grab(byTeam[k]);
+    grab(singles.filter(m => !fill.some(p => p.indexOf(m.name) >= 0)));
+    st.decisions.geAutoFill21 = (st.decisions.geAutoFill21 || []).concat(fill);
+    if (dropped.length) this.addLog(st, st.month, "《最佳拍档》单身赛道收口：" + dropped.join("、") + " 人气最低且人数为单，本轮不参加拍档活动。", "warn");
+    /* 汇总最终名单（partner 线总选结算 / classic 线独立综艺留档）——直接写入，不依赖 this.st */
+    const seen = {};
+    const all = [].concat(st.decisions.gePicked21 || [], st.decisions.geAutoPairs21 || [], st.decisions.geSupPairs21 || [], st.decisions.geAutoFill21 || [])
+      .filter(p => { const k = p.slice().sort().join("|"); if (seen[k]) return false; seen[k] = true; return true; });
+    st.decisions.gePairs21 = all;
+    this.addLog(st, st.month, "《最佳拍档》拍档名单收口：共 " + all.length + " 组（" + all.map(p => p.join(" & ")).join("、") + "）。", "main");
+    return { dropped, fill };
+  },
+
+  /* ② 4月末：团内自动组队公布——余下成员按好感度团内组队，未组队者入单身赛道 */
+  bp21Publish(st) {
+    if (st.decisions.geAutoPairs21) return null;
+    const picked = st.decisions.gePicked21 || [];
+    const exNames = [].concat.apply([], picked);
+    const auto = this.bp21AutoPairs(st, exNames);
+    const used = {};
+    exNames.forEach(n => { used[n] = true; });
+    auto.forEach(p => p.forEach(n => { used[n] = true; }));
+    const singles = this.bp21Pool(st).filter(m => !used[m.name]).sort((a, b) => (b.pop || 0) - (a.pop || 0));
+    st.decisions.geAutoPairs21 = auto;
+    st.decisions.geSingles21 = singles.map(m => m.name);
+    this.addLog(st, st.month, "《最佳拍档》组队结果公布：钦点 " + picked.length + " 组 + 团内自动组队 " + auto.length + " 组；单身赛道 " + singles.length + " 人（" + singles.map(m => m.name).join("、") + "）。", "main");
+    return {
+      title: "4月末 · 《最佳拍档》组队结果公布",
+      pages: [
+        { nar: true, t: "四月末，《最佳拍档》的首批组队名单贴上了排练室的白板：\n\n" +
+          (picked.length ? "【总监钦点】" + picked.map(p => p.join(" & ")).join("、") + "\n\n" : "") +
+          (auto.length ? "【团内组队】" + auto.map(p => p.join(" & ")).join("、") + "\n\n" : "") +
+          (singles.length ? "【单身赛道】" + singles.map(m => m.name).join("、") + "——期限前还没找到拍档的话，就要靠节目组帮忙了。" : "全员配对完毕，没有单身赛道。") },
+        { s: "邓森林", cls: "", t: "总监，钦点的五组是门面；团里自动配上的，是大家自己选的默契。剩下没配上的孩子——5月起您亲自安排，别让任何人掉队。" },
+      ],
+    };
+  },
+
+  /* ① 玩家钦点登记（UI.showB21PickPicker）：最多 5 组，每组 2 人同团（不可跨团指定） */
+  setGePicked21(pairs) {
+    const st = this.st;
+    const used = {};
+    const pool = this.bp21Pool(st);
+    const valid = [];
+    for (const p of (pairs || [])) {
+      if (!Array.isArray(p) || p.length !== 2 || p[0] === p[1]) continue;
+      const ma = pool.find(m => m.name === p[0]), mb = pool.find(m => m.name === p[1]);
+      if (!ma || !mb || used[ma.name] || used[mb.name]) continue;
+      if (this.bp21KeyOf(ma) !== this.bp21KeyOf(mb)) continue;   // 不可跨团指定
+      used[ma.name] = used[mb.name] = true;
+      valid.push([ma.name, mb.name]);
+    }
+    st.decisions.gePicked21 = valid.slice(0, 5);
+    this.addLog(st, st.month, "《最佳拍档》钦点登记（" + valid.slice(0, 5).length + "/5 组）：" + (valid.length ? valid.slice(0, 5).map(p => p.join(" & ")).join("、") : "未钦点，全团走自动组队") + "。", "main");
+    this.save();
+    return { text: "钦点登记完成：" + valid.slice(0, 5).length + "/5 组（同团限制内）。余下成员将在 4 月末按好感度自动组队。", tone: "main" };
+  },
+
+  /* ③ 单身赛道补配登记（UI.showB21SinglesPicker）：不限同团，5月起至期限前 */
+  setGeSupPairs21(pairs) {
+    const st = this.st;
+    const pool = this.bp21Pool(st);
+    const taken = {};
+    [].concat(st.decisions.gePicked21 || [], st.decisions.geAutoPairs21 || [], st.decisions.geSupPairs21 || []).forEach(p => p.forEach(n => { taken[n] = true; }));
+    const valid = [];
+    for (const p of (pairs || [])) {
+      if (!Array.isArray(p) || p.length !== 2 || p[0] === p[1]) continue;
+      const ma = pool.find(m => m.name === p[0]), mb = pool.find(m => m.name === p[1]);
+      if (!ma || !mb || taken[ma.name] || taken[mb.name]) continue;
+      taken[ma.name] = taken[mb.name] = true;
+      valid.push([ma.name, mb.name]);
+    }
+    st.decisions.geSupPairs21 = (st.decisions.geSupPairs21 || []).concat(valid);
+    this.addLog(st, st.month, "《最佳拍档》单身赛道补配（+" + valid.length + " 组）：" + (valid.length ? valid.map(p => p.join(" & ")).join("、") : "本轮未补配") + "。", "main");
+    this.save();
+    const left = this.bp21RemainingSingles(st);
+    return { text: "补配完成：新增 " + valid.length + " 组；单身赛道还剩 " + left.length + " 人（" + left.join("、") + "）。", tone: "main" };
+  },
+
+  /* 行动「最佳拍档·组队」的描述/禁用判定（listActionsCore 2021） */
+  bp21ActionDesc(st) {
+    if (!st.decisions.geMode21) return "年度活动方案未拍板，组队暂未启动";
+    if (st.month < 4) return "4 月启动：钦点 5 组拍档（同团两两，不可跨团）→ 余下按好感度团内自动组队";
+    if (st.flags.b21Filled21) return "✔ 拍档名单已收口（共 " + (st.decisions.gePairs21 || []).length + " 组）";
+    if (!st.decisions.geAutoPairs21) return (st.decisions.gePicked21 || []).length
+      ? "钦点已登记（" + st.decisions.gePicked21.length + "/5 组），4 月末公布自动组队结果"
+      : "钦点 5 组拍档（同团两两，不可跨团）；未钦点者全团走自动组队；4月末公布结果";
+    const left = this.bp21RemainingSingles(st);
+    const dl = this.bp21Deadline();
+    return "单身赛道补配（剩 " + left.length + " 人；期限 " + dl + " 月，期限月首奇数剔除人气最低者、其余自动配对）";
+  },
+
+  bp21ActionLocked(st) {
+    if (st.month < 4 || st.flags.b21Filled21) return true;
+    if (!st.decisions.geAutoPairs21) return !!(st.decisions.gePicked21 || []).length;   // 4月钦点（已点完则锁定等公布）
+    const supWin = st.decisions.geMode21 === "partner" ? [5, 7] : [5, 5];
+    return st.month < supWin[0] || st.month > supWin[1] || !this.bp21RemainingSingles(st).length;
+  },
+
+  /* 当前仍在单身赛道（未被任何一组占用、未被剔除）的成员名 */
+  bp21RemainingSingles(st) {
+    st = st || this.st;
+    if (!st.decisions || !st.decisions.geSingles21) return [];
+    const used = {};
+    [].concat(st.decisions.gePicked21 || [], st.decisions.geAutoPairs21 || [], st.decisions.geSupPairs21 || [], st.decisions.geAutoFill21 || []).forEach(p => { if (Array.isArray(p)) p.forEach(n => { used[n] = true; }); });
+    return (st.decisions.geSingles21 || []).filter(n => !used[n] && (st.decisions.geB21Dropped || []).indexOf(n) < 0);
+  },
+  /* 【2021】AW9 预备役缺口判定：正式名单在编而预备役不足 9 人时开放补员行动 */
+  aw9r21Need(st) {
+    st = st || this.st;
+    const formal = st.decisions && Array.isArray(st.decisions.unitsAW9) ? st.decisions.unitsAW9.length : 0;
+    const reserve = st.decisions && Array.isArray(st.decisions.unitsAW9R) ? st.decisions.unitsAW9R.length : 0;
+    return formal > 0 && reserve < 9;
+  },
+
   /* 【2020】保留旗号的分团（序章决策汇总）：孟波出资保住的旗号 + 兼任总监自费保留的旗号 */
   keptBranchFlags20(st) {
     st = st || this.st;
@@ -2113,6 +2530,82 @@ const Game = {
     if (st.decisions.mengbo20 === "CKG48" || st.decisions.mengbo20 === "SHY48") kept.push(st.decisions.mengbo20);
     if (st.decisions.self20Flag === "keep" && st.decisions.branchPost === "SHY48") kept.push("SHY48");
     return kept;
+  },
+
+  /* ========================================================================
+     2020 → 2021「春潮」线交接（结算界面「进入下一年」入口）
+     --------------------------------------------------------------------------
+     继承 2020 年末成员卡与经营状态（含 SHY48/CKG48 旗号、BEJ48 编号解散状态、
+     IDFT 训练生池、AW9 编制 decisions.unitsAW9/unitsAW9R、实力系统、
+     分团 TOP1 兼任与 IDFT 升格机制的成果——本年总选延续该两项用户口径机制）。
+     新主线状态：aw9shop21（电商①） / vaccine21（疫苗②） / gp21（海外选秀③） /
+     eventplan21（年度活动筹备④）。geMode21 由序章 pathChoices 登记后生效。
+     经济特则：1~3 月「疫情收尾」收益八折（支出正常）；4 月起全面恢复；
+     总选举 4~7 月筹备、8 月开榜。
+     ========================================================================== */
+  carryTo2021() {
+    const src = this.st;
+    const members = src.members;
+    const snapshot = members.map(m => ({
+      name: m.name, team: m.team, status: m.status, branchTeam: m.branchTeam || null,
+      pop: m.pop != null ? m.pop : null, bond: m.bond != null ? m.bond : null, hall: !!m.hall,
+    }));
+    const pwrBase = this.avgPwr(src);
+    const st = {
+      saveVersion: this.SAVE_VERSION,
+      playerName: src.playerName,
+      startStyle: src.startStyle,
+      era: "2021",
+      month: 1,
+      ap: 4,
+      money: src.money,
+      heat: src.heat,
+      morale: src.morale,
+      train: src.train,
+      burden: src.burden,
+      debt: 0,
+      members: members,
+      log: [],
+      flags: Object.assign({}, src.flags),
+      decisions: Object.assign({}, src.decisions),
+      branch: src.branch,
+      branch17: src.branch17,
+      orig: src.orig,
+      prep18: src.prep18,
+      show18: src.show18,
+      teb19: src.teb19,
+      /* 2021 新主线状态 */
+      aw9shop21: { stage: 0, done: false },     // 主线①：拓展电商领域（AW9 直播）
+      vaccine21: { stage: 0, done: false },     // 主线②：全团疫苗接种（两针）
+      gp21: { stage: 0, done: false },          // 主线③：海外选秀备战（5 个名额点将）
+      eventplan21: { stage: 0, done: false },   // 主线④：年度活动筹备（与邓森林）
+      pwrBase: pwrBase,
+      bondBase: members.reduce((o, m) => { o[m.name] = m.bond || 0; return o; }, {}),
+      termLog: (src.termLog || []).slice(),
+      termArchive: Object.assign({}, src.termArchive, src.era ? { [src.era]: this.termArchiveYear(src) } : {}),
+      history: Object.assign({}, src.history, {
+        roster2020: snapshot,
+        money2020: src.money,
+        ge2020Top1: (src.decisions && src.decisions.ge2020Top1) || null,   // 连霸判定基准（applyHallReign）
+      }),
+      gePlan: 0, geDone: false, geResult: null,
+      rtPlan: 0, rtDone: false, rtScore: 0,
+    };
+    /* 2020 年间一次性旗标不带入 2021 判定流（保留在 history/decisions 中可回收） */
+    delete st.flags.covid20Done;
+    delete st.flags.cloud20Done;
+    delete st.flags.teb20Done;
+    delete st.flags.gen1Done;
+    delete st.flags.httPromise20Done;
+    delete st.flags.unitFill20Done;
+    delete st.flags.ge20Branch1Done;
+    delete st.flags.ge20IdftDone;
+    delete st.flags.geOnline20;
+    this.st = st;
+    this.inheritRel(src, st);
+    this.addLog(st, 1, "2020 年交卷，2021「春潮」开卷：政策放宽但疫情未止——1~3 月收益八折；4 月起全面恢复，总选 4~7 月筹备、8 月开榜。年初实力均值 " + pwrBase + "。", "main");
+    this.save();
+    return st;
   },
 
   /* 【2020 主线②】防疫与返工：两段推进 */
@@ -2351,6 +2844,34 @@ const Game = {
 
   /* 【2020】年度评分：安置(25)+防疫返工(15)+云公演(20)+一期生(15)+分手(10，仅复刻线)
      + 实力成长(10)+热度/4(≤10)+士气/10(≤5)+资金/60(≤5) − 赤字10 → S≥85 / A≥65 / B≥50 / C */
+  /* 2021 线年度评分「春潮」：
+     电商①(20) + 疫苗②(15) + 海外选秀③(15) + 年度活动筹备④(10) + 总选(15) + 大赏(12)
+     + 实力成长(10) + 热度(≤8) + 士气(≤5) + 资金(≤5) − 赤字10 → S≥85 / A≥65 / B≥50 */
+  computeGrade21(st) {
+    st = st || this.st;
+    let score = 0;
+    if (st.aw9shop21.done) score += 20;
+    else if (st.aw9shop21.stage >= 1) score += 8;
+    if (st.vaccine21.done) score += 15;
+    else if (st.vaccine21.stage >= 1) score += 6;
+    if (st.gp21.done) score += 15;
+    else if (st.gp21.stage >= 1) score += 6;
+    if (st.eventplan21.done) score += 10;
+    if (st.geDone) score += 15;
+    if (st.rtScore >= 85) score += 12;
+    else if (st.rtScore >= 65) score += 8;
+    else if (st.rtDone) score += 4;
+    score += this.clamp(Math.round((this.avgPwr(st) - (st.pwrBase || 0)) * 2), 0, 10);
+    score += Math.min(8, Math.round(st.heat / 5));
+    score += Math.min(5, Math.round(st.morale / 10));
+    score += Math.min(5, Math.floor(st.money / 60));
+    if (st.debt >= 1) score -= 10;
+    if (score >= 85) return "S";
+    if (score >= 65) return "A";
+    if (score >= 50) return "B";
+    return "C";
+  },
+
   computeGrade20(st) {
     st = st || this.st;
     let score = 0;
@@ -2633,6 +3154,42 @@ const Game = {
     return st.members.filter(m => this.teamKeyOf(m) === key);
   },
 
+  /* 【战略重组·用户口径】候选目标队：有在册成员、非预备生/非殿堂、人数<10 的队伍
+     （含分团队伍）。 */
+  strategicReorgTargets(st) {
+    st = st || this.st;
+    return this.stageTeams(st).filter(t => this.teamRoster(st, t).length < 10);
+  },
+
+  /* 【战略重组·落地】team：目标队 key；ids：拟调入成员 id 列表（其他队伍/预备生/分团均可）。
+     规则：重组后最少 13 人、至多 20 人；调入者改队入编（分团成员上调本部入编、
+     预备生定队），备注登记；磨合度由 syncTeams 按队伍指纹自动重算。 */
+  applyStrategicReorg(team, ids) {
+    const st = this.st;
+    const cur = this.teamRoster(st, team);
+    const donors = [];
+    const seen = {};
+    for (const id of (ids || [])) {
+      const m = st.members.find(x => x.id === id);
+      if (!m || m.hall || seen[m.id]) continue;
+      if (this.teamKeyOf(m) === team) continue;   // 已在该队
+      seen[m.id] = true;
+      donors.push(m);
+    }
+    const total = cur.length + donors.length;
+    if (total < 13) return { text: "补员不足：重组后需至少 13 人（当前 " + cur.length + " 人 + 拟加入 " + donors.length + " 人）。", tone: "blocked" };
+    if (total > 20) return { text: "超编：重组后至多 20 人（当前 " + cur.length + " 人 + 拟加入 " + donors.length + " 人）。", tone: "blocked" };
+    for (const m of donors) {
+      if (m.status === "branch") { m.status = "active"; m.branchTeam = null; }   // 分团上调入编
+      m.team = team;
+      m.note = (m.note ? m.note + "；" : "") + st.era + "-" + st.month + " 战略重组调入 Team " + team;
+    }
+    this.syncTeams(st);
+    this.addLog(st, st.month, "★战略重组：Team " + team + " 重组完成（" + cur.length + "→" + total + " 人），调入 " + donors.map(m => m.name).join("、") + "。", "main");
+    this.save();
+    return { text: "★战略重组落地：Team " + team + "（" + cur.length + "→" + total + " 人）\n调入：" + donors.map(m => m.name).join("、") + "\n\n（队伍磨合度重新起算；每名调入成员已备注登记。耗 1 行动点。）", tone: "main" };
+  },
+
   /* 【公演站位·用户口径 2026-10-24】成员兼任队伍（站位通用）：
      · 剧情兼任：冯薪朵兼任 BEJ48（d.fengXinDuo19="bej"，本部在籍）；
      · 2020 分团 TOP1 兼任本部（d.ge20Branch1=[{name,branch,team}]，兼任不调动、保留分团在册）。
@@ -2864,6 +3421,19 @@ const Game = {
     if (st.cgt.settleDone === undefined) st.cgt.settleDone = false;
     if (!st.elim) st.elim = { executed: 0, defied: 0, transferred: 0, warned: false };
     if (st.rtCancelled === undefined) st.rtCancelled = false;
+    /* 【旧档兑底】修复前建的 2016/2017 档：唐安琪可能已被旧版离团表置为暂休，而团建链
+       拒绝请假（tanqiQJ16=refuse）是修复后才可选的路线——旧档既无决策也无 tbNiiBld16
+       旗标时无法安全判定玩家意图，保持现状（可用更早备份存档重走 3 月）。但若旧档存在
+       tbNiiBld16=true（走过团建链拒绝事件）而决策字段缺失，恢复决策并在籍，避免
+       「在籍却无法走访」。 */
+    if (st.flags && st.flags.tbNiiBld16 && st.decisions && st.decisions.tanqiQJ16 === undefined) {
+      st.decisions.tanqiQJ16 = "refuse";
+      const tqFix = (st.members || []).find(m => m.name === "唐安琪");
+      if (tqFix && tqFix.status === "rest") {
+        tqFix.status = "active";
+        tqFix.note = "团建留队（拒绝请假路线恢复，3月末意外未发生）";
+      }
+    }
     /* 2017「本部新章」线字段兜底 */
     if (!st.branch17) st.branch17 = { shy: 0, ckg: 0, shyOpen: false, ckgOpen: false, shyOpenMonth: 0, ckgOpenMonth: 0 };
     if (!st.orig) st.orig = { SII: false, NII: false, HII: false, X: false };
@@ -3422,6 +3992,48 @@ const Game = {
     return { text: text, tone: "main" };
   },
 
+  /* 【2021】成员精简补偿落地（用户口径，同 2020 线设计）：
+     names = 待裁成员名（已按卡况过滤）；pay=true 支付补偿金 15 万/人（同 2020 口径，
+     资金支出，士气+2 体面转身）；pay=false 不支付（士气-4 热度-3；涉分团则该分团在册
+     成员羁绊-4，涉本部则本部在册成员羁绊-2）。
+     调用方：月首离团表（未兼任分团自动支付）与 UI layoff21Pick 拍板窗。
+     决策标签 decisions.layoff21 追加 { names, pay } 记录。 */
+  applyLayoff21(names, pay) {
+    const st = this.st;
+    const left = [];
+    for (const nm of (names || [])) {
+      const m = st.members.find(x => x.name === nm && x.status !== "left" && x.status !== "rest");
+      if (!m || m.hall) continue;
+      m.status = "left";
+      m.note = st.era + "-" + (st.month < 10 ? "0" : "") + st.month + " 成员精简" + (pay ? "（公司支付补偿金15万）" : "（无补偿）");
+      this.addLog(st, st.month, nm + " 成员精简" + (pay ? "（补偿金15万）" : "（无补偿）") + "。", "bad");
+      left.push(m);
+    }
+    if (!left.length) return { text: "名单上的成员均已不在册。", tone: "blocked" };
+    const nmList = left.map(x => x.name).join("、");
+    let text = "";
+    if (pay) {
+      st.money = Math.max(0, st.money - 15 * left.length);
+      st.morale = Math.min(100, st.morale + 2);
+      this.addLog(st, st.month, "成员精简：" + nmList + " 离团（支付补偿金 " + 15 * left.length + " 万）。", "bad");
+      text = "补偿金签领单一张张签下去，每张背后都是一段没来得及展开的路。离团公告写得很温和：「感谢她们的付出，愿她们前程似锦。」\n\n（已支付补偿金：资金-" + 15 * left.length + "，士气+2。" + nmList + " 已离团。）";
+    } else {
+      st.morale = Math.max(0, st.morale - 4); st.heat = Math.min(100, st.heat + 3);
+      for (const m of left) {
+        if (m.status === "branch" || m.branchTeam) {
+          for (const x of st.members) if (x.branchTeam === (m.branchTeam || m.team) && x.status !== "left" && x.status !== "rest") x.bond = Math.max(0, (x.bond || 0) - 4);
+        } else {
+          for (const x of st.members) if (!x.branchTeam && x.status !== "left" && x.status !== "rest") x.bond = Math.max(0, (x.bond || 0) - 2);
+        }
+      }
+      this.addLog(st, st.month, "成员精简：" + nmList + " 离团（未支付补偿金，士气与信任受损）。", "bad");
+      text = "你在补偿金那一栏画了斜线：今年没有这笔预算。" + nmList + " 静静地办完了离团手续，没有鲜花也没有告别公演。消息传开，排练室安静了很久。\n\n（未支付补偿金：士气-4 热度-3；涉分团在册成员羁绊-4，涉本部在册成员羁绊-2。）";
+    }
+    st.decisions.layoff21 = (st.decisions.layoff21 || []).concat([{ names: left.map(x => x.name), pay: pay }]);
+    this.save();
+    return { text: text, tone: "main" };
+  },
+
   /* ========================================================================
      【全线通用·新系统】公演站位调整（用户口径 2026-10-26）
      --------------------------------------------------------------------------
@@ -3929,7 +4541,8 @@ const Game = {
       if (!j.branchTeam) continue;
       if (team && j.branchTeam !== team) continue;
       if (j.month > st.month) continue;
-      if (st.members.some(x => x.name === j.name && x.status !== "left")) continue;
+      /* 同名已建卡即跳过（含 left——同 monthStart 去重口径，防解约成员被追补重建成卡） */
+      if (st.members.some(x => x.name === j.name)) continue;
       st.members.push(era === "2016" ? {
         id: "j" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
         pop: this.rnd(10, 20), bond: 12, status: "branch", branchTeam: j.branchTeam,
@@ -3992,21 +4605,31 @@ const Game = {
       this.addLog(st, st.month, "赵嘉敏 合约期满毕业——拉锯一年的官司暂休到此画上句号，她以演员的身份重新出发。", "main");
     }
 
+    // ⓪" 限定团期满归队（修复 2026-XX：2018/2019 两届选秀限定团此前只有成团落地、
+    //    无一年期满回收逻辑，成员会永远卡在暂休）。
+    this.limitUnitReturnCheck(st);
+
     // ① 新成员入队（2016：六期生3月 / 七期生9、10月；2017：八期生4、5、6、9、10月 + SHY48二期生；2018：九/十/十一期生+分团新期生；
-    //    2026：二十四期生5月；2027：预挂载表）。2017 起支持 branchTeam 字段：分团新期生建分团预备生简卡
+    //    2026：二十四期生5月；2027：预挂载表；2021：十五/十六期生 + GNZ/CKG/BEJ 分团新期生）。
+    //    2017 起支持 branchTeam 字段：分团新期生建分团预备生简卡（2021 线不做分团开关校验，
+    //    继承 2020 年末旗号/编号状态直接入册）。
     //    （2017 线仅限对应分团已开业，未开业则不入册，后续离团表自然跳过）。
     const joinSrc = st.era === "2016" ? DATA.joining2016
       : st.era === "2017" ? DATA.joining2017
       : st.era === "2018" ? DATA.joining2018
-      : st.era === "2019" ? []   // 【2019】不挂载静态入团表：招新由 9 月剧情事件承载（主线③）
+      : st.era === "2019" ? (DATA.joining2019 || [])   // 【2019】静态表仅含补挂的十二期生刘丽千（用户口径 2026-XX）；
+                                                        // 十三期招新仍由 9 月剧情事件承载（主线③）
       : st.era === "2020" ? (DATA.joining2020 || [])   // 【2020】疫情年史实入团表（分团新期生建简卡）
+      : st.era === "2021" ? (DATA.joining2021 || [])   // 【2021】史实入团表（按用户口径挂载：本部十五/十六期 + GNZ/CKG/BEJ 分团新期生建简卡）
       : st.era === "2027" ? (DATA2026.joining2027 || [])
       : DATA2026.joining2026;
     for (const j of joinSrc) {
       if (j.month === st.month) {
-        /* 【去重】同名成员已在册则跳过——月末流程重复跑同一月（旧档 monthStarted 缺失重入等）
-           不再生成第二张卡（曾致 2018 组阁预备生栏整列重复） */
-        if (st.members.some(x => x.name === j.name && x.status !== "left")) continue;
+        /* 【去重】同名成员已建卡则跳过（含已离团 left——修复 bug：2016·5 月社媒事件解约的
+           胡怡莹/周倩玉曾在 6 月被重新建卡入队；旧条件 status!=='left' 把已解约的卡当成
+           「不存在」）。月末流程重复跑同一月（旧档 monthStarted 缺失重入等）
+           也不再生成第二张卡。 */
+        if (st.members.some(x => x.name === j.name)) continue;
         /* 【2016】分团方向直落成员（用户口径 2026-10-25：王馨悦 4·20 直落 GNZ48
            Team G）：分团官宣后方入册（官宣晚于史实月份则顺延到官宣当月落地，
            由 endMonth 官宣判定处 catchupBranchJoins 追补——本处检查时当月官宣
@@ -4023,7 +4646,7 @@ const Game = {
           this.addLog(st, st.month, j.branchTeam + " 新成员入团：" + j.name + "（" + j.gen + " · " + (j.branchLabel || "预备生") + "）", "good");
           continue;
         }
-        if ((st.era === "2017" || st.era === "2018" || st.era === "2020") && j.branchTeam) {
+        if ((st.era === "2017" || st.era === "2018" || st.era === "2020" || st.era === "2021") && j.branchTeam) {
           /* 【2017】分团未开业则不入册（如玩家未点亮沈阳剧场，SHY48二期生张羽涵不入册） */
           if (st.era === "2017" && st.branch17) {
             const bOpen = j.branchTeam === "SHY48" ? st.branch17.shyOpen : j.branchTeam === "CKG48" ? st.branch17.ckgOpen : true;
@@ -4063,6 +4686,8 @@ const Game = {
                                                        // 分团解散安置/TEB48/一期生合约仍由主线①④⑤承载，本表只负责散点离团
       : st.era === "2019" ? (DATA.leaving2019 || [])   // 【2019】史实离团表挂载（v0.12.3）：
                                                        // 二次组阁/IDFT 移籍照旧由主线②承载，本表只负责散点离团
+      : st.era === "2021" ? (DATA.leaving2021 || [])   // 【2021】史实离团表挂载（按用户口径，月份精度）：
+                                                       // 成员精简同 2020 线设计（layoff21 动态分配+拍板），通用离团直接落地
       : st.era === "2018" ? DATA.leaving2018
       : st.era === "2017" ? DATA.leaving2017 : DATA.leaving2016;
     for (const lv of leaveSrc) {
@@ -4089,6 +4714,13 @@ const Game = {
          （见下方 layoff17 分配块）。 */
       if (st.era === "2017" && (lv.note || "").indexOf("名册精简") >= 0) {
         st.flags.layoff17Names = (st.flags.layoff17Names || []).concat(lv.name);
+        continue;
+      }
+      /* 【2021】成员精简（用户口径，同 2020 线设计，多月份散点）：不走通用离团，
+         先登记待裁名单，离团表循环结束后按成员卡现状动态分配落地
+         （见下方 layoff21 分配块）。 */
+      if (st.era === "2021" && (lv.note || "").indexOf("成员精简") >= 0) {
+        st.flags.layoff21Names = (st.flags.layoff21Names || []).concat(lv.name);
         continue;
       }
       /* 【2019】去年点将出征鹅厂选秀的成员不随史实表离团——封闭集训/限定团线
@@ -4185,6 +4817,26 @@ const Game = {
       if (choice.length) st.flags.layoff17Choice = (st.flags.layoff17Choice || []).concat(choice);
     }
 
+    /* 【2021】成员精简落地·动态分配（用户口径，同 2020 线设计）：逐人查卡判定归属——
+       本部成员（active，含 PREP）或玩家兼任分团（concur17）成员 → layoff21Choice，
+       由玩家拍板是否支付补偿（主线行动「layoff21」→ UI layoff21Pick 拍板窗）；
+       未兼任分团成员 → 默认自动支付 15 万/人（同 2020 口径）。 */
+    if (st.era === "2021" && (st.flags.layoff21Names || []).length) {
+      const pend = st.flags.layoff21Names;
+      st.flags.layoff21Names = [];
+      const concur = st.flags.concur17 || {};
+      const choice = [], auto = [];
+      for (const nm of pend) {
+        const mm = st.members.find(x => x.name === nm && x.status !== "left" && x.status !== "rest");
+        if (!mm || mm.hall) continue;
+        const domain = mm.status === "branch" ? (mm.branchTeam || mm.team) : "本部";
+        if (domain === "本部" || (concur && concur[domain])) choice.push(nm);
+        else auto.push(nm);
+      }
+      if (auto.length) this.applyLayoff21(auto, true);
+      if (choice.length) st.flags.layoff21Choice = (st.flags.layoff21Choice || []).concat(choice);
+    }
+
     // ③ 分团成立后的固定月收益提示（2016 线，5月起在结算体现，这里只提示首月）
     if (st.era === "2016" && st.branch.announce && st.month === st.branch.announceMonth + 1) {
       this.addLog(st, st.month, "分团进入稳定运营期，每月为总账带来 35 万收入。", "gold");
@@ -4192,7 +4844,7 @@ const Game = {
 
     /* 【全线通用】总选后·马跃提醒重排公演站位（用户口径 2026-10-26）：
        总选完成后首月初一次性引导剧情，指引玩家使用「公演站位调整」。 */
-    if (st.geDone && !st.flags.stageIntro && !st.flags.stageSettled && this.stageTeams(st).length) {
+    if (st.geDone && !st.flags.stageIntro && st.flags.stageSettled !== st.era && this.stageTeams(st).length) {
       st.flags.stageIntro = true;
       steps.push({ type: "vn", title: "总选之后 · 一年成绩单", pages: [
         { nar: true, t: "总选举的灯光刚落，舞台总监马跃抱着一叠资料敲开了总监办公室的门。" },
@@ -4200,6 +4852,18 @@ const Game = {
         { s: "马跃", cls: "", t: "大歌十六个站位，solo 到五人的 unit 也各留了一个。站得越靠前，人气涨得越猛——但站位若和总选成绩差得离谱，孩子们心里会有意见。站位表已经放到「公演站位调整」里了，一支队伍一支队伍来，每队占一点行动力。" },
         { s: "马跃", cls: "", t: "当然，您要是忙不过来，年末我按总选成绩默认排好。但有些话……还是由您亲口安排的好。" },
         { nar: true, t: "（本月起行动区新增「公演站位调整」：逐队拍板，每队 1 行动点；年末仍未拍板的队伍将按总选成绩自动排站。）" },
+      ] });
+    }
+    /* 【2021·最佳拍档组队】期限月首收口（partner=8月 / classic=6月）：奇数剔除人气最低者、
+       其余未配对单身按好感度自动配对，汇总最终名单 gePairs21（用户口径 2026-XX）。 */
+    if (st.era === "2021" && st.decisions.geMode21 && st.month === this.bp21Deadline()
+      && st.decisions.geAutoPairs21 && !st.flags.b21Filled21) {
+      const r = this.bp21AutoFill(st);
+      steps.push({ type: "vn", title: "《最佳拍档》· 单身赛道收口", pages: [
+        { nar: true, t: "期限已到，节目组按规则收口单身赛道："
+          + (r.dropped.length ? r.dropped.join("、") + " 人气最低且人数为单，本轮不参加拍档活动。" : "")
+          + (r.fill.length ? "未配对的成员按好感度自动配对：" + r.fill.map(p => p.join(" & ")).join("、") + "。" : "")
+          + "\n\n（最终拍档名单已汇总：" + (st.decisions.gePairs21 || []).length + " 组。）" },
       ] });
     }
     return steps;
@@ -4355,6 +5019,65 @@ const Game = {
         { id: "train", name: "全团特训", desc: "提升训练度（影响公演收入与大赏评分）：花费15万，全团实力+1" },
         { id: "promo", name: "宣传造势", desc: "投放物料与线下活动：热度+10（花费20万）" },
       ];
+    }
+
+    /* ============ 2021 线（春潮）：四条主线 ============ */
+    if (st.era === "2021") {
+      const lockPeak21 = st.month <= 3;   // 1~3 月疫情收尾：聚众上限内，公演照常但谨慎
+      const partnerMode = st.decisions.geMode21 === "partner";
+      const acts21 = [
+        { id: "aw9shop", main: true, name: "拓展电商领域", desc: st.aw9shop21.done
+          ? "✔ AW9 电商直播常态化运营中（每月+15万）"
+          : ["直播间搭建", "首播", "常态化运营"][st.aw9shop21.stage] + "（AW9 满员机制全年生效：正式成员不在籍时，预备役最高人气顶上）",
+          disabled: st.aw9shop21.done },
+        { id: "vaccine21", main: true, name: "注射疫苗", desc: st.vaccine21.done
+          ? "✔ 全团两针接种完成"
+          : st.vaccine21.stage === 0 ? "集体预约接种（需资金≥15万）" : "第二针收官",
+          disabled: st.vaccine21.done || (st.vaccine21.stage === 0 && st.money < 15),
+          disabledTip: st.vaccine21.stage === 0 && st.money < 15 ? "资金不足（需≥15万）" : "" },
+        { id: "gp21", main: true, name: "备战海外选秀", desc: st.gp21.done
+          ? "✔ 出征集训完成（" + (st.decisions.gp21Squad || []).join("、") + "）"
+          : st.gp21.stage === 0 ? "名额传达：5 个参加名额，总监点将" : "出征集训",
+          disabled: st.gp21.done },
+        { id: "eventplan21", main: true, name: "年度活动筹备（邓森林）", desc: st.eventplan21.done
+          ? "✔ 风险预案与筹备排期已定稿"
+          : "与邓总监议总选风险预案与筹备排期（总选同属选秀类型，存在风险）",
+          disabled: st.eventplan21.done },
+        { id: "ge", main: true, name: partnerMode ? "最佳拍档 · 总选筹备" : "筹备总选举",
+          desc: partnerMode ? "搭档拉票与总选筹备（4~7月筹备，8月开榜；筹备度+18）——组队见「最佳拍档·组队」"
+            : "「投票给作品」打投组织与物料（4~7月筹备，8月开榜，筹备度+18）",
+          disabled: st.month < 4 || st.month > 7 || st.geDone },
+        { id: "bp21", main: true, name: "最佳拍档 · 组队", desc: this.bp21ActionDesc(st),
+          disabled: this.bp21ActionLocked(st) },
+        { id: "rt", main: true, name: "筹备金曲大赏", desc: "舞台编排与新歌打磨（12月大赏前，筹备度+20；曲名待补）",
+          disabled: st.month < 10 || st.month > 12 || st.rtDone },
+        { id: "visit", main: true, name: "走访成员", desc: "与一名成员谈心：羁绊〉 士气〉 叶盛负担〉" },
+        { id: "duty", name: "替叶盛值班", desc: "接手一轮成员事务：叶盛负担-15" },
+        { id: "show", name: "剧场公演", desc: "稳定票仓：资金〉 热度〉 士气〉（1~3月疫情收尾收益八折）" },
+        { id: "business", name: "商务合作", desc: "接代言与商演：资金〉〉 热度〉 叶盛负担〉" },
+        { id: "train", name: "全团特训", desc: "提升训练度：花费15万，全团实力+1" },
+        { id: "promo", name: "宣传造势", desc: "投放物料与线下活动：热度+10（花费20万）" },
+      ];
+      /* AW9 预备役补员（满员机制触发缺口时出现；不耗行动点外的额外口必须） */
+      if (this.aw9r21Need(st)) {
+        acts21.push({ id: "aw9r21", main: true, name: "点将AW9预备成员", desc: "预备役不足九人——正式成员空缺随时可能，先补齐名单" });
+      }
+      /* 【延续·用户口径】去年总选两项奖励机制（8月开榜后开放安排）：
+         分团 TOP1 兼任本部 / 入榜 IDFT 升格移籍——落地沿用 Game.applyGe20Branch1 / applyGe20Idft */
+      if (st.geDone && (st.flags.ge20BranchTop1 || []).length && !st.flags.ge20Branch1Done) {
+        acts21.push({ id: "ge20branch1", main: true, name: "分团TOP1兼任本部", desc: "本年总选各分团 TOP1：" + st.flags.ge20BranchTop1.join("、") + "（兼任不调动，人气+4 羁绊+4）" });
+      }
+      if (st.geDone && (st.flags.ge20Idft || []).length && !st.flags.ge20IdftDone) {
+        acts21.push({ id: "ge20idft", main: true, name: "IDFT升格拍板", desc: "本年总选入榜 IDFT：" + st.flags.ge20Idft.join("、") + "（升格本部/移籍分团/留任）" });
+      }
+      if ((st.flags.layoff20Choice || []).length) {
+        acts21.push({ id: "layoff20", main: true, name: "疫情裁撤补偿拍板", desc: "待拍板：" + st.flags.layoff20Choice.join("、") });
+      }
+      /* 【2021】成员精简补偿拍板（layoff21Choice 非空时出现；动态分配后待拍板名单） */
+      if ((st.flags.layoff21Choice || []).length) {
+        acts21.push({ id: "layoff21", main: true, name: "成员精简补偿拍板", desc: "待拍板：" + st.flags.layoff21Choice.join("、") + "（支付 15 万/人 / 不支付）" });
+      }
+      return acts21;
     }
 
     /* ============ 2020 线（共渡）：疫情年，五条主线 ============ */
@@ -4547,14 +5270,25 @@ const Game = {
         : "为指定队伍安排团建：磨合度+6 士气+2 队友关系小幅升温（耗资15万）",
       disabled: !ok, disabledTip: ok ? "" : lockPeak ? "政策原因：聚众活动不能进行（1~3月）" : "资金不足（需≥15万）",
     });
-    /* 【全线通用】队伍团建（v0.13.1）+ 公演站位调整（用户口径 2026-10-26：总选后解锁，逐队拍板） */
-    const stageTeamsAvail = st.geDone && !st.flags.stageSettled ? this.stageTeams(st) : [];
+    /* 【全线通用】队伍团建（v0.13.1）+ 公演站位调整（用户口径 2026-10-26：总选后解锁，逐队拍板）。
+       stageSettled 按 era 比对（修复 bug：旧真值判断使跨年 flags 继承后 2017+ 永久不再开放）。 */
+    const stageTeamsAvail = st.geDone && st.flags.stageSettled !== st.era ? this.stageTeams(st) : [];
     if (stageTeamsAvail.length) {
       const stg = this.stageInit(st);
       const doneN = stageTeamsAvail.filter(t => stg.done[t]).length;
       acts.push({
         id: "stageSet", name: "公演站位调整",
         desc: "逐队拍板大歌 16 人站位与五个 unit（每队 1 行动点）：已拍板 " + doneN + "/" + stageTeamsAvail.length + " 队",
+      });
+    }
+    /* 【全线通用·战略重组（用户口径）】仅当存在人数<10 的队伍时可选：
+       耗 1 行动点，选定该队后从其他队伍/预备生/分团点将补员至最少 13 人。 */
+    const reorgTargets = this.strategicReorgTargets(st);
+    if (reorgTargets.length) {
+      acts.push({
+        id: "strategicReorg", name: "战略重组",
+        desc: "人数不足的队伍：" + reorgTargets.map(t => t + "（" + this.teamRoster(st, t).length + "人）").join("、")
+          + "——选队后从其他队伍/预备生/分团点将补员至最少 13 人（耗 1 行动点）",
       });
     }
     return acts;
@@ -4658,6 +5392,11 @@ const Game = {
         if (!(st.flags.layoff17Choice || []).length) return { text: "当前没有待拍板的名册精简补偿。", tone: "blocked" };
         return { text: "", tone: "layoff17Pick", names: st.flags.layoff17Choice.slice() };
       }
+      case "layoff21": {
+        /* 【2021】成员精简补偿拍板：不耗行动点，转交 UI 拍板窗（支付/不支付） */
+        if (!(st.flags.layoff21Choice || []).length) return { text: "当前没有待拍板的成员精简补偿。", tone: "blocked" };
+        return { text: "", tone: "layoff21Pick", names: st.flags.layoff21Choice.slice() };
+      }
       case "stageSet": {
         /* 【全线通用】公演站位调整（用户口径 2026-10-26）：
            无 payload → 队伍选择窗（不耗 AP）；{team} → 编辑窗（不耗 AP）；
@@ -4673,6 +5412,19 @@ const Game = {
         const doneN = teamsAll.filter(t => stg.done[t]).length;
         res = { text: payload.team + " 公演站位已拍板（" + doneN + "/" + teamsAll.length + " 队完成）。" +
           (stgRes.msgs.length ? "\n" + stgRes.msgs.join("；") + "。" : " 队内无人对站位有异议。"), tone: "good" };
+        break;
+      }
+      case "strategicReorg": {
+        /* 【全线通用·战略重组（用户口径）】仅当存在人数<10 的队伍时可选。
+           选队/选人均不耗 AP；落地耗 1 AP（校验失败不耗 AP）。 */
+        const srTargets = this.strategicReorgTargets(st);
+        if (!srTargets.length) return { text: "当前没有人数不足 10 人的队伍，无需战略重组。", tone: "blocked" };
+        if (!payload || !payload.team) return { text: "", tone: "strategicReorgTeam" };
+        if (srTargets.indexOf(payload.team) < 0) return { text: "该队伍人数未低于 10 人，无需重组。", tone: "blocked" };
+        if (!payload.ids) return { text: "", tone: "strategicReorgPick", team: payload.team };
+        const srRes = this.applyStrategicReorg(payload.team, payload.ids);
+        if (srRes.tone === "blocked") return srRes;   // 校验失败不耗 AP
+        res = srRes;
         break;
       }
       case "teb19": {
@@ -4737,12 +5489,35 @@ const Game = {
         break;
       }
       case "ge": {
-        if (st.month < 2 || st.month > (st.era === "2020" ? 7 : 6) || st.geDone)
-          return { text: st.era === "2020" ? "当前不在总选举筹备期（2-7月，8月线上开榜）。" : "当前不在总选举筹备期（2-6月）。", tone: "blocked" };
+        const geWin = st.era === "2020" ? [2, 7] : st.era === "2021" ? [4, 7] : [2, 6];
+        if (st.month < geWin[0] || st.month > geWin[1] || st.geDone)
+          return { text: st.era === "2020" ? "当前不在总选举筹备期（2-7月，8月线上开榜）。"
+            : st.era === "2021" ? "当前不在总选举筹备期（4-7月，8月开榜）。"
+            : "当前不在总选举筹备期（2-6月）。", tone: "blocked" };
+        /* 【2021】组队改由独立行动「bp21」承载（两线通用，4月钦点/5月起补配）；
+           首次筹备不再强制组队。 */
         st.gePlan = this.clamp(st.gePlan + 18, 0, 100);
         st.money -= 25;
-        res = { text: "总选举筹备推进" + (st.era === "2020" ? "（线上打投体系）" : "") + "：打投组、物料组就位。筹备度+18，资金-25万。", tone: "main" };
+        res = { text: "总选举筹备推进" + (st.era === "2020" || st.era === "2021" ? "（线上打投体系）" : "") + "：打投组、物料组就位。筹备度+18，资金-25万。", tone: "main" };
         break;
+      }
+      case "bp21": {
+        /* 【2021·两线通用】《最佳拍档》组队：4月钦点 5 队（同团两两，不可跨团）；
+           4月末公布自动组队与单身赛道；5月起至期限前（partner 7月 / classic 5月）补配。 */
+        if (st.era !== "2021" || !st.decisions.geMode21)
+          return { text: "《最佳拍档》尚未立项——先在年度决策会上拍板年度活动方案。", tone: "blocked" };
+        if (st.month < 4) return { text: "《最佳拍档》组队 4 月启动——先等邓森林把方案排上日程。", tone: "blocked" };
+        if (st.flags.b21Filled21) return { text: "拍档名单已收口，等正片开录吧。", tone: "blocked" };
+        if (!st.decisions.geAutoPairs21) {
+          /* 4 月内可反复打开钦点窗（重开即覆盖修改）；4 月末公布后不可再改 */
+          return { text: "", tone: "bp21pick" };   // 4月：钦点窗（不耗 AP）
+        }
+        const supWin = st.decisions.geMode21 === "partner" ? [5, 7] : [5, 5];
+        if (st.month < supWin[0] || st.month > supWin[1])
+          return { text: "当前不在单身赛道补配期（5月起至期限前，期限月首自动收口）。", tone: "blocked" };
+        const leftS = this.bp21RemainingSingles(st);
+        if (!leftS.length) return { text: "单身赛道已全部配对完毕。", tone: "blocked" };
+        return { text: "", tone: "bp21singles" };   // 补配窗（不耗 AP）
       }
       case "rt": {
         if (st.month < 10 || st.month > 12 || st.rtDone)
@@ -4804,6 +5579,13 @@ const Game = {
       }
       case "covid20": res = this.advanceCovid20(); break;
       case "cloud20": res = this.advanceCloud20(); break;
+      case "aw9shop": res = this.advanceAw9Shop21(); break;
+      case "vaccine21": res = this.advanceVaccine21(); break;
+      case "gp21": res = this.advanceGp21(); break;
+      case "eventplan21": res = this.advanceEventPlan21(); break;
+      case "aw9r21": return { text: "", tone: "aw9r21pick" };
+      case "ge20branch1": return { text: "", tone: "ge20branch1" };
+      case "ge20idft": return { text: "", tone: "ge20idft" };
       case "reorg20": res = this.advanceReorg20(); break;
       case "teb20": res = this.advanceTeb20(); break;
       case "gen1": return { text: "", tone: "pickGen1" };   // 转交 UI 一期生逐人拍板窗
@@ -5117,6 +5899,15 @@ const Game = {
         + (st.teb19 && st.teb19.open ? 25 : 0)
         + (st.branch17 && st.branch17.shyOpen ? 20 : 0) + (st.branch17 && st.branch17.ckgOpen ? 25 : 0);
       income = st.month <= 3 ? 0 : base * 0.5;
+    } else if (st.era === "2021") {
+      /* 2021「春潮」：回暖之年（基数 84）。SHY48/CKG48/TEB48 开业收入延续；
+         AW9 电商直播常态化后每月 +15 万（主线①）。
+         经济特则（用户口径）：1~3 月「疫情收尾」收益八折；4 月起全面恢复。 */
+      let base = 84 + st.heat * 0.5 + st.train * 0.25
+        + (st.branch17 && st.branch17.shyOpen ? 20 : 0) + (st.branch17 && st.branch17.ckgOpen ? 25 : 0)
+        + (st.teb19 && st.teb19.open ? 25 : 0)
+        + (st.flags.aw9Shop21Done ? 15 : 0);
+      income = base * (st.month <= 3 ? 0.8 : 1);
     } else if (st.era === "2026") {
       /* 2026：危局之年（人头成本重校后基数 95）；CGT48 重建成功后贡献月收入 */
       income = 95 + st.heat * 0.5 + st.train * 0.25 + (st.cgt.open ? 25 : 0);
@@ -5174,6 +5965,30 @@ const Game = {
   endMonth() {
     const st = this.st;
     const steps = [];
+
+    /* 【2021】AW9 满员机制守卫（用户口径）：月首/月末检查——正式成员因故不在籍时
+       立即由预备役最高人气者顶上；补位提示入日志并弹事件页（点将预备成员走行动 aw9r21）。 */
+    if (st.era === "2021" && typeof STORY.aw9Guard21 === "function") {
+      const guardMsgs = STORY.aw9Guard21(st);
+      for (const gm of guardMsgs) {
+        this.addLog(st, st.month, gm, "warn");
+        steps.push({ type: "vn", title: "AW9 满员机制", pages: [{ nar: true, t: gm }] });
+      }
+    }
+
+    /* 【2021·最佳拍档组队】4月末公布：钦点 5 队 + 余下成员按好感度团内自动组队；
+       未组队者进入单身赛道（5月起至期限前可补配；期限月首收口——见 monthStart）。 */
+    if (st.era === "2021" && st.decisions.geMode21 && st.month === 4 && !st.decisions.geAutoPairs21) {
+      const pub = this.bp21Publish(st);
+      if (pub) steps.push({ type: "vn", title: pub.title, pages: pub.pages.map(p => ({ ...p, t: this.fmt(p.t) })) });
+    }
+    /* 【2021·综艺线】classic 线 6 月开榜：公布前五、低额奖励、第一名组合双人旅行（tag 待明年回收）。
+       （monthStart 已在 6 月月首完成单身赛道收口，此处结算用最终名单。） */
+    if (st.era === "2021" && st.decisions.geMode21 === "classic" && st.month === 6
+      && st.decisions.geAutoPairs21 && !st.flags.bp21ClassicDone) {
+      const vn6 = this.bp21ClassicSettle(st);
+      if (vn6) steps.push({ type: "vn", title: vn6.title, pages: vn6.pages.map(p => ({ ...p, t: this.fmt(p.t) })) });
+    }
 
     /* ① 收支结算 */
     const s = this.settle(st);
@@ -5328,6 +6143,7 @@ const Game = {
        （如 5月：下一站选 SHY48/CKG48 → 解锁开拓者点将）。 */
     const monthlySrc = st.era === "2027" ? STORY.monthly27
       : st.era === "2026" ? STORY.monthly26
+      : st.era === "2021" ? STORY.monthly21
       : st.era === "2020" ? STORY.monthly20
       : st.era === "2019" ? STORY.monthly19
       : st.era === "2018" ? STORY.monthly18
@@ -5335,6 +6151,7 @@ const Game = {
     let randomSrc;
     if (st.era === "2027") randomSrc = STORY.randomPool26.concat(STORY.randomPool27 || []);
     else if (st.era === "2026") randomSrc = STORY.randomPool26;
+    else if (st.era === "2021") randomSrc = STORY.randomPool21 || [];   // 2021：随机池占位（月度表覆盖为主）
     else if (st.era === "2020") randomSrc = [];   // 疫情年：月度表覆盖全年，不挂 2016 随机池
     else if (st.era === "2019") randomSrc = STORY.randomPool.concat(STORY.randomPool19 || []);
     else if (st.era === "2018") randomSrc = STORY.randomPool.concat(STORY.randomPool18 || []);
@@ -5349,14 +6166,15 @@ const Game = {
       if (ev) steps.push(this.buildEventStep(ev, st));
     }
 
-    /* ⑥ 七月：总选举结算（2020 疫情年延迟至 8 月线上举行，见下） */
-    if (st.month === 7 && !st.geDone && st.era !== "2020") {
+    /* ⑥ 七月：总选举结算（2020 疫情年与 2021「春潮」年延迟至 8 月开榜，见下） */
+    if (st.month === 7 && !st.geDone && st.era !== "2020" && st.era !== "2021") {
       steps.push(this.resolveGE(st));
       this.applyHallReign(st, steps);   // 【荣誉殿堂】连霸升堂统一判定（各年代线通用规则）
     }
-    /* 【2020】疫情年总选举延迟至 8 月：线上直播收费、不卖票，活动收益减半（用户口径） */
-    if (st.month === 8 && !st.geDone && st.era === "2020") {
-      st.flags.geOnline20 = true;
+    /* 【2020/2021】8 月开榜：2020 疫情年线上直播收费、不卖票（活动收益减半）；
+       2021 总选 4~7 月筹备、8 月开榜（用户口径；「春潮」年线上线下双轨常规口径）。 */
+    if (st.month === 8 && !st.geDone && (st.era === "2020" || st.era === "2021")) {
+      if (st.era === "2020") st.flags.geOnline20 = true;
       steps.push(this.resolveGE(st));
       this.applyHallReign(st, steps);
     }
@@ -5412,8 +6230,12 @@ const Game = {
     st.flags[mark] = true;
     const prevTop1 = st.era === "2026" ? "杨冰怡"
       : (st.history && st.history["ge" + (parseInt(st.era, 10) - 1) + "Top1"]) || null;
-    if (!prevTop1 || st.geResult.top1 !== prevTop1) return;   // 非连霸：不升堂
-    const top1 = st.members.find(m => m.name === st.geResult.top1);
+    /* 【2021·最佳拍档总选·用户口径】前三队伍共同记作第一名：去年第一人在
+       第一名队伍成员（geResult.top1All）中即连霸；今年第一名队伍全体成员
+       登记 ge2021Top1All，明年连霸判定同样以队伍成员为准。 */
+    const champNames = st.era === "2021" ? (st.geResult.top1All || [st.geResult.top1]) : [st.geResult.top1];
+    if (!prevTop1 || champNames.indexOf(prevTop1) < 0) return;   // 非连霸：不升堂
+    const top1 = st.members.find(m => m.name === prevTop1);
     if (!top1 || top1.status === "left" || top1.hall) return;  // 防御：不在籍/已殿堂不重复升
     if (st.era !== "2026") st.flags["reignHall" + st.era.slice(2)] = true;
     top1.hall = true; top1.hallIdol = true; top1.team = "HALL"; top1.branchTeam = null; top1.status = "active";
@@ -5421,19 +6243,156 @@ const Game = {
       : st.era === "2017" ? "第三届、第四届总决选连霸 · 升入荣誉殿堂"
       : st.era === "2018" ? "第四届、第五届总决选连霸 · 升入荣誉殿堂"
       : st.era === "2019" ? "第五届、第六届总决选连霸 · 升入荣誉殿堂"
+      : st.era === "2021" ? "上届、本届《最佳拍档》总选连霸 · 升入荣誉殿堂"
       : "第十三届、第十四届总决选连霸 · 升入荣誉殿堂";
     st.morale = this.clamp(st.morale + 3, 0, 100);
     st.heat = this.clamp(st.heat + 3, 0, 100);
     const vn = st.era === "2017" ? STORY.hallAscend17 : st.era === "2018" ? STORY.hallAscend18
       : st.era === "2019" ? STORY.hallAscend19
+      : st.era === "2021" ? null   // 2021 连霸升堂沿用通用结算，专属剧情页待补
       : st.era === "2026" ? STORY.hallAscension : STORY.hallAscend27;
     const title = st.era === "2017" ? "荣誉殿堂 · 首位升堂"
       : st.era === "2026" ? "荣誉殿堂 · 升堂仪式" : "荣誉殿堂 · 连霸升堂";
-    steps.push({ type: "vn", title, pages: vn(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
+    if (vn) steps.push({ type: "vn", title, pages: vn(st).map(p => ({ ...p, t: this.fmt(p.t) })) });
+  },
+
+  /* 【2021·方案一】《最佳拍档》改造总选结算（geMode21=partner，用户口径 2026-XX 修订）：
+     参赛单位为两人一组（decisions.gePairs21）；组分 =
+       人气（两人之和×1.5）+ 实力之和（pwr）+ 相互好感度加成（关系值×0.3）
+       + 总监与队员羁绊加成（总选线：双方羁绊之和×0.25）+ 热度/筹备度 + 随机。
+     本年只公开前 33 名；前三队伍除总选原本奖励外额外奖励（第1组100万/第2组60万/第3组40万）
+     并提升搭档间好感度（+4/+3/+3）；前三队伍共同记作第一名（ge2021Top1All），
+     去年第一人在其中即可连霸升堂，明年连霸判定同样以队伍成员为准（applyHallReign）。
+     未组队的成员以个人身份参赛。 */
+  bp21PairScore(st, ma, mb, partnerLine) {
+    const rel = this.relGet(st, ma.id, mb.id) || 0;
+    let s = (ma.pop + mb.pop) * 1.5 + ((ma.pwr || 0) + (mb.pwr || 0)) + rel * 0.3
+      + st.gePlan * 0.3 + st.heat * 0.25 + this.rnd(0, 16);
+    if (partnerLine) s += ((ma.bond || 0) + (mb.bond || 0)) * 0.25;   // 总监羁绊加成（总选线限定）
+    return s;
+  },
+
+  resolveGEPartner21(st) {
+    st.geDone = true;
+    const pairs = (st.decisions.gePairs21 || []).filter(p => Array.isArray(p) && p.length === 2);
+    /* 参赛池含分团在籍卡（组队全团可选） */
+    const pool = st.members.filter(m => (m.status === "active" || m.status === "branch" || m.status === "idft") && !m.hall && m.team !== "HALL");
+    const byName = {};
+    pool.forEach(m => { byName[m.name] = m; });
+    const used = {};
+    const entries = [];
+    for (const pr of pairs) {
+      const ma = byName[pr[0]], mb = byName[pr[1]];
+      if (!ma || !mb || used[ma.name] || used[mb.name]) continue;   // 名单失效（不在籍/重复）→ 忽略该组
+      used[ma.name] = used[mb.name] = true;
+      entries.push({ ms: [ma, mb], score: this.bp21PairScore(st, ma, mb, true) });
+    }
+    for (const m of pool) {
+      if (used[m.name]) continue;
+      entries.push({ ms: [m], score: m.pop * 1.5 + st.gePlan * 0.3 + st.heat * 0.25 + this.rnd(0, 16) });
+    }
+    entries.sort((a, b) => b.score - a.score);
+    const top33 = entries.slice(0, 33).map((e, i) => ({
+      rank: i + 1,
+      name: e.ms.map(m => m.name).join(" & "),
+      team: e.ms[0].status === "branch" ? e.ms[0].branchTeam : e.ms[0].team,
+      votes: Math.round(e.score * 1200),
+      bondBonus: e.ms.length === 2,
+    }));
+    const champTeams = entries.slice(0, 3).filter(e => e.ms.length === 2);   // 前三队伍（共同记作第一名）
+    const champ = entries[0];
+    const champLabel = champ.ms.map(m => m.name).join(" & ");
+    const top1All = champTeams.length ? champTeams.flatMap(e => e.ms.map(m => m.name)) : [champ.ms[0].name];
+    st.geResult = { top1: champLabel, top1All, top48: top33, strategy: st.geStrategy, bejTop7: null, gnzTop7: null, partner: true };
+    st.decisions["ge2021Top1"] = champLabel;
+    st.decisions["ge2021Top1All"] = top1All;   // 明年连霸判定基准：第一名队伍全部成员
+    st.flags.geTop7 = [];
+    for (const m of st.members) delete m.geBoost;
+    /* 原总选奖励：榜首组合人气+6 羁绊+4 */
+    for (const m of champ.ms) { m.pop = this.clamp(m.pop + 6, 0, 100); m.bond = this.clamp(m.bond + 4, 0, 100); }
+    /* 两线共同：第一名组合双人旅行综艺（tag 留档，待明年回收） */
+    if (champ.ms.length === 2) st.decisions.bp21Travel21 = { members: champ.ms.map(m => m.name), used: false };
+    /* 【用户口径】前三队伍额外奖励（第1组100万/第2组60万/第3组40万）+ 搭档间好感度提升 */
+    const rewards = [100, 60, 40];
+    const relUp = [4, 3, 3];
+    let bonus = 0;
+    const rewardNames = [];
+    champTeams.forEach((e, i) => {
+      bonus += rewards[i];
+      this.relAdd(st, e.ms[0].id, e.ms[1].id, relUp[i]);
+      rewardNames.push("第" + (i + 1) + "名 " + e.ms.map(m => m.name).join(" & ") + "（+" + rewards[i] + "万 / 好感度+" + relUp[i] + "）");
+    });
+    st.money += bonus;
+    const money = Math.round(120 + st.heat * 0.8);
+    st.money += money;
+    st.heat = this.clamp(st.heat + 12, 0, 100);
+    this.addLog(st, st.month, "《最佳拍档》总选开榜（公开前33名），最佳拍档：" + champLabel + "。"
+      + (rewardNames.length ? "前三队伍额外奖励：" + rewardNames.join("；") + "。" : ""), "gold");
+    const narr = STORY.geNarrative.good;
+    const crownPages = STORY.geNarrative.crown.map(p => ({
+      ...p, s: p.s === "{top1}" ? champ.ms.map(m => m.name).join(" & ") : p.s, t: this.fmt(p.t),
+    }));
+    const aftermath = STORY.geAftermath21(st);
+    return {
+      type: "geResult", top48: st.geResult.top48, bejTop7: null, gnzTop7: null, money,
+      title: "「最佳拍档」偶像年度人气总决选 · 结果",
+      pagesAfter: [...crownPages, ...narr.map(p => ({ ...p, t: this.fmt(p.t) })),
+        ...aftermath.map(p => ({ ...p, t: this.fmt(p.t) }))],
+    };
+  },
+
+  /* 【2021·综艺线】《最佳拍档》独立综艺 6 月开榜（用户口径 2026-XX）：
+     只公布前五；组分同口径但不含总监羁绊加成；奖励低于总选线
+     （第1组50万/第2组30万/第3组20万 + 搭档好感度 +3/+2/+2）。
+     两线共同：第一名组合获得一次双人旅行并录制成综艺（决策 tag bp21Travel21
+     留档，待明年回收）。 */
+  bp21ClassicSettle(st) {
+    if (st.flags.bp21ClassicDone) return null;
+    const pairs = (st.decisions.gePairs21 || []).filter(p => Array.isArray(p) && p.length === 2);
+    if (!pairs.length) return null;
+    const pool = st.members.filter(m => (m.status === "active" || m.status === "branch" || m.status === "idft") && !m.hall && m.team !== "HALL");
+    const byName = {};
+    pool.forEach(m => { byName[m.name] = m; });
+    const used = {};
+    const entries = [];
+    for (const pr of pairs) {
+      const ma = byName[pr[0]], mb = byName[pr[1]];
+      if (!ma || !mb || used[ma.name] || used[mb.name]) continue;
+      used[ma.name] = used[mb.name] = true;
+      entries.push({ ms: [ma, mb], score: this.bp21PairScore(st, ma, mb, false) });
+    }
+    if (!entries.length) return null;
+    entries.sort((a, b) => b.score - a.score);
+    const top5 = entries.slice(0, 5);
+    st.flags.bp21ClassicDone = true;
+    st.decisions.bp21ClassicTop5 = top5.map((e, i) => ({ rank: i + 1, names: e.ms.map(m => m.name), votes: Math.round(e.score * 1200) }));
+    /* 奖励低于总选线：前三组 50/30/20 万 + 搭档好感度 +3/+2/+2 */
+    const rewards = [50, 30, 20], relUp = [3, 2, 2];
+    let money = 0;
+    const lines = top5.map((e, i) => "第" + (i + 1) + "名 " + e.ms.map(m => m.name).join(" & "));
+    top5.slice(0, 3).forEach((e, i) => { money += rewards[i]; this.relAdd(st, e.ms[0].id, e.ms[1].id, relUp[i]); });
+    st.money += money;
+    st.heat = this.clamp(st.heat + 8, 0, 100);
+    const champ = top5[0].ms;
+    /* 两线共同：第一名组合双人旅行综艺（tag 留档，待明年回收） */
+    st.decisions.bp21Travel21 = { members: champ.map(m => m.name), used: false };
+    champ.forEach(m => { m.pop = this.clamp(m.pop + 4, 0, 100); });
+    this.addLog(st, st.month, "《最佳拍档》第一季开榜（公布前五），年度拍档：" + champ.map(m => m.name).join(" & ") + "。奖励合计 " + money + " 万；双人旅行综艺已立项（tag bp21Travel21，待明年回收）。", "gold");
+    return {
+      title: "6月 · 《最佳拍档》第一季 · 开榜",
+      pages: [
+        { nar: true, t: "六月，《最佳拍档》第一季正片收官，名次揭晓：\n\n" + lines.join("\n") + "\n\n年度拍档 " + champ.map(m => m.name).join(" & ") + " 将获得一次双人旅行，全程跟拍，录成综艺特辑。" },
+        { s: "邓森林", cls: "", t: "第一季就这样了——奖金属实、口碑稳住。两位年度拍档的旅行特辑先压一压，留到明年回收——那才是这档节目的第二条命。" },
+        { nar: true, t: "（前三组奖励：" + rewards.join("/") + " 万，搭档好感度 +" + relUp.join("/") + "；决策 tag bp21Travel21 已登记：第一名组合 " + champ.map(m => m.name).join("、") + " 的双人旅行综艺，待明年回收。）" },
+      ],
+    };
   },
 
   resolveGE(st) {
     st.geDone = true;
+    /* 【2021·方案一 geMode21=partner】《最佳拍档》改造总选：两人一组参赛，
+       总选人气为两人之和；组内羁绊较高（双方均≥70）时额外获得加成（+20）。 */
+    if (st.era === "2021" && st.decisions.geMode21 === "partner") return this.resolveGEPartner21(st);
     // 策略效果
     if (st.geStrategy === "focus") {
       const top = this.activeMembers(st).filter(m => m.team !== "HALL").sort((a, b) => b.pop - a.pop)[0];
@@ -5454,7 +6413,7 @@ const Game = {
       : (st.branch.announce ? st.members.filter(m => m.status === "branch") : []);
     /* 【2020 新机制·用户口径】IDFT 训练生池成员入总选名单——入榜者可升格移籍（含分团，由玩家安排）；
        2020 总选除赵嘉敏外一期生不参选（一期生合约年，毕业公演后安置）。 */
-    if (st.era === "2020") extraPool.push(...st.members.filter(m => m.status === "idft"));
+    if (st.era === "2020" || st.era === "2021") extraPool.push(...st.members.filter(m => m.status === "idft"));
     const pool = this.activeMembers(st).concat(extraPool)
       .filter(m => !(st.era === "2016" && m.name === "赵嘉敏") && m.team !== "HALL")   // 荣誉殿堂/影视部成员不参选
       .filter(m => st.era !== "2020" || m.gen !== "一期生" || m.name === "赵嘉敏");   // 2020：除赵嘉敏外一期生不参选
@@ -5481,7 +6440,7 @@ const Game = {
     /* 【2020 新机制·用户口径】登记各分团 TOP1（每个分团的第一名都可兼任本部队伍）
        与入榜 IDFT 成员（可升格移籍），由玩家在 9 月事件中逐项安排
        （flags.ge20BranchTop1 = 各分团 TOP1 名单数组 / ge20Idft）。 */
-    if (st.era === "2020") {
+    if (st.era === "2020" || st.era === "2021") {
       const brTeams = [];
       const b1List = [];
       for (const r of ranked) {
@@ -5492,6 +6451,8 @@ const Game = {
       }
       st.flags.ge20BranchTop1 = b1List;
       st.flags.ge20Idft = ranked.filter(r => r.m.status === "idft" && top48.some(t => t.name === r.m.name)).map(r => r.m.name);
+      /* 【2021 延续·用户口径】去年总选的两项奖励机制——分团 TOP1 兼任本部、IDFT 入榜升格——本年延续：
+         同套 flags 登记，拍板行动 ge20branch1 / ge20idft 沿用（见 listActionsCore 2021 线）。 */
     }
     /* 【经济系统 v2】TOP7 分成名单：总选后按名次登记（flags 跨年继承），
        此后每月按 第1名3万/2~3名2万/4~7名1万 支付分成，升堂/离团自动停付。 */
@@ -5511,6 +6472,7 @@ const Game = {
       ...p, s: p.s === "{top1}" ? ranked[0].m.name : p.s, t: this.fmt(p.t),
     }));
     const title = st.era === "2027" ? "第十四届偶像年度人气总决选 · 结果"
+      : st.era === "2021" ? "第八届偶像年度人气总决选 · 结果"
       : st.era === "2020" ? "第七届偶像年度人气总决选 · 线上直播 · 结果"
       : st.era === "2026" ? "SNH48 年度人气总决选 · 结果"
       : st.era === "2019" ? "「星梦远航」第六届总决选 · 结果"
@@ -5519,6 +6481,7 @@ const Game = {
       : "「比翼齐飞」第三届总决选 · 结果";
     const aftermath = st.era === "2027" ? STORY.geAftermath27(st)
       : st.era === "2026" ? STORY.geAftermath26
+      : st.era === "2021" ? STORY.geAftermath21(st)
       : st.era === "2020" ? STORY.geAftermath20(st)
       : st.era === "2019" ? STORY.geAftermath19(st)
       : st.era === "2018" ? STORY.geAftermath18(st)
@@ -5548,6 +6511,7 @@ const Game = {
     st.heat = this.clamp(st.heat + heat, 0, 100);
     this.addLog(st, 12, "年度金曲大赏落幕（评价：" + tier + (origBonus ? "，含原创曲目加成" : "") + "）。资金+" + money + "万。", "gold");
     const rtNar = st.era === "2027" ? STORY.rtNarrative27 : st.era === "2020" ? STORY.rtNarrative20
+      : st.era === "2021" ? STORY.rtNarrative21
       : st.era === "2019" ? STORY.rtNarrative19
       : st.era === "2018" ? STORY.rtNarrative18
       : st.era === "2017" ? STORY.rtNarrative17 : STORY.rtNarrative;
@@ -5608,10 +6572,27 @@ const Game = {
     const list = [];
     const casts = new Map();
     /* 第一遍：史实锁定名次（前三/2016全榜）先登记——其成员计入“至多两曲”额度，
-       史实队伍参演也计入“队伍只出现一次”，生成时才不会超额 */
+       史实队伍参演也计入“队伍只出现一次”，生成时才不会超额。
+       【修复】固定成员不在籍（离团/暂休/殿堂）时按金曲规则自动补位：
+       从可参演池按人气顺延替补，保持名次人数不变（替补备注不入册，仅榜单呈现）。 */
     for (const e of data.list) {
       if (!e.fixed) continue;
-      const cast = e.team ? { team: e.team, key: e.teamKey } : { names: e.names.slice() };
+      let cast;
+      if (e.team) {
+        cast = { team: e.team, key: e.teamKey };
+      } else {
+        const want = e.gen || e.names.length;
+        const avail = e.names.filter(n => { const m = st.members.find(x => x.name === n); return inRoster(m); });
+        cast = { names: avail.slice() };
+        if (cast.names.length < want) {
+          cast.filled = want - cast.names.length;   // 补位人数（榜单展示不区分，仅记录）
+          for (const m of byPop) {
+            if (cast.names.length >= want) break;
+            if (used[m.name] || cast.names.indexOf(m.name) >= 0) continue;
+            cast.names.push(m.name);
+          }
+        }
+      }
       casts.set(e, cast);
       if (cast.key) usedTeams[cast.key] = true;
       if (cast.names) for (const n of cast.names) used[n] = (used[n] || 0) + 1;
@@ -5664,6 +6645,7 @@ const Game = {
   computeGrade(st) {
     if (st.era === "2027") return this.computeGrade27(st);
     if (st.era === "2026") return this.computeGrade26(st);
+    if (st.era === "2021") return this.computeGrade21(st);
     if (st.era === "2020") return this.computeGrade20(st);
     if (st.era === "2019") return this.computeGrade19(st);
     if (st.era === "2018") return this.computeGrade18(st);
