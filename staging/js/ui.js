@@ -1916,7 +1916,12 @@ const UI = {
         count: 1,
         confirmLabel: "「" + roleLabel + "」定了 →",
         cardInfo: m => teamLabel(m) + " · 人气" + m.pop + " 羁绊" + m.bond + (m.skills ? " 演技" + m.skills.ac : ""),
-        onConfirm: ids => { next(ids[0]); },
+        onConfirm: ids => {
+          /* showMultiPick 回传成员 id——归一为姓名存档（engine 按姓名比对，
+             修复：误存 id 导致年末清算匹配不上、达标仍扣羁绊） */
+          const m = st.members.find(x => x.id === ids[0]);
+          next(m ? m.name : ids[0]);
+        },
       });
     };
     pickRole("lead", "女主角", "人气+3 演技+2 羁绊+2", null, leadName => {

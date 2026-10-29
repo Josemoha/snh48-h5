@@ -6750,6 +6750,7 @@ const Game = {
   filmAugustPages(st) {
     const pages = [];
     st.flags["filmInv" + st.era] = true;   // 8月事件已播放（gate 防重复）
+    this.filmNormalizeTaken(st);   // 旧档：id 误存归一为姓名
     const prevEra = String(parseInt(st.era, 10) - 1);
     const prev = st.flags["filmTaken" + prevEra];
     if (prev && prev.length && !st.flags["filmSettled" + prevEra]) {
@@ -6777,25 +6778,29 @@ const Game = {
   },
 
   /* 投资落地（单部）：扣款 + 点将演出收益 + 登记 f.filmTaken{era}。
-     行动点由 doAction 统一扣（每部 1 点）。返回 {ok, text}。 */
+     行动点由 doAction 统一扣（每部 1 点）。lead/second 兼容成员 id（UI showMultiPick
+     回传 id，历史包曾误存 id 导致年末清算匹配不上——双重兑底：落地时统一归一为姓名）。
+     返回 {ok, text}。 */
   filmApplyInvest(st, pid, lead, second) {
     const t = this.filmSlate(st).find(p => p.pid === pid);
     if (!t) return { ok: false, text: "项目书里没有这个项目——重看一遍再签。" };
     const taken = st.flags["filmTaken" + st.era] || [];
     if (taken.some(x => x.pid === pid)) return { ok: false, text: "《" + t.title + "》已经投过了。" };
     if (st.money < t.cost) return { ok: false, text: "资金不足（《" + t.title + "》需 " + t.cost + " 万，账面 " + st.money + " 万）。" };
+    /* id/姓名归一：showMultiPick 回传 id，引擎按姓名比对——落地时统一存姓名 */
+    const resolve = n => st.members.find(x => x.name === n) || st.members.find(x => x.id === n);
+    const lr = lead ? resolve(lead) : null;
+    const sr = second ? resolve(second) : null;
     st.money -= t.cost;
-    const rec = { pid: pid, title: t.title, cost: t.cost, lead: lead || null, second: second || null };
+    const rec = { pid: pid, title: t.title, cost: t.cost, lead: lr ? lr.name : null, second: sr ? sr.name : null };
     taken.push(rec);
     st.flags["filmTaken" + st.era] = taken;
     st.decisions["filmInv" + st.era] = taken.length;
     /* 点将演出收益 */
     const findM = n => st.members.find(x => x.name === n && x.status !== "left");
     const acted = [];
-    const lm = rec.lead && findM(rec.lead);
-    if (lm) { lm.pop = this.clamp(lm.pop + 3, 0, 100); lm.bond = this.clamp(lm.bond + 2, 0, 100); this.gainAct(lm, 2); acted.push(rec.lead + "（女主角 人气+3 演技+2 羁绊+2）"); }
-    const sm = rec.second && findM(rec.second);
-    if (sm) { sm.pop = this.clamp(sm.pop + 2, 0, 100); sm.bond = this.clamp(sm.bond + 1, 0, 100); this.gainAct(sm, 1); acted.push(rec.second + "（女二号 人气+2 演技+1 羁绊+1）"); }
+    if (lr && lr.status !== "left") { lr.pop = this.clamp(lr.pop + 3, 0, 100); lr.bond = this.clamp(lr.bond + 2, 0, 100); this.gainAct(lr, 2); acted.push(lr.name + "（女主角 人气+3 演技+2 羁绊+2）"); }
+    if (sr && sr.status !== "left") { sr.pop = this.clamp(sr.pop + 2, 0, 100); sr.bond = this.clamp(sr.bond + 1, 0, 100); this.gainAct(sr, 1); acted.push(sr.name + "（女二号 人气+2 演技+1 羁绊+1）"); }
     st.heat = this.clamp(st.heat + 2, 0, 100);
     const text = "《" + t.title + "》（" + t.type + "）立项，投资 " + t.cost + " 万已划拨（行动点-1 热度+2）。"
       + (acted.length ? "\n参演登记：" + acted.join("；") + "。" : "")
@@ -6804,10 +6809,27 @@ const Game = {
     return { ok: true, text: text };
   },
 
+  /* 旧档修复（用户反馈 bug）：早期版本曾把点将成员 id 误存为 lead/second——
+     按 id 归一为姓名（filmReqCheck / filmAugustPages 入口调用） */
+  filmNormalizeTaken(st) {
+    for (const k of Object.keys(st.flags || {})) {
+      if (k.indexOf("filmTaken") !== 0 || !Array.isArray(st.flags[k])) continue;
+      for (const p of st.flags[k]) {
+        for (const slot of ["lead", "second"]) {
+          const v = p[slot];
+          if (!v || st.members.some(x => x.name === v)) continue;
+          const byId = st.members.find(x => x.id === v);
+          if (byId) p[slot] = byId.name;
+        }
+      }
+    }
+  },
+
   /* 硬性要求年末清算（12月月末调用，先于年度评分；每 era 只跑一次）。
      返回 vn 页数组（有内容时由调用方推进为剧情页）。 */
   filmReqCheck(st) {
     if (!(st.era >= "2016" && st.era <= "2021")) return [];
+    this.filmNormalizeTaken(st);   // 旧档：id 误存归一为姓名
     if (st.flags["filmReq" + st.era]) return [];
     st.flags["filmReq" + st.era] = true;
     const taken = st.flags["filmTaken" + st.era] || [];
