@@ -465,7 +465,7 @@ const STORY = {
           { s: "叶盛", cls: "speaker-yesheng", t: "（推了推眼镜）从道理上讲，这是走出去的第一步——院线电影的主题曲，多少人求都求不来。但您也别忘了那句老话：慎重，慎重。" },
         ],
         choices: [
-          { label: "接受邀请，点将一支队伍全员参演", hint: "全队每人人气+2 实力+1 羁绊+2；通告费+20万 热度+3",
+          { label: "接受邀请，点将一支队伍全员参演", hint: "全队每人人气+2 演技+1 羁绊+2；通告费+20万 热度+3",
             pickMode: "zhumeng16" },
           { label: "婉拒，专注自身", hint: "不接该外务，无收益无损失",
             tag: "zhumeng16", value: "no",
@@ -703,6 +703,7 @@ const STORY = {
            事件 effect 直接落地，不走通用离团（leaving2016 无条目）。 */
         id: "m5_hyy16_rep",
         title: "5月 · 广州的舆情",
+        violation: "社媒攻击前辈",   // 【违规事件类型 tag】同队队员失格值连带（violationDqHit）
         gate: st => {
           if (st.decisions.hyy16) return false;
           if (((st.decisions && st.decisions.jpMode) || st.jpMode) !== "replicate") return false;
@@ -721,6 +722,8 @@ const STORY = {
             tag: "hyy16", value: "repTop",
             effect: st => {
               st.decisions.hyy16 = "repTop";
+              const hitTail = Game.violationDqHit(st, "胡怡莹");   // 违规事件·同队失格值连带
+              Game.dqCalmMark(st, "胡怡莹");   // 解约离团 → 原队伍其后 2 个月失格值不自然增长
               let n = 0;
               for (const nm of ["胡怡莹", "周倩玉"]) {
                 const m = st.members.find(x => x.name === nm && x.status === "branch");
@@ -733,12 +736,14 @@ const STORY = {
               st.money += 60 * n; st.morale = Math.max(0, st.morale - 8); st.heat = Math.min(100, st.heat + 6);
               const lt = st.members.find(x => x.name === "李艺彤");
               if (lt) lt.pop = Math.max(0, (lt.pop || 0) - 6);
-              return "解约函当天就发往广州。违约金如数到账，热搜挂了整整一周——「分团新人作死」的段子满天飞，东京方面看到了交代，但队里的孩子们安静了很久：处分是杀一做百，可百人会想，下一个会不会是自己。李艺彤没有说什么，只是那段时间的公演，她笑得比平时更用力。\n\n（决策已登记：hyy16=repTop。胡怡莹、周倩玉已解约离团，违约金共 " + (60 * n) + " 万已追缴；李艺彤人气-6。）";
+              return "解约函当天就发往广州。违约金如数到账，热搜挂了整整一周——「分团新人作死」的段子满天飞，东京方面看到了交代，但队里的孩子们安静了很久：处分是杀一做百，可百人会想，下一个会不会是自己。李艺彤没有说什么，只是那段时间的公演，她笑得比平时更用力。\n\n（决策已登记：hyy16=repTop。胡怡莹、周倩玉已解约离团，违约金共 " + (60 * n) + " 万已追缴；李艺彤人气-6。）" + (hitTail ? "\n\n" + hitTail : "");
             } },
           { label: "「胡怡莹解约；周倩玉下放预备生，罚停半年工资。」", hint: "胡怡莹解约（违约金 60 万）；周倩玉下放 GNZ48 预备生并罚停 7~12 月工资（下半年工资支出少计 1 人）士气-4",
             tag: "hyy16", value: "repPrep",
             effect: st => {
               st.decisions.hyy16 = "repPrep";
+              const hitTail = Game.violationDqHit(st, "胡怡莹");   // 违规事件·同队失格值连带
+              Game.dqCalmMark(st, "胡怡莹");   // 胡怡莹解约 → 原队伍其后 2 个月失格值不自然增长
               const hy = st.members.find(x => x.name === "胡怡莹" && x.status === "branch");
               if (hy) {
                 hy.status = "left";
@@ -755,13 +760,14 @@ const STORY = {
               st.morale = Math.max(0, st.morale - 4); st.heat = Math.min(100, st.heat + 4);
               const lt = st.members.find(x => x.name === "李艺彤");
               if (lt) lt.pop = Math.max(0, (lt.pop || 0) - 6);
-              return "日方对胡怡莹的解约结果表示认可，违约金如数到账；周倩玉则被摘下 Team G 的队名，转入 GNZ48 预备生——半年工资分文不发，通告表上她的名字被挪到了最末尾。公告发出当晚，两个账号删光了微博，但该来的批评一条没少。李艺彤那边，公司补发了一份律师函，她的人气还是掉了一截。\n\n（决策已登记：hyy16=repPrep。胡怡莹解约（违约金 60 万已追缴）；周倩玉下放预备生并罚停 7~12 月工资（下半年工资支出少计 1 人）；李艺彤人气-6。）";
+              return "日方对胡怡莹的解约结果表示认可，违约金如数到账；周倩玉则被摘下 Team G 的队名，转入 GNZ48 预备生——半年工资分文不发，通告表上她的名字被挪到了最末尾。公告发出当晚，两个账号删光了微博，但该来的批评一条没少。李艺彤那边，公司补发了一份律师函，她的人气还是掉了一截。\n\n（决策已登记：hyy16=repPrep。胡怡莹解约（违约金 60 万已追缴）；周倩玉下放预备生并罚停 7~12 月工资（下半年工资支出少计 1 人）；李艺彤人气-6。）" + (hitTail ? "\n\n" + hitTail : "");
             } },
         ],
       },
       {
         id: "m5_hyy16_orig",
         title: "5月 · 广州的舆情",
+        violation: "社媒攻击前辈",   // 【违规事件类型 tag】同队队员失格值连带（violationDqHit）
         gate: st => {
           if (st.decisions.hyy16) return false;
           if (((st.decisions && st.decisions.jpMode) || st.jpMode) === "replicate") return false;
@@ -779,6 +785,8 @@ const STORY = {
             tag: "hyy16", value: "origTop",
             effect: st => {
               st.decisions.hyy16 = "origTop";
+              const hitTail = Game.violationDqHit(st, "胡怡莹");   // 违规事件·同队失格值连带
+              Game.dqCalmMark(st, "胡怡莹");   // 解约离团 → 原队伍其后 2 个月失格值不自然增长
               let n = 0;
               for (const nm of ["胡怡莹", "周倩玉"]) {
                 const m = st.members.find(x => x.name === nm && x.status === "branch");
@@ -791,12 +799,13 @@ const STORY = {
               st.money += 60 * n; st.morale = Math.max(0, st.morale - 8); st.heat = Math.min(100, st.heat + 6);
               const lt = st.members.find(x => x.name === "李艺彤");
               if (lt) lt.pop = Math.max(0, (lt.pop || 0) - 6);
-              return "解约函当天就发往广州。违约金如数到账，热搜挂了整整一周——杀一做百的处分立住了规矩，可队里的孩子们安静了很久：百人会想，下一个会不会是自己。李艺彤没有说什么，只是那段时间的公演，她笑得比平时更用力。\n\n（决策已登记：hyy16=origTop。胡怡莹、周倩玉已解约离团，违约金共 " + (60 * n) + " 万已追缴；李艺彤人气-6。）";
+              return "解约函当天就发往广州。违约金如数到账，热搜挂了整整一周——杀一做百的处分立住了规矩，可队里的孩子们安静了很久：百人会想，下一个会不会是自己。李艺彤没有说什么，只是那段时间的公演，她笑得比平时更用力。\n\n（决策已登记：hyy16=origTop。胡怡莹、周倩玉已解约离团，违约金共 " + (60 * n) + " 万已追缴；李艺彤人气-6。）" + (hitTail ? "\n\n" + hitTail : "");
             } },
           { label: "「不下死手。两人留籍观察，罚停半年工资。」", hint: "两人留籍（Team G），罚停 7~12 月工资：下半年工资支出少计 2 人 士气-2",
             tag: "hyy16", value: "origWatch",
             effect: st => {
               st.decisions.hyy16 = "origWatch";
+              const hitTail = Game.violationDqHit(st, "胡怡莹");   // 违规事件·同队失格值连带
               let n = 0;
               for (const nm of ["胡怡莹", "周倩玉"]) {
                 const m = st.members.find(x => x.name === nm && x.status === "branch");
@@ -808,12 +817,13 @@ const STORY = {
               st.morale = Math.max(0, st.morale - 2); st.heat = Math.min(100, st.heat + 4);
               const lt = st.members.find(x => x.name === "李艺彤");
               if (lt) lt.pop = Math.max(0, (lt.pop || 0) - 6);
-              return "公告措辞很克制：「涉事成员深刻反省，留籍察看，停发半年工资。」外头的批评声没有停，但至少名册上没有少人——广州的孩子照常排练，只是胡怡莹和周倩玉的储物柜前，再没人敢讨论前辈半个字。李艺彤的人气还是掉了一截，公司补发的律师函没能挽回来。\n\n（决策已登记：hyy16=origWatch。两人留籍观察，罚停 7~12 月工资（下半年工资支出少计 2 人）；李艺彤人气-6。）";
+              return "公告措辞很克制：「涉事成员深刻反省，留籍察看，停发半年工资。」外头的批评声没有停，但至少名册上没有少人——广州的孩子照常排练，只是胡怡莹和周倩玉的储物柜前，再没人敢讨论前辈半个字。李艺彤的人气还是掉了一截，公司补发的律师函没能挽回来。\n\n（决策已登记：hyy16=origWatch。两人留籍观察，罚停 7~12 月工资（下半年工资支出少计 2 人）；李艺彤人气-6。）" + (hitTail ? "\n\n" + hitTail : "");
             } },
           { label: "「两人都下放预备生，罚停半年工资。」", hint: "两人下放 GNZ48 预备生，罚停 7~12 月工资：下半年工资支出少计 2 人 士气-4",
             tag: "hyy16", value: "origPrep",
             effect: st => {
               st.decisions.hyy16 = "origPrep";
+              const hitTail = Game.violationDqHit(st, "胡怡莹");   // 违规事件·同队失格值连带
               let n = 0;
               for (const nm of ["胡怡莹", "周倩玉"]) {
                 const m = st.members.find(x => x.name === nm && x.status === "branch");
@@ -826,7 +836,7 @@ const STORY = {
               st.morale = Math.max(0, st.morale - 4); st.heat = Math.min(100, st.heat + 4);
               const lt = st.members.find(x => x.name === "李艺彤");
               if (lt) lt.pop = Math.max(0, (lt.pop || 0) - 6);
-              return "Team G 的队名从两人的资料里摘了下去，GNZ48 预备生的名单上多了两个名字。半年工资分文不发，通告表上她们的名字被挪到了最末尾。队伍里的空气紧了很久——但至少，规矩立住了。李艺彤的人气还是掉了一截。\n\n（决策已登记：hyy16=origPrep。两人下放预备生并罚停 7~12 月工资（下半年工资支出少计 2 人）；李艺彤人气-6。）";
+              return "Team G 的队名从两人的资料里摘了下去，GNZ48 预备生的名单上多了两个名字。半年工资分文不发，通告表上她们的名字被挪到了最末尾。队伍里的空气紧了很久——但至少，规矩立住了。李艺彤的人气还是掉了一截。\n\n（决策已登记：hyy16=origPrep。两人下放预备生并罚停 7~12 月工资（下半年工资支出少计 2 人）；李艺彤人气-6。）" + (hitTail ? "\n\n" + hitTail : "");
             } },
         ],
       },
@@ -1083,6 +1093,7 @@ const STORY = {
            branch），本事件对其本部/分团两种在籍形态均兼容。 */
         id: "m8_zhx16",
         title: "8月 · 违纪处分",
+        violation: "社媒违纪",   // 【违规事件类型 tag】同队队员失格值连带（violationDqHit）
         gate: st => {
           if (st.decisions.zhx16) return false;
           const m = st.members.find(x => x.id === "zhanghanxiao");
@@ -1103,7 +1114,8 @@ const STORY = {
               m.note = "2016-08 社媒严重违纪，屡次警告不改——提前毕业（不收取违约金）";
               st.heat = Math.min(100, st.heat + 4); st.morale = Math.max(0, st.morale - 2);
               Game.addLog(st, st.month, "张菡筱 提前毕业（社媒违纪，不收取违约金）。", "bad");
-              return "公告发得很简短：「张菡筱因个人原因，提前毕业。」没有违约金，没有追责声明——评论区骂了两天的公司，反倒夸了一句体面。\n\n她的储物柜第二天就清空了。Team XII 的孩子们没人说话，只是那天晚上的公演，齐舞跳得格外用力。\n\n（决策已登记：zhx16=graduate。张菡筱已离团，不收取违约金。）";
+               const hitTail = Game.violationDqHit(st, "张菡筱");   // 违规事件·同队失格值连带
+              return "公告发得很简短：「张菡筱因个人原因，提前毕业。」没有违约金，没有追责声明——评论区骂了两天的公司，反倒夸了一句体面。\n\n她的储物柜第二天就清空了。Team XII 的孩子们没人说话，只是那天晚上的公演，齐舞跳得格外用力。\n\n（决策已登记：zhx16=graduate。张菡筱已离团，不收取违约金。）" + (hitTail ? "\n\n" + hitTail : "");
             } },
           { label: "「按合约办：开除，违约金一分不少。」", hint: "张菡筱开除离团，追缴违约金：资金+100万 士气-8 热度+6",
             tag: "zhx16", value: "fire",
@@ -1115,7 +1127,9 @@ const STORY = {
               m.note = "2016-08 社媒严重违纪开除，解约违约金已追缴";
               st.money += 100; st.morale = Math.max(0, st.morale - 8); st.heat = Math.min(100, st.heat + 6);
               Game.addLog(st, st.month, "张菡筱 开除离团，追缴违约金 100 万。", "bad");
-              return "解约函当天就发了出去。违约金 100 万如数到账，王婧在报表上描了个红圈，难得没提预算。\n\n但热搜上「SNH48 开除成员」挂了整整一周；分队孩子们排练时气氛低得像下雨——处分是杀一做百，可百人会想：下一个会不会是自己。\n\n（决策已登记：zhx16=fire。张菡筱已开除离团，违约金已追缴。）";
+              const hitTail = Game.violationDqHit(st, "张菡筱");   // 违规事件·同队失格值连带
+              Game.dqCalmMark(st, "张菡筱");   // 解约离团 → 原队伍其后 2 个月失格值不自然增长
+              return "解约函当天就发了出去。违约金 100 万如数到账，王婧在报表上描了个红圈，难得没提预算。\n\n但热搜上「SNH48 开除成员」挂了整整一周；分队孩子们排练时气氛低得像下雨——处分是杀一做百，可百人会想：下一个会不会是自己。\n\n（决策已登记：zhx16=fire。张菡筱已开除离团，违约金已追缴。）" + (hitTail ? "\n\n" + hitTail : "");
             } },
           { label: "「先不下死手。下放预备生，以观后效。」", hint: "张菡筱下放预备生：其人气-6，士气-4（观察期，未离团）",
             tag: "zhx16", value: "prep",
@@ -1134,7 +1148,8 @@ const STORY = {
               }
               m.pop = Math.max(0, m.pop - 6);
               st.morale = Math.max(0, st.morale - 4);
-              return "内部通报只有一句话：「张菡筱下放预备生，以观后效。」\n\n她的工牌换了颜色，站位从正式队员换到了队伍最边上。有人替她惋惜，也有人松了口气——至少，没到赶人走的那一步。\n\n（决策已登记：zhx16=prep。张菡筱在籍，降入预备生观察。）";
+              const hitTail = Game.violationDqHit(st, "张菡筱");   // 违规事件·同队失格值连带
+              return "内部通报只有一句话：「张菡筱下放预备生，以观后效。」\n\n她的工牌换了颜色，站位从正式队员换到了队伍最边上。有人替她惋惜，也有人松了口气——至少，没到赶人走的那一步。\n\n（决策已登记：zhx16=prep。张菡筱在籍，降入预备生观察。）" + (hitTail ? "\n\n" + hitTail : "");
             } },
         ],
       },
@@ -1474,3 +1489,20 @@ const STORY = {
 /* 中秋事件跨线复用：2016 线 9 月挂载（2026 线由 data_story_2026.js 挂载至 9 月；
    两线引用同一 STORY.midAutumn，pages 按 st.era 分支细节） */
 STORY.monthly[9].unshift(STORY.midAutumn);
+
+/* ========================================================================
+   【通用月度事件·影视资源兑现（2016~2021 线，用户口径 2026-XX）】
+   每年 8 月，影视部将今年度的项目全部发送给玩家：事件只做两件事——
+   ① 结算前一年投资回款；② 引导投资：投资做成月度行动「filmInvest」
+   （8月解锁至年末，每投资一部消耗 1 行动点，不设上限；点将参演随行动落地）。
+   硬性要求：总选第一至少一部担任女主角，总选第二、三名各有至少一部
+   女二号剧目，未达成者年末羁绊大幅下降（-12，filmReqCheck 清算）。
+   事件对象跨线共用（gate/pages 均按 st 动态求值）；挂载至各线 8 月表，
+   统一在 data_story_2021.js 末尾执行（2026/2027 线不挂载）。
+   ======================================================================== */
+STORY.filmEvent = {
+  id: "m8_film",
+  title: "8月 · 影视资源兑现",
+  gate: st => !st.flags["filmInv" + st.era],
+  pages: st => Game.filmAugustPages(st),
+};

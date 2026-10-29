@@ -445,6 +445,9 @@ body {
   padding: 10px 11px;
 }
 .member-card.mc-left { opacity: 0.42; filter: grayscale(0.7); }
+/* 【成员属性系统 v2】成员卡可点击查看详情 */
+.member-card.mc-click { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.member-card.mc-click:hover { border-color: var(--pink-deep); box-shadow: 0 0 0 2px rgba(255, 122, 158, .18); }
 .mc-portrait {
   width: 100%;
   aspect-ratio: 3 / 4;

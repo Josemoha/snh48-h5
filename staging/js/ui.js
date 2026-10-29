@@ -74,6 +74,11 @@ const UI = {
     const root = this.$("modal-root");
     root.classList.add("hidden");
     root.innerHTML = "";
+    /* 【成员详情窗】清掉可能残留的遮罩点击关闭监听（避免泄漏到后续弹窗） */
+    if (this._modalBackdrop) {
+      root.removeEventListener("click", this._modalBackdrop);
+      this._modalBackdrop = null;
+    }
   },
 
   /* 构建通用弹窗卡片 */
@@ -1476,7 +1481,7 @@ const UI = {
       box.appendChild(mkCard("主线⑤ · 一期生合约", st.gen1.done ? "✔ 逐人拍板归位" : "待推进", st.gen1.done ? "q-done" : "q-open",
         this.el("div", "quest-detail", st.gen1.done
           ? "✔ 续约/毕业/转岗——半部历史的册页已合上"
-          : "一期生合约年内全部到期（赵嘉敏学业线除外）：说服续约 / 让其毕业 / 转为工作人员")));
+          : "一期生合约年内全部到期：说服续约 / 影视约续约（需演技达标）/ 让其毕业 / 转为工作人员（赵嘉敏不在安置名单）")));
       /* 主线 · 年度活动筹备（总选8月线上开榜 + 金曲大赏12月线上举行）——筹备度必须展示 */
       const b20act = this.el("div", "");
       b20act.appendChild(this.el("div", "quest-detail",
@@ -1725,7 +1730,7 @@ const UI = {
 
   onAction(id) {
     if (id === "visit") { this.showMemberPicker(); return; }
-    if (id === "coach") { this.showCoachPicker(); return; }   // 2017：先选特训对象
+    if (id === "coachVo" || id === "coachDa" || id === "coachMc") { this.showCoachPicker(id); return; }   // 特训三项（唱功/舞蹈/MC）：先选对象
     const res = Game.doAction(id);
     if (!res) return;
     this.renderGame();
@@ -1751,6 +1756,10 @@ const UI = {
     if (res.tone === "pickTeam18") { this.showSm18TeamPicker(); return; }
     /* 队伍团建（全线通用）：弹队伍选择窗，选队后落地（Game.doAction('teamBld', {team})） */
     if (res.tone === "pickTeamBld") { this.showTeamBldPicker(); return; }
+    /* 【成员属性系统 v2】培训成员守则：弹队伍选择窗，选队后落地（Game.doAction('dqTrain', {team})） */
+    if (res.tone === "dqTeamPick") { this.showDqRulePicker(); return; }
+    /* 【2016~2021 通用·影视投资】弹项目邁选窗，选项目后点将，落地 Game.doAction('filmInvest', {pid,lead,second}) */
+    if (res.tone === "filmInvest") { this.showFilmProjectPicker(); return; }
     /* 组阁编制会（2018）：逐人定队 + 队长队副任命，落地在 Game.applyReorg18 */
     if (res.tone === "pickReorg18") { this.showReorg18Picker(); return; }
     /* 二次组阁编制会（2019）：逐人定队 + 队长队副任命，落地在 Game.applyReorg19 */
@@ -1851,6 +1860,73 @@ const UI = {
       c.appendChild(altBtn);
     }
     this.modal(c);   // 不给关闭按钮——必须点将才能继续
+  },
+
+  /* ========================================================================
+     影视投资（2016~2021 线通用·月度行动「filmInvest」，用户口径 2026-XX）：
+     8月事件只做「前年回款结算 + 引导」，投资在行动板上拍板：
+     ① 项目邁选窗：列出剩余可投项目（点击即选，资金不足置灰）；
+     ② 逐部点将：女主角（人气+3 演技+2 羁绊+2），设女二号的项目再点一位女二（+2/+1/+1）；
+        荣誉殿堂/影视部（HALL）成员可点将；
+     ③ 落地 Game.doAction('filmInvest',{pid,lead,second})：每部耗 1 行动点，无上限。
+     低点击量：投 1 部 = 1 次项目点选 + 1~2 次点将，无逐人循环。 */
+  showFilmProjectPicker() {
+    const st = Game.st;
+    const rem = Game.filmRemaining(st);
+    const c = this.card("影视投资 · 年度项目邁选", "点击项目进入点将——每投资一部消耗 1 行动点（本月余 " + st.ap + "）");
+    const grid = this.el("div", "pick-grid");
+    for (const p of rem) {
+      const b = this.el("button", "pick-btn", "");
+      b.innerHTML = "《" + p.title + "》" + '<span class="pb-team">' + p.type + " · 投资 " + p.cost + " 万 · " + (p.role2 ? "女主角 + 女二号" : "仅女主角") + "</span>";
+      if (st.money < p.cost) { b.disabled = true; b.title = "资金不足"; }
+      b.onclick = () => { this.closeModal(); this.castFilmProjects([p], 0, [], null); };
+      grid.appendChild(b);
+    }
+    const cancelBtn = this.el("button", "btn modal-close", "先不投了");
+    cancelBtn.onclick = () => this.closeModal();
+    c.appendChild(grid);
+    c.appendChild(cancelBtn);
+    this.modal(c);
+  },
+
+  /* 影视点将递归：逐部点女主角（及女二号），全部点完后经 doAction 落地（每部耗 1 行动点） */
+  castFilmProjects(projects, i, acc, onDone) {
+    const st = Game.st;
+    if (i >= projects.length) {
+      const texts = [];
+      for (const pk of acc) {
+        const r = Game.doAction("filmInvest", pk);
+        if (!r) { texts.push("（行动点不足——本月无法继续投资，下月再拍板。）"); break; }
+        texts.push(r.text);
+      }
+      this.renderGame();
+      this.toast(texts.join("\n\n"));
+      if (onDone) onDone();
+      return;
+    }
+    const p = projects[i];
+    /* 点将池：本部/分团在册 + 荣誉殿堂/影视部（HALL，走影视方向）均可点 */
+    const pool = () => st.members.filter(m => (m.status === "active" || m.status === "branch") && m.pop != null && m.status !== "left");
+    const teamLabel = m => (m.hall || m.team === "HALL") ? "影视部" : (m.status === "branch" ? m.branchTeam : m.team);
+    const pickRole = (roleKey, roleLabel, reward, exclude, next) => {
+      this.showMultiPick({
+        title: "《" + p.title + "》 · " + roleLabel + "点将（投资 " + p.cost + " 万）",
+        sub: "被选中者 " + reward + "（荣誉殿堂/影视部成员亦可出演）",
+        pool: pool().filter(m => m.name !== exclude),
+        count: 1,
+        confirmLabel: "「" + roleLabel + "」定了 →",
+        cardInfo: m => teamLabel(m) + " · 人气" + m.pop + " 羁绊" + m.bond + (m.skills ? " 演技" + m.skills.ac : ""),
+        onConfirm: ids => { next(ids[0]); },
+      });
+    };
+    pickRole("lead", "女主角", "人气+3 演技+2 羁绊+2", null, leadName => {
+      acc.push({ pid: p.pid, lead: leadName, second: null });
+      if (!p.role2) { this.castFilmProjects(projects, i + 1, acc, onDone); return; }
+      pickRole("second", "女二号", "人气+2 演技+1 羁绊+1", leadName, secondName => {
+        acc[acc.length - 1].second = secondName;
+        this.castFilmProjects(projects, i + 1, acc, onDone);
+      });
+    });
   },
 
   /* Team SII 五人选将窗（复刻路线：宫泽佐江毕业公演赴日名单） */
@@ -2672,21 +2748,26 @@ const UI = {
     });
   },
 
-  /* 一期生合约窗（2020 主线⑤）：逐人续约/毕业/转工作人员；落地在 engine.applyGen1 */
+  /* 一期生合约窗（2020 主线⑤）：逐人续约/影视约/毕业/转工作人员（默认预填续约，
+     低点击量规范：只点需变更的成员）；影视约需演技达标（ACT_FILM_MIN，引擎校验）；
+     赵嘉敏不进安置（各路线均排除，用户口径）；落地在 engine.applyGen1 */
   showGen1Picker() {
     const st = Game.st;
     const targets = st.members.filter(m => m.gen === "一期生" && (m.status === "active" || m.status === "rest")
-      && !(m.name === "赵嘉敏" && st.decisions.zhaoMin === "study"));
+      && m.name !== "赵嘉敏");
     const teams = [
       { key: "renew", label: "说服续约", cls: "" },
+      { key: "film",  label: "影视约续约（需演技≥" + Game.ACT_FILM_MIN + "）", cls: "" },
       { key: "grad",  label: "合约期满毕业", cls: "" },
       { key: "staff", label: "转为工作人员", cls: "" },
     ];
     this.showTeamAssignPicker({
       title: "一期生合约 · 逐人拍板",
-      sub: "全部一期生合约年内到期（赵嘉敏学业线除外）——续约（羁绊+6 人气+2）/ 毕业 / 转岗，请逐一安排",
+      sub: "一期生合约年内到期——默认全员续约（成功进「丝芭传媒」分类）；只需点击需变更的成员：影视约续约（需演技≥" + Game.ACT_FILM_MIN + "，基础概率+5%，成功转入影视部）/ 毕业 / 转岗。",
       pool: targets,
       teams: teams,
+      defaultKey: "renew",
+      cardInfo: m => (m.skills ? "演技" + m.skills.ac + " · " : "") + (m.status === "rest" ? "暂休" : m.team),
       confirmLabel: "合约名单敲定 →",
       onConfirm: dst => {
         const res = Game.applyGen1(dst);
@@ -2756,16 +2837,21 @@ const UI = {
     });
   },
 
-  /* 2017 线：安排成员特训的成员选择窗（按实力升序：优先补短板，也可反着点） */
-  showCoachPicker() {
-    const c = this.card("安排成员特训", "选择一名成员进行一对一特训（实力+6 羁绊+4 资金-20万）");
+  /* 特训三项（用户口径 2026-XX：唱功/舞蹈/MC 各自独立行动）：成员选择窗（按目标技能升序：优先补短板） */
+  showCoachPicker(skillId) {
+    const SK = { coachVo: ["vo", "唱功"], coachDa: ["da", "舞蹈"], coachMc: ["mc", "MC"] };
+    const key = SK[skillId] ? SK[skillId][0] : "vo", skName = SK[skillId] ? SK[skillId][1] : "唱功";
+    const val = m => m.skills ? m.skills[key] : (m.pwr || 0);
+    const c = this.card(skName + "特训 · 选择成员", "选择一名成员进行一对一" + skName + "特训（" + skName + "+6 羁绊+4 资金-20万" + "）");
     const grid = this.el("div", "pick-grid");
-    for (const m of Game.activeMembers(Game.st).slice().sort((a, b) => (a.pwr || 0) - (b.pwr || 0))) {
+    for (const m of Game.activeMembers(Game.st).slice().sort((a, b) => val(a) - val(b))) {
       const b = this.el("button", "pick-btn", "");
-      b.innerHTML = m.name + '<span class="pb-team">' + m.team + " · 实力" + (m.pwr || 0) + " · 羁绊" + m.bond + "</span>";
+      b.innerHTML = m.name + '<span class="pb-team">' + m.team + " · "
+        + (m.skills ? "唱功" + m.skills.vo + " 舞蹈" + m.skills.da + " MC" + m.skills.mc : "实力" + (m.pwr || 0))
+        + " · 羁绊" + m.bond + "</span>";
       b.onclick = () => {
         this.closeModal();
-        const res = Game.doAction("coach", { memberId: m.id });
+        const res = Game.doAction(skillId, { memberId: m.id });
         if (!res) return;
         this.renderGame();
         this.toast(res.text);
@@ -2851,6 +2937,37 @@ const UI = {
       b.onclick = () => {
         this.closeModal();
         const res = Game.doAction("teamBld", { team: k });
+        this.renderGame();
+        if (res && res.text) this.toast(res.text);
+      };
+      grid.appendChild(b);
+    }
+    c.appendChild(grid);
+    const cancel = this.el("button", "btn btn-ghost modal-close", "再考虑一下（不消耗行动）");
+    cancel.onclick = () => this.closeModal();
+    c.appendChild(cancel);
+    this.modal(c);
+  },
+
+  /* 【全线通用·成员属性系统 v2】培训成员守则：选择要培训的队伍（本部各队/预备生/各分团，
+     全队失格值-20，耗资15万；低点击量规范：单选一队一键确认，无逐人操作） */
+  showDqRulePicker() {
+    const st = Game.st;
+    const keys = [...new Set(st.members
+      .filter(m => (m.status === "active" || m.status === "branch") && !m.hall && m.dq != null)
+      .map(m => Game.teamKeyOf(m)).filter(Boolean))];
+    const c = this.card("培训成员守则 · 选择队伍",
+      "守则宣讲、案例警示、随堂测验——把规矩重新刻进心里。\n（耗资 15 万：全队失格值 -20 · 士气 +1）");
+    const grid = this.el("div", "pick-grid");
+    for (const k of keys) {
+      const roster = Game.teamRoster(st, k).filter(m => !m.hall && m.dq != null);
+      const maxDq = roster.length ? Math.max(...roster.map(m => m.dq || 0)) : 0;
+      const b = this.el("button", "pick-btn", "");
+      const label = k === "PREP" ? "预备生" : (k.length <= 3 ? "Team " + k : k);
+      b.innerHTML = label + '<span class="pb-team">' + roster.length + " 人 · 全队最高失格值 " + maxDq + (maxDq >= Game.DQ_LINE ? " ⚠" : "") + "</span>";
+      b.onclick = () => {
+        this.closeModal();
+        const res = Game.doAction("dqTrain", { team: k });
         this.renderGame();
         if (res && res.text) this.toast(res.text);
       };
@@ -3043,7 +3160,7 @@ const UI = {
     Game.syncTeams(st);
     const keys = [...new Set(st.members.filter(m => m.status === "active").map(m => m.team).filter(Boolean))];
     const c = this.card("《纯洁心灵·逐梦演艺圈》 · 点将队伍",
-      "点将一支队伍，全员参演同名主题曲 MV。\n（全队每人人气+2 实力+1 羁绊+2；通告费 +20万 · 热度+3）");
+      "点将一支队伍，全员参演同名主题曲 MV。\n（全队每人人气+2 演技+1 羁绊+2；通告费 +20万 · 热度+3）");
     const grid = this.el("div", "pick-grid");
     for (const k of keys) {
       const n = st.members.filter(m => m.status === "active" && m.team === k).length;
@@ -3820,21 +3937,21 @@ const UI = {
     if (st.era === "2026") {
       teams = [["all", "全部"]];
       for (const t of DATA2026.teams) teams.push([t.id, t.short]);
-      teams.push(["HALL", "荣誉殿堂"]);
+      teams.push(["HALL", "荣誉殿堂"], ["film", "影视部"]);   // v0.14.9 分类拆分：殿堂=总选连霸（hallIdol）/ 影视部=事件转影视（film）
       for (const b of DATA2026.branches) teams.push([b.id, b.id]);
       teams.push(["rest", "暂休"], ["honorGrad", "荣誉毕业生"], ["siba", "丝芭传媒"], ["left", "已离团"]);
     } else if (st.era === "2027") {
       teams = [["all", "全部"]];
       for (const t of DATA2026.teams) teams.push([t.id, t.short]);
-      teams.push(["HALL", "荣誉殿堂"]);
+      teams.push(["HALL", "荣誉殿堂"], ["film", "影视部"]);   // v0.14.9 分类拆分
       for (const b of DATA2026.branches) teams.push([b.id, b.id]);
       teams.push(["WHN48", "WHN48"], ["rest", "暂休"], ["honorGrad", "荣誉毕业生"], ["siba", "丝芭传媒"], ["left", "已离团"]);
     } else if (st.era === "2017") {
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"], ["PREP", "预备生"],
-               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["left", "已离团"]];
+               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["film", "影视部"], ["rest", "暂休"], ["left", "已离团"]];
     } else if (st.era === "2018" || st.era === "2019" || st.era === "2020" || st.era === "2021") {
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"], ["PREP", "预备生"],
-               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["rest", "暂休"], ["idft", "IDFT"], ["staff", "工作人员"], ["honorGrad", "荣誉毕业生"], ["siba", "丝芭传媒"], ["left", "已离团"]];
+               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["SHY48", "SHY48"], ["CKG48", "CKG48"], ["HALL", "荣誉殿堂"], ["film", "影视部"], ["rest", "暂休"], ["idft", "IDFT"], ["staff", "工作人员"], ["honorGrad", "荣誉毕业生"], ["siba", "丝芭传媒"], ["left", "已离团"]];
       if (st.flags.ftFormed) teams.splice(6, 0, ["FT", "FT"]);   // 组阁：Team FT 成立后入列
       /* 2019/2020：分团停运后标签页按在册成员动态裁剪；TEB48 开业后入列。
          【修复】原表达式 (m.branchTeam === k || m.note || "").indexOf(k) 存在
@@ -3871,6 +3988,8 @@ const UI = {
     else if (this._memberFilter === "siba") members = members.filter(m => m.siba);             // 丝芭传媒（续约成功/转岗分类）
     else if (this._memberFilter === "idft") members = members.filter(m => m.status === "idft");
     else if (this._memberFilter === "left") members = members.filter(m => m.status === "left");
+    else if (this._memberFilter === "HALL") members = members.filter(m => m.hallIdol);   // 荣誉殿堂：仅总选连霸成员（v0.14.9 分类拆分）
+    else if (this._memberFilter === "film") members = members.filter(m => m.film);       // 影视部：经事件转入影视发展的艺人
     else members = members.filter(m => m.team === this._memberFilter && m.status === "active");
 
     Game.syncTeams(st);   // 【v0.13.0】刷新磨合度（本月内发生的组阁/移籍/升格等立即反映）
@@ -3895,10 +4014,12 @@ const UI = {
     }
     for (const m of members) {
       const isBranch = m.status === "branch";
-      const isHall = m.team === "HALL" || m.hall;             // 荣誉殿堂/影视部分类
+      const isHall = m.team === "HALL" || m.hall;             // HALL 在册（殿堂/影视部机制位）
       const badgeTeam = isBranch ? m.branchTeam : m.team;   // 分团成员显示分团队徽
-      const badgeText = badgeTeam === "HALL" ? "影视部" : badgeTeam;
-      const card = this.el("div", "member-card" + (m.status === "left" ? " mc-left" : isBranch ? " mc-branch" : m.hall ? " mc-hall" : ""));
+      const badgeText = badgeTeam === "HALL" ? (m.film ? "影视部" : "荣誉殿堂") : badgeTeam;
+      const card = this.el("div", "member-card" + (m.status === "left" ? " mc-left" : isBranch ? " mc-branch" : m.hall ? " mc-hall" : "") + " mc-click");
+      card.title = "点击查看成员详情";
+      card.onclick = () => this.showMemberDetail(m);   // 【成员属性系统 v2】点击查看详情
       const picSrc = this.portraitSrc(m);
       if (picSrc) {
         const img = document.createElement("img");
@@ -3922,7 +4043,8 @@ const UI = {
       const simple = isBranch && !m.pop && !m.bond;
       const metaText = (m.gen || "")
         + (isBranch ? " · " + (m.branchLabel || m.branchTeam) : "")
-        + (isHall ? " · 荣誉殿堂 · 影视部" : "")
+        + (m.hallIdol ? " · 荣誉殿堂" : "")            // 总选连霸升堂（v0.14.9 分类拆分）
+        + (m.film ? " · 影视部" : "")                  // 事件转入影视发展
         + (m.honorGrad ? " · 荣誉毕业生" : "")
         + (m.siba ? " · 丝芭传媒" : "")
         + (!isBranch ? (m.status === "rest" ? " · 暂休" : m.status === "idft" ? " · IDFT" : m.status === "staff" ? " · 工作人员" : m.status === "left" ? " · 已离团" : "") : "")
@@ -3966,6 +4088,90 @@ const UI = {
       if (PORTRAITS[id]) return "assets/image/portraits/" + PORTRAITS[id] + ".jpg";
     }
     return null;
+  },
+
+  /* 【成员属性系统 v2】成员详情弹窗（点击成员卡查看）：
+     原成员卡内容 + 四维技能（唱功/舞蹈/MC/演技）+ 历史最高总选排名 + 失格值。 */
+  showMemberDetail(m) {
+    const st = Game.st;
+    const c = this.card(m.name, (m.gen || "") + (m.captain ? " · 队长" : m.vice ? " · 副队长" : ""));
+    const picSrc = this.portraitSrc(m);
+    if (picSrc) {
+      const img = document.createElement("img");
+      img.className = "mc-portrait";
+      img.src = picSrc;
+      img.alt = m.name;
+      img.onerror = () => img.remove();
+      c.appendChild(img);
+    }
+    /* 队伍与状态行 */
+    const cate = (m.hallIdol ? "荣誉殿堂" : "") + (m.film ? (m.hallIdol ? " · 影视部" : "影视部") : "");
+    const statusText = m.status === "branch" ? (m.branchTeam + " · " + (m.branchLabel || ""))
+      : m.team === "HALL" ? (cate || "HALL")
+      : m.status === "rest" ? "暂休"
+      : m.status === "idft" ? "IDFT"
+      : m.status === "staff" ? "工作人员"
+      : m.status === "left" ? "已离团"
+      : (m.team === "PREP" ? "预备生" : "Team " + m.team);
+    const sub = Game.memberSubUnit(st, m.name);
+    const row = (label, val) => {
+      const r = this.el("div", "settle-row");
+      r.appendChild(this.el("span", "", label));
+      const right = this.el("span", "sr-val", "");
+      right.appendChild(document.createTextNode(val));
+      r.appendChild(right);
+      return r;
+    };
+    c.appendChild(row("所属", statusText));
+    if (sub) c.appendChild(row("小分队", sub));
+    if (m.join) c.appendChild(row("入团", m.join));
+    if (m.honorGrad) c.appendChild(row("分类", "荣誉毕业生"));
+    if (m.siba) c.appendChild(row("分类", "丝芭传媒"));
+    /* 属性条（人气/羁绊/实力） */
+    const bar = (label, v, color) => {
+      const b = this.el("div", "mc-bar-label", [this.el("span", "", label), this.el("span", "", v)]);
+      const barEl = this.el("div", "mc-bar pop");
+      barEl.innerHTML = "<i style=\"width:" + Math.max(0, Math.min(100, v)) + "%;background:" + color + "\"></i>";
+      return [b, barEl];
+    };
+    if (m.pop != null) { const p = bar("人气", m.pop, "#ff9ec7"); c.appendChild(p[0]); c.appendChild(p[1]); }
+    if (m.bond != null) { const b = bar("羁绊", m.bond, "#f2b8ff"); c.appendChild(b[0]); c.appendChild(b[1]); }
+    if (m.pwr != null) { const p = bar("实力", m.pwr, "#6fd7ff"); c.appendChild(p[0]); c.appendChild(p[1]); }
+    /* 四维技能（唱功/舞蹈/MC/演技；仅装配实力系统的成员显示） */
+    if (m.skills) {
+      const SK = [["vo", "唱功", "#ffd76f"], ["da", "舞蹈", "#7fd7a8"], ["mc", "MC", "#f2a0c0"], ["ac", "演技", "#b39dff"]];
+      for (const [k, label, color] of SK) {
+        const v = m.skills[k];
+        const b = bar(label, v, color);
+        c.appendChild(b[0]); c.appendChild(b[1]);
+      }
+    }
+    /* 历史最高排名（总选 top48 口径，越小越好） */
+    c.appendChild(row("历史最高排名", m.bestRank != null ? "第 " + m.bestRank + " 名" : "尚未入榜"));
+    /* 失格值（≥DQ_LINE 警示色；达标会触发随机违规事件） */
+    if (m.dq != null) {
+      const warn = m.dq >= Game.DQ_LINE;
+      const b = bar("失格值" + (warn ? "（风险）" : ""), m.dq, warn ? "#ff7f7f" : "#c9c9c9");
+      c.appendChild(b[0]); c.appendChild(b[1]);
+      if (warn) c.appendChild(this.el("div", "modal-text", "失格值已达 " + Game.DQ_LINE + " 线——随时可能触发违规风波。"));
+    }
+    if (m.note) c.appendChild(this.el("p", "modal-text", m.note));
+    /* 【修复 2026-XX】关闭按钮（此前仅有提示文案、无任何关闭途径，弹窗无法关闭） */
+    const closeBtn = this.el("button", "btn btn-ghost modal-close", "关闭");
+    closeBtn.onclick = () => this.closeModal();
+    c.appendChild(closeBtn);
+    this.modal(c);
+    /* 遮罩空白区点击也可关闭（仅限本弹窗；closeModal 时自动摘除监听） */
+    const root = this.$("modal-root");
+    const backdrop = e => {
+      if (e.target === root) {
+        root.removeEventListener("click", backdrop);
+        this._modalBackdrop = null;
+        this.closeModal();
+      }
+    };
+    root.addEventListener("click", backdrop);
+    this._modalBackdrop = backdrop;
   },
 
   /* ---------------- 日志页 ---------------- */

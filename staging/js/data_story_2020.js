@@ -331,6 +331,7 @@ STORY.monthly20 = {
                          失败→同依例执行）。 */
       id: "m1_20_feng_love",
       title: "1月 · 冯薪朵的转机",
+      violation: "恋爱风波",   // 【违规事件类型 tag】同队队员失格值连带（violationDqHit）
       gate: st => !st.decisions.fengLove20 && st.decisions.fengXinDuo19 === "bej"
         && st.members.some(x => x.name === "冯薪朵" && x.status === "active"),
       pages: st => {
@@ -345,23 +346,26 @@ STORY.monthly20 = {
         { label: "依例执行：划入暂休，停止一切活动", hint: "史实路线：冯薪朵暂休（保留后续诉讼可能性）；士气-3 热度-4；若在 HO2/DEMOON 该小分队解散",
           tag: "fengLove20", value: "standard",
           effect: st => {
+            const hitTail = Game.violationDqHit(st, "冯薪朵");   // 违规事件·同队失格值连带
             const m = st.members.find(x => x.name === "冯薪朵");
             if (m) {
               m.status = "rest";
               m.note = (m.note ? m.note + "；" : "") + "2020-01 恋爱风波：依例停止活动（暂休），保留后续诉讼可能性";
+               Game.dqCalmMark(st, "冯薪朵");   // 暂休 → 原队伍其后 2 个月失格值不自然增长
             }
             st.flags.fengLawsuit20 = true;
             st.morale = Math.max(0, st.morale - 3);
             st.heat = Math.max(0, st.heat - 4);
             Game.syncTeams(st);
             const extra = Game.dissolveSubUnit19(st, Game.memberSubUnit(st, "冯薪朵"));
-            return "你在处置单上勾了「依例执行」。声明当晚发出：冯薪朵即日起停止一切团内活动，暂休处理——后续事宜，公司保留依法追索的权利。评论区吵了一整夜，粉圈脱粉的脱粉、坚守的坚守。\n\n（决策已登记：fengLove20=standard。冯薪朵划入暂休、停止活动，保留后续诉讼可能性；士气-3 热度-4。）" + extra;
+            return "你在处置单上勾了「依例执行」。声明当晚发出：冯薪朵即日起停止一切团内活动，暂休处理——后续事宜，公司保留依法追索的权利。评论区吵了一整夜，粉圈脱粉的脱粉、坚守的坚守。\n\n（决策已登记：fengLove20=standard。冯薪朵划入暂休、停止活动，保留后续诉讼可能性；士气-3 热度-4。）" + extra + (hitTail ? "\n\n" + hitTail : "");
           } },
         { label: "「把话说到她心坎里——再给她一次机会。」", hint: "当面恳谈：50%（羁绊≥70：75%）她同意道歉并留下（人气-20 羁绊-25，解除 BEJ48 兼任）；失败则同依例执行",
           tag: "fengLove20", value: "talk",
           effect: st => {
             const m = st.members.find(x => x.name === "冯薪朵");
             const bond = m ? (m.bond || 0) : 0;
+            const hitTail = Game.violationDqHit(st, "冯薪朵");   // 违规事件·同队失格值连带（恳谈成败均波及）
             const p = bond >= 70 ? 0.75 : 0.5;
             if (Math.random() < p) {
               /* 恳谈成功：公开道歉留队——人气、羁绊大幅降低，解除 BEJ48 兼任 */
@@ -372,19 +376,20 @@ STORY.monthly20 = {
               }
               st.flags.fengStay20 = true;
               Game.syncTeams(st);
-              return "深夜的会议室里只剩你们两个人。你没有照着条例念，只问她：「这几年，这条河对你意味着什么？」\n\n她沉默了很久，说：「给我一份道歉声明，我来发。分团兼任的事……是我分心了，我退出来，回本部从头做起。」\n\n第二天凌晨，她的道歉声明发了出去。粉丝吵翻了天，但脱粉名单之外，也有人在评论区写：「道歉了，就看往后怎么走。」\n\n（决策已登记：fengLove20=talk。恳谈成功——冯薪朵公开道歉留队：人气-20 羁绊-25，解除 BEJ48 兼任回归本部。）";
+              return "深夜的会议室里只剩你们两个人。你没有照着条例念，只问她：「这几年，这条河对你意味着什么？」\n\n她沉默了很久，说：「给我一份道歉声明，我来发。分团兼任的事……是我分心了，我退出来，回本部从头做起。」\n\n第二天凌晨，她的道歉声明发了出去。粉丝吵翻了天，但脱粉名单之外，也有人在评论区写：「道歉了，就看往后怎么走。」\n\n（决策已登记：fengLove20=talk。恳谈成功——冯薪朵公开道歉留队：人气-20 羁绊-25，解除 BEJ48 兼任回归本部。）" + (hitTail ? "\n\n" + hitTail : "");
             }
             /* 恳谈失败：她依旧选择离开——同依例执行 */
             if (m) {
               m.status = "rest";
               m.note = (m.note ? m.note + "；" : "") + "2020-01 恋爱风波：恳谈未果，停止活动（暂休），保留后续诉讼可能性";
+               Game.dqCalmMark(st, "冯薪朵");   // 暂休 → 原队伍其后 2 个月失格值不自然增长
             }
             st.flags.fengLawsuit20 = true;
             st.morale = Math.max(0, st.morale - 3);
             st.heat = Math.max(0, st.heat - 4);
             Game.syncTeams(st);
             const extra = Game.dissolveSubUnit19(st, Game.memberSubUnit(st, "冯薪朵"));
-            return "深夜的会议室里只剩你们两个人。你把条例推到她面前，又把一线生机留在了桌面上——她看了很久，最后把话轻轻推了回来：「对不起，这份工作……和这条河，我都担不起了。」\n\n第二天，声明照例发了出去：停止一切团内活动，暂休处理，公司保留依法追索的权利。\n\n（决策已登记：fengLove20=talk。恳谈失败——同依例执行：冯薪朵划入暂休、停止活动，保留后续诉讼可能性；士气-3 热度-4。）" + extra;
+            return "深夜的会议室里只剩你们两个人。你把条例推到她面前，又把一线生机留在了桌面上——她看了很久，最后把话轻轻推了回来：「对不起，这份工作……和这条河，我都担不起了。」\n\n第二天，声明照例发了出去：停止一切团内活动，暂休处理，公司保留依法追索的权利。\n\n（决策已登记：fengLove20=talk。恳谈失败——同依例执行：冯薪朵划入暂休、停止活动，保留后续诉讼可能性；士气-3 热度-4。）" + extra + (hitTail ? "\n\n" + hitTail : "");
           } },
       ],
     },
@@ -489,6 +494,7 @@ STORY.monthly20 = {
          staff=斥责工作人员（引擎选项 tag/value 自动登记）。 */
       id: "m6_20_duan_lost",
       title: "6月 · 深夜的寻人",
+      violation: "行程失联",   // 【违规事件类型 tag】仅 member 处置（认定擅自离场）时触发同队失格值连带
       gate: st => !st.decisions.duanLost20 && st.members.some(m => m.name === "段艺璇" && m.status === "branch"),
       pages: st => [
         { s: "叶盛", cls: "speaker-yesheng", t: "（电话里，声音比平时急）总监，对不起这么晚打来——段艺璇联系不上了。按原计划，她今天应该从分团出发，赴上海参加演出。可现在手机关机，分团那边也说不清她的去向。" },
@@ -507,7 +513,8 @@ STORY.monthly20 = {
               m.note = (m.note ? m.note + "；" : "") + "2020-06 赴沪演出失联：擅自离场受斥责（同人演绎）";
             }
             st.morale = Math.max(0, st.morale - 2);
-            return "你当着众人把话说重了：「再多的委屈，也不能关机失联——擅自离场，就是不守规矩。」她红着眼圈应了下来。连夜寻找的疲惫还挂在每个人脸上，排练室里安静了好几天。\n\n（决策已登记：duanLost20=member。段艺璇 羁绊-8 人气-2；士气-2。）";
+            const hitTail = Game.violationDqHit(st, "段艺璇");   // 违规事件·同队失格值连带
+            return "你当着众人把话说重了：「再多的委屈，也不能关机失联——擅自离场，就是不守规矩。」她红着眼圈应了下来。连夜寻找的疲惫还挂在每个人脸上，排练室里安静了好几天。\n\n（决策已登记：duanLost20=member。段艺璇 羁绊-8 人气-2；士气-2。）" + (hitTail ? "\n\n" + hitTail : "");
           } },
         { label: "「错不在她。接待环节掉链子，该问责的是我们。」", hint: "斥责工作人员：段艺璇羁绊+6；士气+2 叶盛负担+3",
           tag: "duanLost20", value: "staff",
@@ -696,8 +703,8 @@ STORY.monthly20 = {
       title: "9月 · 一期生的合约",
       gate: st => !st.flags.gen1Done,
       pages: st => [
-        { s: "王婧", cls: "speaker-wangjing", t: "总监，人事的函我转你了：一期生的合约今年全部到期" + (st.decisions.zhaoMin === "study" ? "——赵嘉敏走的是学业线，另案处理，不在名单里。" : "。") + "总选落幕了，名单也在您手上了——续约、毕业、转岗，每个人的去留，由您亲自谈。" },
-        { s: "王婧", cls: "speaker-wangjing", t: "（压低声音）提前打个预防针：续约和转岗都谈不成硬——续约基础五五开，在编小分队的孩子把握大些，进过总选前三的也高些但不如小分队；转岗看羁绊，羁绊深的把握大。没谈拢的，一律按合约期满毕业处理。" },
+        { s: "王婧", cls: "speaker-wangjing", t: "总监，人事的函我转你了：一期生的合约今年全部到期——赵嘉敏另案处理，不在名单里。总选落幕了，名单也在您手上了——续约、影视约、毕业、转岗，每个人的去留，由您亲自谈。" },
+        { s: "王婧", cls: "speaker-wangjing", t: "（压低声音）提前打个预防针：续约和转岗都谈不成硬——续约基础五五开，在编小分队的孩子把握大些，进过总选前三的也高些但不如小分队；影视约比续约再高五分把握，但门槛是演技（达标才能签）；转岗看羁绊，羁绊深的把握大。没谈拢的，一律按合约期满毕业处理。" },
         { nar: true, t: "（主线「一期生合约安置」开启：行动区「一期生合约」可随时逐人拍板。概率结算：续约 50%·小分队 85%·总选前三 65%；转岗 50%·羁绊≥70 时 75%；未成功自动转毕业。毕业→「荣誉毕业生」分类；续约/转岗成功→「丝芭传媒」分类——均不再视为在籍。）" },
       ],
     },
@@ -799,9 +806,9 @@ STORY.monthly20 = {
         { s: "叶盛", cls: "speaker-yesheng", t: "总监，电影这东西，露出是一方面，历练是另一方面——剧组管吃管住，还有正经的表演指导。去不去、去几个人，您定。" },
       ],
       choices: [
-        { label: "和制片主任再谈一轮——争取多一些配角名额", hint: "点将 2 人参演（含分团、影视部）；每人：人气+2 实力+1 羁绊+3；通告费 +35万；热度+3 士气+2",
+        { label: "和制片主任再谈一轮——争取多一些配角名额", hint: "点将 2 人参演（含分团、影视部）；每人：人气+2 演技+1 羁绊+3；通告费 +35万；热度+3 士气+2",
           tag: "ranye20", value: "cast2", pickMode: "ranye20" },
-        { label: "「接了。就算是龙套，也能历练演技。」", hint: "点将 1 人参演（含分团、影视部）；人气+2 实力+1 羁绊+3；通告费 +18万；热度+3 士气+2",
+        { label: "「接了。就算是龙套，也能历练演技。」", hint: "点将 1 人参演（含分团、影视部）；人气+2 演技+1 羁绊+3；通告费 +18万；热度+3 士气+2",
           tag: "ranye20", value: "cast1", pickMode: "ranye20" },
         { label: "婉拒——孩子们今年的重心还在舞台上", hint: "拒绝该外务；无收益，无损失",
           tag: "ranye20", value: "no",

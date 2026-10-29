@@ -462,7 +462,7 @@ STORY.monthly26 = {
             st.morale = Math.min(100, st.morale + 3);
             st.members.push({
               id: "jujingyi26", name: "鞠婧祎", team: "HALL", gen: "二期生 · 影视部",
-              pop: 94, bond: 25, status: "active", hall: true, hallIdol: true, note: "荣誉殿堂 · 影视部（2026 重新签约）",
+              pop: 94, bond: 25, status: "active", hall: true, hallIdol: true, film: true, note: "荣誉殿堂 · 影视部（2026 重新签约）",
             });
             return "新合约的条款谈了一夜：影视部专属团队、收益透明分成、剧场保留荣誉席位。签约照上，她站在一群预备生中间——像一座桥，把这条河的过去和将来接在了一起。孩子们奔走相告：「大师姐回家了。」";
           } },

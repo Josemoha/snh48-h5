@@ -809,8 +809,36 @@ STORY.monthly18 = {
     prepEv18,
   ],
 
-  /* ---------- 9月：大赏预算评审（预告） ---------- */
+  /* ---------- 9月：赵韩倩学业暂休归来 + 大赏预算评审（预告） ---------- */
   9: [
+    {
+      /* 【2018 通用】赵韩倩的归队（用户口径 2026-XX）：2017-09 学业规划暂休，
+         一年期满学业完成归队——同赵嘉敏学业线处理，但不安排职务/兼任/小分队，
+         直接回归原队 Team SII（士气+3 热度+2，同陈怡馨归队口径）。
+         gate：她处于暂休（status=rest）；旧档已过 9 月的由 engine monthStart ⓪ 追补。 */
+      id: "m9_18_zhq_back",
+      title: "9月 · 赵韩倩的归队",
+      gate: st => {
+        const m = st.members.find(x => x.name === "赵韩倩");
+        return !!m && m.status === "rest";
+      },
+      pages: st => [
+        { nar: true, t: "九月的第一个工作日，前台转来一份材料——是去年九月休学的赵韩倩，学籍材料、成绩单、还有一张写好的归队申请。一年的暂休期到了，她回来了。" },
+        { s: "赵韩倩", cls: "", t: "总监，书读完了。这一年我一天都没敢松——课业之外，功也没断过。只要公司点头，我随时可以归队。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（翻着名册）她的名字一直留着——暂休，不是离团。位置一直给她留着呢，总监。" },
+      ],
+      choices: [
+        { label: "欢迎归队——回 Team SII", hint: "恢复在籍（不安排职务）；士气+3 热度+2", tag: "zhaoHanQian18", value: "back",
+          effect: st => {
+            const m = st.members.find(x => x.name === "赵韩倩");
+            if (m) { m.status = "active"; m.team = "SII"; m.note = "2018-09 学业完成归队（Team SII，不另安排职务）"; }
+            st.morale = Math.min(100, st.morale + 3);
+            st.heat = Math.min(100, st.heat + 2);
+            Game.addLog(st, st.month, "赵韩倩 学业完成归队（Team SII）。", "good");
+            return "名单贴出：赵韩倩，Team SII——一切像没变过，又什么都变了。队友们把提前备好的小蛋糕推到她面前，公演前的排练室多了笑声。\n\n（名单更新：赵韩倩 归队，不另安排职务。士气+3，热度+2。）";
+          } },
+      ],
+    },
     {
       id: "m9_18_rt_warn",
       title: "9月 · 大赏预算评审会（预告）",
