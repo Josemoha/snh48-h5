@@ -345,6 +345,11 @@ const UI = {
               this.showPrepStagePromotePicker(finish);
               return;
             }
+            if (ch.pickMode === "pickGen2") {
+              this.closeModal();
+              this.showGen2Picker(finish);   // 【2021】二期生/赵嘉敏安置逐人拍板窗（同一期生口径）
+              return;
+            }
             if (ch.pickMode === "reorg20") {
               this.closeModal();
               this.showReorg20Picker();
@@ -420,6 +425,14 @@ const UI = {
       const g = this.el("div", "ge-top7");
       step.gnzTop7.forEach((n, i) => g.appendChild(this.el("span", "ge-chip", (i + 1) + ". " + n)));
       c.appendChild(g);
+    }
+    /* 【传统总选·新人TOP7（用户口径 2026-XX）】2021 起传统总选展示：
+       含分团的全团范围，入团不满一年算新人，按人气取 7 */
+    if (step.newTop7 && step.newTop7.length) {
+      c.appendChild(this.el("p", "ge-sub", "新人 TOP7（入团不满一年 · 含分团）"));
+      const nb = this.el("div", "ge-top7");
+      step.newTop7.forEach((n, i) => nb.appendChild(this.el("span", "ge-chip", (i + 1) + ". " + n)));
+      c.appendChild(nb);
     }
 
     c.appendChild(this.el("p", "modal-text", "打投与门票为账面带来 " + step.money + " 万收入，全团热度大涨。"));
@@ -1076,6 +1089,9 @@ const UI = {
       head.appendChild(this.el("span", "quest-tag " + (doneN >= teams.length ? "q-done" : "q-open"), doneN >= teams.length ? "已完成" : "进行中"));
       c.appendChild(head);
       c.appendChild(this.el("div", "quest-detail",
+        (st.era === "2021" && !st.flags.orig21Done
+          ? "【先官宣本年度原创公演，再安排站位】"
+          : "") +
         "已拍板 " + doneN + " / " + teams.length + " 队" +
         (teams.length - doneN > 0 ? "，还有 " + (teams.length - doneN) + " 队未拍板（每队 1 行动点；年末未拍板队伍将按总选成绩自动排站）" : "（可重排，每队 1 行动点）")));
       box.appendChild(c);
@@ -1770,6 +1786,8 @@ const UI = {
     if (res.tone === "pickTeb20") { this.showTeb20Picker(); return; }
     /* 一期生合约（2020 主线⑤）：逐人续约/毕业/转岗，落地在 Game.applyGen1 */
     if (res.tone === "pickGen1") { this.showGen1Picker(); return; }
+    /* 【2021】二期生/赵嘉敏合约安置（同一期生口径）：落地在 Game.applyGen221 */
+    if (res.tone === "pickGen2") { this.showGen2Picker(); return; }
     /* TEB48 派遣移籍决定（2019 主线①第四段）：弹 0~5 人可选点将窗 */
     if (res.tone === "pickTeb19") { this.showTeb19Picker(); return; }
     /* 选秀派遣点将（2018）：弹十一人点将窗（葛佳慧承诺自动占位） */
@@ -1783,6 +1801,8 @@ const UI = {
     if (res.tone === "gePairs21") { this.showGePairs21Picker(); return; }
     /* 【2021·AW9 满员机制】预备役补员点将窗（1 人）；落地在 Game.setAw9r21Pick */
     if (res.tone === "aw9r21pick") { this.showAw9r21Picker(); return; }
+    /* 【2021·原创公演】XII 保留时路线选择窗（全套原创 / 原创×复刻拼盘）；落地在 Game.applyOrig21 */
+    if (res.tone === "orig21xii") { this.showOrig21XiiPicker(); return; }
     /* 【2021 延续】分团 TOP1 兼任 / IDFT 升格：复用 2020 拍板窗 */
     if (res.tone === "ge20branch1") { this.showGe20Branch1Picker(() => { this.renderGame(); }); return; }
     if (res.tone === "ge20idft") { this.showGe20IdftPicker(() => { this.renderGame(); }); return; }
@@ -2539,6 +2559,56 @@ const UI = {
     });
   },
 
+  /* 【2021·原创公演】XII 保留时路线选择窗（用户口径）：
+     ① 全套原创：从分团公演（现实中未被复刻）中选一套（名单 STORY.ORIG21_XII_BRANCH，待用户考据提供）；
+     ② 原创×复刻拼盘：虚构公演名（STORY.ORIG21_XII_MIX 候选）。落地在 Game.applyOrig21。 */
+  showOrig21XiiPicker() {
+    const st = Game.st;
+    const branchList = STORY.ORIG21_XII_BRANCH || [];
+    const mixList = STORY.ORIG21_XII_MIX || [];
+    const pick = (route, stage) => {
+      const res = Game.applyOrig21({ route: route, stage: stage });
+      this.closeModal();
+      this.renderGame();
+      if (res.vn) this.playScene(res.vn, () => this.toast(res.text));
+      else this.toast(res.text);
+    };
+    const optBtn = (parent, label, sub, fn) => {
+      const b = this.el("button", "ft-opt", "");
+      b.innerHTML = "<b>" + label + "</b><span>" + sub + "</span>";
+      b.onclick = fn;
+      parent.appendChild(b);
+    };
+    const showList = (title, sub, route, list, noteFn) => {
+      const c = this.card(title, sub);
+      const box = this.el("div", "modal-choices ft-group");
+      if (!list.length) {
+        const p = this.el("p", "modal-text", noteFn || "（候选名单待补充——由用户考据提供分团公演名单后开放）");
+        c.appendChild(p);
+        const back = this.el("button", "btn modal-close", "← 返回");
+        back.onclick = () => this.showOrig21XiiPicker();
+        c.appendChild(back);
+      } else {
+        list.forEach(it => optBtn(box, typeof it === "string" ? "《" + it + "》" : it.label,
+          typeof it === "string" ? (route === "orig" ? "分团公演 · 全套原创" : "虚构公演名 · 原创×复刻拼盘") : (it.sub || ""),
+          () => pick(route, typeof it === "string" ? it : it.value)));
+      }
+      c.appendChild(box);
+      this.modal(c);
+    };
+    const c = this.card("原创公演 · Team XII 方案",
+      "本部四队新公演已定（《幻镜》《羽化成蝶》《终极任务》《三角函数》）；Team XII 走哪条路线，总监拍板：");
+    const box = this.el("div", "modal-choices ft-group");
+    optBtn(box, "「全套原创。」", "从分团公演（现实中未被本部复刻）中选一套为 XII 量身移植",
+      () => showList("Team XII · 全套原创 · 选一套分团公演",
+        "候选：分团公演中现实中未被本部复刻过的作品", "orig", branchList));
+    optBtn(box, "「原创加复刻，拼一盘。」", "原创新曲加复刻授权曲拼盘，公演名现拟（与其他公演同风格）",
+      () => showList("Team XII · 原创×复刻拼盘 · 拟公演名",
+        "以下为企划部拟的候选名（虚构口径，可改）", "mix", mixList));
+    c.appendChild(box);
+    this.modal(c);
+  },
+
   /* 【2021·两线通用】《最佳拍档》· 钦点 5 组拍档（4月，不耗 AP）：
      全团可选、两两组队、不可跨团指定（每组两人须同团）；「不钦点」则全团走自动组队。
      落地在 Game.setGePicked21；余下成员 4 月末由引擎按好感度团内自动组队并公布。 */
@@ -2778,6 +2848,34 @@ const UI = {
         const res = Game.applyGen1(dst);
         this.renderGame();
         this.toast(res.text);
+      },
+    });
+  },
+
+  /* 【2021】二期生 & 赵嘉敏（学业线）合约安置窗（同一期生口径）：逐人续约/影视约/毕业/转工作人员
+     （默认预填续约，低点击量规范）；影视约需演技达标（引擎校验）；落地在 engine.applyGen221 */
+  showGen2Picker(onDone) {
+    const st = Game.st;
+    const targets = Game.gen2Pool21(st);
+    const teams = [
+      { key: "renew", label: "说服续约", cls: "" },
+      { key: "film",  label: "影视约续约（需演技≥" + Game.ACT_FILM_MIN + "）", cls: "" },
+      { key: "grad",  label: "合约期满毕业", cls: "" },
+      { key: "staff", label: "转为工作人员", cls: "" },
+    ];
+    this.showTeamAssignPicker({
+      title: "二期生长约 · 逐人拍板" + (targets.some(m => m.name === "赵嘉敏") ? "（含赵嘉敏·学业线）" : ""),
+      sub: "从二期生开始签的都是长约，大多数人已经达到标准——默认全员续约（成功进「丝芭传媒」分类）；只需点击需变更的成员：影视约续约（需演技≥" + Game.ACT_FILM_MIN + "，基础概率+5%，成功转入影视部）/ 毕业 / 转岗。",
+      pool: targets,
+      teams: teams,
+      defaultKey: "renew",
+      cardInfo: m => (m.name === "赵嘉敏" ? "学业线 · " : "二期生 · ") + (m.skills ? "演技" + m.skills.ac + " · " : "") + (m.status === "rest" ? "暂休" : m.team),
+      confirmLabel: "合约名单敲定 →",
+      onConfirm: dst => {
+        const res = Game.applyGen221(dst);
+        this.renderGame();
+        this.toast(res.text);
+        if (onDone) onDone();
       },
     });
   },

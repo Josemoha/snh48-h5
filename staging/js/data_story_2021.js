@@ -70,6 +70,16 @@ STORY.prologue21 = {
     { nar: true, t: "九点整，年度决策会议开始。王子杰最后一个进门，手里没有计划书，只有一份卫健委的通告打印件。" },
     { s: "王子杰", cls: "speaker-wangzj", t: "都看到了——政策在放宽，各地都在回暖。但我把丑话说在前头：疫情没有结束。封条今天能撕，明天也能再贴回去。上半年我们照旧谨慎，先静待情况，别急着把家底押上去。" },
     { s: "王子杰", cls: "speaker-wangzj", t: "所以今年的盘子，按「稳」字排：总选举四月开始筹备，八月开榜——去年线上的那套打投体系，正好接着用。四月之前，谁也不许提「聚众」两个字。" },
+    /* 【2021 序章新增·用户口径】子杰宣布和日方分手（仅复刻线；原创路线 2017 起即走原创，无分手剧情）：
+       口径A 复刻线且 2020 主线④和平分手已完成（teb20.done）→ 不扣资金，「去年已谈妥」；
+       口径B 复刻线未完成分手 → 公司出资买断已发布过的国语填词授权歌曲，视为分手完成（扣资金，
+       数额在序章拍板轮落地，见 pathChoices jpSplit21）。 */
+    ...((((st.decisions && st.decisions.jpMode) || st.jpMode) === "replicate") ? [
+      { nar: true, t: "议程翻到最后一页。王子杰把老花镜摘下来，压住一份从东京发来的函件，会议桌安静了几秒。" },
+      { s: "王子杰", cls: "speaker-wangzj", t: (st.teb20 && st.teb20.done)
+        ? "还有一件事，当着大家的面定下来：和日方的合作，到此为止。总监去年去东京，已经把这件事当面谈妥了——和平分手，不伤和气，授权的事也一并了结。从今年起，这条河的舞台，只唱我们自己的歌。"
+        : "还有一件事，当着大家的面定下来：和日方的合作，到此为止。复刻这些年，观众记住的都是别人的旋律。公司出钱，把已经发布过的国语填词授权歌全部买断——这笔学费交完，以后我们的舞台，只唱自己的歌。" },
+    ] : []),
     { s: "王婧", cls: "speaker-wangjing", t: "（翻开年度计划）《2021：春潮》。第一条，也是集团今年最重的一步棋：拓展和发展电商领域。去年上线的浪彩少女 AW9，今年是计划里的重要构成部分——她们负责电商直播。这块业务要做成常态化，而不是赶一场热闹。" },
     { s: "叶盛", cls: "speaker-yesheng", t: "（小声）电商啊……总监，那九个孩子的直播间，今年怕是要比剧场还亮了。" },
     { s: "王婧", cls: "speaker-wangjing", t: "第二条：疫苗。政府组织大规模接种，我们要把全团的疫苗接种安排进日程——两针，一针都不能少。孩子们的健康，比任何一条业务线都靠前。" },
@@ -80,7 +90,7 @@ STORY.prologue21 = {
 
   styles: [
     { id: "steady21", label: "「政策放宽是风，账上的钱才是帆。」", hint: "守成派：资金+60万，士气+3", apply: st => { st.money += 60; st.morale = Math.min(100, st.morale + 3); } },
-    { id: "shop21", label: "「电商是新舞台，先把直播间点亮。」", hint: "开拓派：热度+6，AW9 全员人气+3", apply: st => { st.heat = Math.min(100, st.heat + 6); st.decisions.unitsAW9 && st.decisions.unitsAW9.forEach(n => { const m = st.members.find(x => x.name === n && x.status === "active"); if (m) m.pop = Math.min(100, m.pop + 3); }); } },
+    { id: "shop21", label: "「电商是新舞台，先把直播间点亮。」", hint: "开拓派：热度+6，AW9 全员人气+3", apply: st => { st.heat = Math.min(100, st.heat + 6); st.decisions.unitsAW9 && st.decisions.unitsAW9.forEach(n => { const m = st.members.find(x => x.name === n && (x.status === "active" || x.status === "branch")); if (m) m.pop = Math.min(100, m.pop + 3); }); } },
     { id: "health21", label: "「先把每一针疫苗打好，再谈春天。」", hint: "人事派：全员羁绊+4，士气+4，叶盛负担-10", apply: st => { for (const k in st.bonds) st.bonds[k] = Math.min(100, st.bonds[k] + 4); st.morale = Math.min(100, st.morale + 4); st.burden = Math.max(0, st.burden - 10); } },
   ],
 
@@ -97,6 +107,37 @@ STORY.prologue21 = {
        并共同记作第一名；综艺线（classic）6月开榜只公布前五、奖励低于总选线；
        两线共同：第一名组合获双人旅行并录成综艺（tag bp21Travel21，待明年回收）。 */
   pathChoices: [
+    /* 【2021 序章新增·用户口径】分手落地轮（仅复刻线）：子杰宣布分手后，总监拍板办妥手续。
+       两口径：2020 主线④和平分手已完成（teb20.done）→ 不扣资金；未完成 → 公司出资
+       买断已发布过的国语填词授权歌曲（扣资金，暂定 120 万·待用户确认可调）。
+       tag jpSplit21：settled=去年已谈妥 / buyout=出资买断视为完成。
+       【注】jpMode 保留 replicate 不改——2021 后续口径（如原创公演文案）靠它区分「刚分手的日方模式」与「一直原创的原创路线」。 */
+    {
+      gate: st => ((st.decisions && st.decisions.jpMode) || st.jpMode) === "replicate" && !st.decisions.jpSplit21,
+      title: "会后 · 与日方分手，办妥最后一道手续",
+      pages: st => (st.teb20 && st.teb20.done) ? [
+        { nar: true, t: "散会前，法务把一份签好字的《合作终止确认书》放在你面前——去年东京那场谈判的成果，今天只需补一个归档的签名。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把钢笔递过来）去年谈妥的：复刻体系授权一并了结，互不追究。签个字，这一页就正式翻过去了。" },
+      ] : [
+        { nar: true, t: "散会前，法务抱来一摞文件：已经发布过的国语填词授权歌曲，一首一首列在买断清单上——词、曲、录音母带，一项一项标价。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（在清单末页敲了敲）日方开出的价码不低。但买断之后，这些歌就是我们的了——以后唱一天，就多一天自己的家底。这一笔，签了才算分手办妥。" },
+      ],
+      choices: [
+        { label: "「签字。从今年起，唱我们自己的歌。」",
+          hint: "分手手续落地（复刻线）：去年已谈妥则无支出；未谈妥则出资 120 万买断授权曲库，视为分手完成。此后全面走原创路线",
+          tag: "jpSplit21", value: "done",
+          apply: st => {
+            if (st.teb20 && st.teb20.done) {
+              st.decisions.jpSplit21 = "settled";
+              return "你在《合作终止确认书》上签了名。去年东京的谈判成果今日归档：和平分手，不伤和气，复刻体系的授权一并了结。\n\n（决策已登记：jpSplit21=settled。资金不变；今后全面走原创路线。）";
+            }
+            const cost = 120;   // 买断金额（用户口径「扣除一定的资金」，暂定 120 万·可调）
+            st.money = Math.max(0, st.money - cost);
+            st.decisions.jpSplit21 = "buyout";
+            return "你在买断清单末页签了名。一首一首买回来的，不只是旋律的使用权——是往后每一场原创公演的底气。\n\n（决策已登记：jpSplit21=buyout。资金-" + cost + " 万；已发布国语填词授权歌曲全部买断，视为与日方分手完成，今后全面走原创路线。）";
+          } },
+      ],
+    },
     {
       gate: st => !st.decisions.geMode21,
       title: "会后 · 新媒体部的两案",
@@ -133,9 +174,77 @@ STORY.prologue21 = {
 };
 
 /* ========================================================================
+   一·二、2021 原创公演（用户口径）：总选后先官宣原创公演，再安排公演站位
+   ------------------------------------------------------------------------
+   本部四队固定挂载（史实公演名，用户口径 2026-XX）：
+     Team SII《幻镜》 / Team NII《羽化成蝶》 / Team HII《终极任务》 / Team X《三角函数》。
+   Team XII（保留时）总监选路线：
+     ① 全套原创：从分团公演（现实中未被本部复刻过）中选一套；
+     ② 部分原创加复刻拼盘：虚构公演名（与其他公演同风格）。
+   【考据约定】分团公演名单需用户提供，Agent 不虚构（ORIG21_XII_BRANCH 留空待补）；
+   拼盘公演名为虚构口径，可由 Agent 拟定候选。
+   ======================================================================== */
+STORY.ORIG21_TEAM_STAGES = { SII: "幻镜", NII: "羽化成蝶", HII: "终极任务", X: "三角函数" };
+/* 全套原创案候选（分团公演·现实中未被本部复刻，用户口径 2026-XX；
+   《Mia.XII》现实原定 GNZ48 Team Z 推出，因故实际未推出——游戏内允许玩家弥补遗憾） */
+STORY.ORIG21_XII_BRANCH = [
+  { label: "《第一人称》", value: "第一人称", sub: "分团公演 · 全套原创移植" },
+  { label: "《Mia.XII》", value: "Mia.XII", sub: "现实原定 GNZ48 Team Z 推出·因故未推出——本次弥补遗憾（用户口径）" },
+  { label: "《奇幻加冕礼》", value: "奇幻加冕礼", sub: "分团公演 · 全套原创移植" },
+  { label: "《HAKUNA MATATA》", value: "HAKUNA MATATA", sub: "分团公演 · 全套原创移植" },
+];
+STORY.ORIG21_XII_MIX = ["棱镜法则", "回声航线", "平行坐标"];   // 拼盘案虚构公演名候选（虚构口径，可调）
+/* 制作成本（用户口径：官宣需消耗资金；XII 拼盘案低于其他队伍。数额暂定可调） */
+STORY.ORIG21_COST_TEAM = 60;      // 每队原创公演制作成本（万）——本部四队共 240 万
+STORY.ORIG21_COST_XII_ORIG = 60;  // XII 全套原创：同常规队伍口径
+STORY.ORIG21_COST_XII_MIX = 35;   // XII 原创×复刻拼盘：复刻曲占比高，成本低于其他队伍
+/* 偶像运动会（用户口径，数额暂定可调） */
+STORY.SPORTS21_COST = 30;         // 4月启动仪式资金（万）：场地/传播/转播位
+STORY.SPORTS21_REWARD_POP = 4;    // 5月运动会胜利队伍全队人气奖励
+/* 谢蕾蕾处置（用户口径，数额暂定可调） */
+STORY.XLL21_PENALTY = 60;         // 解约违约金（万）
+
+/* 总选后·站位引导事件的 2021 替代文案（engine.monthStart 调用）：
+   两口径——日方模式（复刻线，今年起走原创）需要上原创公演；
+   原创路线（非复刻线）：公演跳了很久，需要新鲜感。 */
+STORY.orig21Intro = function (st) {
+  const rep = ((st.decisions && st.decisions.jpMode) || st.jpMode) === "replicate";
+  const xii = Game.keptXiiInRoster(st);
+  const stageLine = "Team SII《幻镜》· Team NII《羽化成蝶》· Team HII《终极任务》· Team X《三角函数》"
+    + (xii ? "；Team XII 的方案由您拍板——全套原创（从分团公演里选一套），或者原创加复刻的拼盘（名字我来拟）" : "");
+  return [
+    { nar: true, t: "总选举的灯光刚落，舞台总监马跃抱着一叠资料敲开了总监办公室的门。" },
+    { s: "马跃", cls: "", t: rep
+      ? "总监，和日方分手的文件刚归档——今年开始走原创，第一件事就是上原创公演。四支队伍的新公演，企划部已经把方案排出来了。"
+      : "总监，有个事憋了一年了：咱们的公演已经跳了很久了，孩子们熟、粉丝更熟——需要新鲜感。企划部今年报了四套全新原创公演的方案，就等您拍板。" },
+    { s: "马跃", cls: "", t: "分工是这样：先官宣原创公演，把新歌新舞台排起来；站位的事排在新公演后面——先有台，再排人。新公演名单：" + stageLine + "。制作费每队 " + (STORY.ORIG21_COST_TEAM || 60) + " 万，四队共 " + (STORY.ORIG21_COST_TEAM || 60) * 4 + " 万"
+      + (xii ? "；Team XII 另计——全套原创 " + (STORY.ORIG21_COST_XII_ORIG || 60) + " 万，或原创加复刻的拼盘 " + (STORY.ORIG21_COST_XII_MIX || 35) + " 万（复刻曲占大头，便宜些）。" : "。") },
+    { nar: true, t: "（本月起行动区新增「官宣原创公演」：官宣消耗制作费，官宣后解锁「公演站位调整」；本年度站位在新公演官宣前不可拍板。）" },
+  ];
+};
+
+/* ========================================================================
    二、行动场景（scenes21）——引擎 doAction 接线待补（同 scenes20 口径）
    ======================================================================== */
 STORY.scenes21 = {
+
+  /* ---- 2021 原创公演 · 官宣首演 ---- */
+  orig21Debut: {
+    label: "原创公演 · 官宣首演",
+    pages: st => {
+      const o = (st.decisions && st.decisions.orig21) || {};
+      const stages = o.stages || {};
+      const names = ["SII", "NII", "HII", "X"]
+        .filter(t => stages[t])
+        .map(t => "Team " + t + "《" + stages[t] + "》");
+      if (stages.XII) names.push("Team XII《" + stages.XII + "》" + (o.xii && o.xii.route === "mix" ? "（原创×复刻拼盘）" : "（全套原创）"));
+      return [
+        { nar: true, t: "官宣当日，剧院门口的灯牌整块换新：" + names.join(" / ") + "。粉丝在门口排起了长队——有人在猜曲目单，有人在猜新公演的第一个unit。" },
+        { s: "马跃", cls: "", t: "（把五张排期表钉上墙）总监，新公演排练全部排进日程。首演落定后，站位表我就发到「公演站位调整」里——先有台，再排人，今年的规矩。" },
+        { nar: true, t: "（原创公演已官宣——行动区解锁「公演站位调整」，本年度站位在新公演框架下拍板。）" },
+      ];
+    },
+  },
 
   /* ---- 主线①：电商领域 · 三段 ---- */
   aw9ShopStart: {
@@ -216,7 +325,8 @@ STORY.scenes21 = {
    ----------------------------------------------------------------------------
    【用户口径】先不挂载：人员变动相关事件、总选结算内容、最佳拍档活动内容。
    12 月金曲大赏已挂载（榜单 DATA.goldSongs["2021"]，按用户口径；叙事 rtNarrative21 已回填）。
-   中秋事件：STORY.midAutumn 暂不 unshift（2021 专属文案待补，勿复用 2026/2027 分支）。
+   中秋事件：2021 分支已补（data_story.js STORY.midAutumn，st.era==="2021" 专属文案，
+   勿复用 2026/2027 分支），文件末尾 unshift 挂载至 monthly21[9]。
    ======================================================================== */
 STORY.monthly21 = {
   /* ---------- 1月：交接周 + 政策放宽的风向（纯叙事，无人员变动） ---------- */
@@ -281,8 +391,34 @@ STORY.monthly21 = {
     },
   ],
 
-  /* ---------- 4月：总选举筹备启动（框架性叙事，不涉及结算内容） ---------- */
+  /* ---------- 4月：总选举筹备启动 + 偶像运动会启动仪式（可选，需资金） ---------- */
   4: [
+    {
+      /* 【2021·4月（用户口径 2026-XX）】偶像运动会启动仪式：可选是否召开，
+         召开需资金（发布会/场地/转播位，暂定 30 万·可调）；召开后方有 5 月运动会。 */
+      id: "m4_21_sportsStart",
+      title: "4月 · 偶像运动会启动仪式",
+      gate: st => !st.decisions.sports21,
+      pages: st => [
+        { nar: true, t: "四月头上，运营部送来一份新企划：上半年没有大活动档期，全团缺一个「热身」的舞台——建议办一场偶像运动会：田径、拔河、接力，各队组队参赛，粉丝进场，全程转播。" },
+        { s: "马跃", cls: "", t: "（把企划书翻到预算页）总监，先开个启动仪式把官宣做出去：场地、传播、转播位，预算 " + (STORY.SPORTS21_COST || 30) + " 万。运动会五月中旬开，各队现在就开始练——磨合度高的队伍，拿奖的概率大得多。" },
+        { s: "王婧", cls: "speaker-wangjing", t: "（在预算上圈了一笔）账我算过了：转播和票务能回收一部分，但这笔钱得先垫出去。开不开，总监拍板——开了就是全团的一场大练兵。" },
+      ],
+      choices: [
+        { label: "「办。全团练起来。」", hint: st => "召开启动仪式（资金-" + (STORY.SPORTS21_COST || 30) + " 万）；5 月中旬举行偶像运动会，全团按队伍磨合度竞技，胜利队伍全队人气奖励",
+          gate: st => st.money >= (STORY.SPORTS21_COST || 30),
+          tag: "sports21", value: "go",
+          effect: st => {
+            const cost = STORY.SPORTS21_COST || 30;
+            st.money -= cost;
+            st.heat = Math.min(100, (st.heat || 0) + 4);
+            return "启动仪式当天，各队队旗在体育馆外一字排开——从今天起到五月，排练室外多了条跑道，粉丝群里全是「我们队稳赢」的讨论。\n\n（决策已登记：sports21=go。资金-" + cost + " 万 热度+4；5 月举行偶像运动会——全团按队伍磨合度竞技，胜利队伍有人气奖励。）";
+          } },
+        { label: "「今年不办了，档期排不开。」", hint: "不召开：无支出，5 月无运动会",
+          tag: "sports21", value: "skip",
+          effect: () => "企划书被你压回了文件堆最底下。马跃收走企划书的时候嘟哝了一句：「其实孩子们挺想比的。」\n\n（决策已登记：sports21=skip。今年无偶像运动会。）" },
+      ],
+    },
     {
       id: "m4_21_geprep",
       title: "4月 · 总选举筹备启动",
@@ -304,8 +440,42 @@ STORY.monthly21 = {
     },
   ],
 
-  /* ---------- 5月：海外选秀出征（若点将完成）---------- */
+  /* ---------- 5月：海外选秀出征（若点将完成）+ 偶像运动会（若 4 月启动）---------- */
   5: [
+    {
+      /* 【2021·5月（用户口径 2026-XX）】偶像运动会：全团按磨合度选取一支胜利队伍，
+         提供人气奖励（胜利队伍全队 人气+4·可调）；仅 4 月启动仪式召开后触发。 */
+      id: "m5_21_sports",
+      title: "5月 · 偶像运动会",
+      gate: st => st.decisions.sports21 === "go" && Game.sports21Teams(st).length > 0,
+      pages: st => {
+        const rank = Game.sports21Teams(st);
+        const board = rank.slice(0, 5).map((r, i) => (i + 1) + ". " + (r.team === "PREP" ? "预备生" : r.team.length <= 3 ? "Team " + r.team : r.team) + "（磨合 " + r.chem + "）").join("　");
+        return [
+          { nar: true, t: "五月中旬，体育中心。入场式上各队举着队旗绕场一周，看台上灯牌连成了海——这是疫情之后，全团第一次在同一片场地上分成六个颜色呐喊。" },
+          { s: "马跃", cls: "", t: "（拿着议程表）总监，赛程一天：拔河、迎面接力、定点投篮，最后一项是全队合唱打分。赛前状态我盯着呢：" + board + "。磨合度就是战斗力——哪队平时最齐，哪队今天就最稳。" },
+          { s: "王婧", cls: "speaker-wangjing", t: "（看著转播机位）各平台都在推流，票也卖得不错。赢的队伍别亏待——公司出奖励，让孩子们把「我们队」三个字记在心里。" },
+        ];
+      },
+      choices: [
+        { label: "「发令——开赛！」", hint: st => { const w = Game.sports21Teams(st)[0]; return "胜利队伍=" + (w ? (w.team === "PREP" ? "预备生" : w.team) : "——") + "（磨合度最高）：全队人气+" + (STORY.SPORTS21_REWARD_POP || 4) + "；士气+3 热度+5"; },
+          tag: "sports21", value: "done",
+          effect: st => {
+            const rank = Game.sports21Teams(st);
+            const win = rank[0];
+            if (!win) return "（场上无可用队伍，运动会取消。）";
+            const rp = STORY.SPORTS21_REWARD_POP || 4;
+            const roster = Game.teamRoster(st, win.team);
+            for (const m of roster) m.pop = Math.min(100, (m.pop || 0) + rp);
+            st.chem[win.team] = Math.min(100, (st.chem[win.team] != null ? st.chem[win.team] : win.chem) + 2);
+            st.morale = Math.min(100, st.morale + 3);
+            st.heat = Math.min(100, st.heat + 5);
+            const label = win.team === "PREP" ? "预备生" : win.team.length <= 3 ? "Team " + win.team : win.team;
+            const board = rank.slice(0, 3).map((r, i) => (i + 1) + ". " + (r.team === "PREP" ? "预备生" : r.team.length <= 3 ? "Team " + r.team : r.team) + "（磨合 " + r.chem + "）").join("　");
+            return label + " 的旗子最后留在了记分牌最上面——拔河赢了，接力也赢了，合唱打分同样最高。颁奖台上，" + label + " 的孩子们把奖牌挂成一排；别的队围过来道贺，有几个人的眼神已经烧起来了。\n\n（决策已登记：sports21=done。胜利=" + label + "（磨合度 " + win.chem + "），全队人气+" + rp + "；磨合度+2；士气+3 热度+5。前三：" + board + "。）";
+          } },
+      ],
+    },
     {
       id: "m5_21_gp_sendoff",
       title: "5月 · 出征",
@@ -318,10 +488,101 @@ STORY.monthly21 = {
         ];
       },
     },
+    {
+      /* 【2021·5月（用户口径 2026-XX）】谢蕾蕾处置（限 GNZ48 在册 + 玩家兼任 GNZ48）：
+         去年年末团内恋爱风波，GNZ48 代为处理（剧场道歉+下放预备生），本意为留人；
+         今日谢蕾蕾本人提出离团。三案：解约收违约金 / 提前毕业不收 / 说服从头再来
+         （基础 45%，高羁绊加成：≥60 +6%、≥70 +12%、≥80 +20%，上限 90%）；
+         未兼任 GNZ48 → 默认解约离团收违约金（engine.monthStart 落地，不走本事件）。 */
+      id: "m5_21_xll",
+      title: "5月 · 谢蕾蕾的决意",
+      gate: st => !st.decisions.xll21 && !!(st.flags.concur17 && st.flags.concur17["GNZ48"])
+        && st.members.some(m => m.name === "谢蕾蕾" && m.status === "branch" && m.branchTeam === "GNZ48" && !m.hall),
+      pages: st => [
+        { nar: true, t: "五月，一个广州方向的长途电话转进了总监办公室——GNZ48 剧场发言人陈文泽，语气比平时谨慎得多。" },
+        { s: "陈文泽", cls: "", t: "总监，有件事必须向您当面报告。去年年末，谢蕾蕾被曝出团内恋爱——当时我们代为处理了：让她在剧场公开道歉，并下放预备生。说实话，做出这样的处罚，本质上是想留下她的。" },
+        { s: "陈文泽", cls: "", t: "但今天她本人找到剧场，明确表示：还是希望离团——她不想再承受舆论的压力了。这件事的最终处置权在您，我们想听听您的意见。" },
+      ],
+      choices: [
+        { label: "「准了——按流程解约，违约金照收。」", hint: st => "解约离团（收取违约金 " + (STORY.XLL21_PENALTY || 60) + " 万）",
+          tag: "xll21", value: "release",
+          effect: st => {
+            const m = st.members.find(x => x.name === "谢蕾蕾");
+            const penalty = STORY.XLL21_PENALTY || 60;
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2021-05 团内恋爱风波后协商解约离团"; }
+            st.money += penalty;
+            return "你在解约协议上签了字。广州方向发来确认函：违约金如数到账。谢蕾蕾的行李箱第二天就寄回了上海——箱子上贴着 Team G 的队贴，撕的时候她留了一下手。\n\n（决策已登记：xll21=release。谢蕾蕾解约离团；资金+" + penalty + " 万（违约金）。）";
+          } },
+        { label: "「让她提前毕业吧——别再收钱了。」", hint: "提前毕业：不收取违约金，体面谢幕（士气+2）",
+          tag: "xll21", value: "grad",
+          effect: st => {
+            const m = st.members.find(x => x.name === "谢蕾蕾");
+            if (m) { m.status = "left"; m.honorGrad = true; m.note = (m.note ? m.note + "；" : "") + "2021-05 恋爱风波后提前毕业（公司免收违约金）"; }
+            st.morale = Math.min(100, st.morale + 2);
+            return "毕业公演定在了下一场。台上她说：「这条河教我的，比什么都多。」台下没有骂声，只有灯牌。体面转身，不收违约金——有些账，不用算得太清。\n\n（决策已登记：xll21=grad。谢蕾蕾提前毕业离团（荣誉毕业生）；不收取违约金；士气+2。）";
+          } },
+        { label: "「再去跟她谈一次——留下来，从头再来。」", hint: st => { const m = st.members.find(x => x.name === "谢蕾蕾"); const b = m ? (m.bond || 0) : 0; const c = Math.min(90, 45 + (b >= 80 ? 20 : b >= 70 ? 12 : b >= 60 ? 6 : 0)); return "说服从头再来（成功率 " + c + "%：基础 45% + 羁绊加成「当前 " + b + "」）；失败则按解约离团（收违约金）"; },
+          tag: "xll21", value: "convince",
+          effect: st => {
+            const m = st.members.find(x => x.name === "谢蕾蕾");
+            if (!m) return "（谢蕾蕾已不在册。）";
+            const b = m.bond || 0;
+            const chance = Math.min(90, 45 + (b >= 80 ? 20 : b >= 70 ? 12 : b >= 60 ? 6 : 0));
+            const penalty = STORY.XLL21_PENALTY || 60;
+            if (Game.rnd(0, 99) < chance) {
+              st.decisions.xll21 = "stay";
+              m.note = (m.note ? m.note + "；" : "") + "2021-05 恋爱风波后经总监挽留，从头再来";
+              m.bond = Math.min(100, b + 6);
+              st.morale = Math.min(100, st.morale + 3);
+              return "你约她谈到了深夜。窗外是剧场的灯牌，你只说了一句：「公司罚的是行为，没想过罚走一个人。」她沉默了很久，点了点头——「那就，从头再来。」\n\n（说服成功（成功率 " + chance + "%）。谢蕾蕾留在 GNZ48 预备生从头再来：羻绊+6；士气+3。）";
+            }
+            st.decisions.xll21 = "convinceFail";
+            m.status = "left";
+            m.note = (m.note ? m.note + "；" : "") + "2021-05 恋爱风波后挽留未果，协商解约离团";
+            st.money += penalty;
+            st.morale = Math.max(0, st.morale - 2);
+            return "你把话说到了最软的地方，她摇头摇得很轻、也很坚决：「总监，谢谢您——但我真的，撑不住了。」挽留失败，最终仍按协商解约办理。\n\n（说服失败（成功率 " + chance + "%）。谢蕾蕾解约离团；资金+" + penalty + " 万（违约金）；士气-2。）";
+          } },
+      ],
+    },
   ],
 
-  /* ---------- 6月：AW9 半年报（主线①常态化口径）---------- */
+  /* ---------- 6月：苏杉杉后援会风波（饭圈整治背景，两案拍板） ---------- */
   6: [
+    {
+      /* 【2021·6月（用户口径 2026-XX）】苏杉杉后援会管理层卷款跑路：本年度总选
+         排名较正常下降（传统模式 -5 位 / 拍档模式 -2 位，引擎 resolveGE/
+         resolveGEPartner21 落地）；两案拍板影响后续处理（tag suYuan21）。
+         数值暂定可调：silence 羁绊-8；statement 全团失格值-5 热度-6。 */
+      id: "m6_21_su_scandal",
+      title: "6月 · 后援会风波",
+      gate: st => !st.decisions.suYuan21 && st.members.some(m => m.name === "苏杉杉" && (m.status === "active" || m.status === "branch") && !m.hall),
+      pages: st => [
+        { nar: true, t: "六月中的一个凌晨，苏杉杉后援会的大群炸了：后援会管理层集体失联——大粉卷走了应援集资的款项，账本停更在三天前。超话里骂声、维权帖、退圈声明混成一团，路人的截图已经开始往外传。" },
+        { s: "苏杉杉", cls: "", t: "（在总监办公室门口站了很久才敲门）总监……钱是他们收的，骂名是我背的。我知道这事不怪公司，但总得有个说法——对不起，给您添麻烦了。" },
+        { s: "王婧", cls: "speaker-wangjing", t: "（把舆情简报放在你桌上，声音压得很低）总监，高层提醒过了：今年正是饭圈整治的风口，后援会集资、跑路这种事处理不好，公司会被直接卷进乱象纠纷里。是冷处理避开风波，还是正面回应整顿应援——两种做法各有代价，你慎重。" },
+      ],
+      choices: [
+        { label: "「不发声明。别把公司卷进饭圈乱象。」", hint: "冷处理：避开纠纷与追问，但苏杉杉独自承受风波（羁绊-8）",
+          tag: "suYuan21", value: "silence",
+          effect: st => {
+            const m = st.members.find(x => x.name === "苏杉杉");
+            if (m) m.bond = Math.max(0, (m.bond || 0) - 8);
+            return "公告栏上什么都没有。热搜帖子的评论区从质问到淡忘，只用了两周。苏杉杉照常排练、照常直播，只是谢幕鞠躬时，头比以前埋得低了些。" + (m ? "\n\n（决策已登记：suYuan21=silence。风波过去，但她的心里留了印子——苏杉杉羁绊-8。）" : "") ;
+          } },
+        { label: "「发表声明：规范应援行为，引导粉丝合理应援。」", hint: "正面回应：声明表态规范与引导（全团失格值-5），但陷入舆论漩涡（热度-6）",
+          tag: "suYuan21", value: "statement",
+          effect: st => {
+            let n = 0;
+            for (const m of st.members) {
+              if (!(m.status === "active" || m.status === "branch") || m.hall) continue;
+              if (m.dq) { m.dq = Math.max(0, m.dq - 5); n++; }
+            }
+            st.heat = Math.max(0, st.heat - 6);
+            return "公司的声明连夜发出：应援会集资属于粉丝民间自发行为，官方不便直接介入；对此次事件深表遗憾，今后将以此为戒，规范成员及官方渠道的应援引导，呼吁粉丝理性追星、合理应援、不参与任何形式的集资借贷。私下里，各队成员也被逐一叮嘱：管好自己的后援会，别让类似的事再发生。声明没能堵住所有嘴——舆论漩涡转了整整一个月；但各家后援会连夜自查，队内的规矩一下立起来了。" + (n ? "\n\n（决策已登记：suYuan21=statement。全团失格值-5（涉 " + n + " 人）；热度-6——舆论漩涡的代价。）" : "\n\n（决策已登记：suYuan21=statement。热度-6——舆论漩涡的代价。）");
+          } },
+      ],
+    },
     {
       id: "m6_21_aw9_half",
       title: "6月 · 直播间的半年报",
@@ -348,6 +609,41 @@ STORY.monthly21 = {
   /* 8月：总选举开榜——结算内容待用户口径补充，暂不挂载事件（占位）。 */
 
   9: [
+    {
+      /* 【2021·9月（用户口径 2026-XX）】二期生长约到期安置：从二期生开始签的都是长约，
+         大部分人已达到标准（总选连霸/前三/殿堂等荣誉口径），可以出去看看。
+         安置池 GEN2_21 十人中的在册者；同一期生安置口径（续约/影视约/毕业/转岗），
+         拍板窗含赵嘉敏·学业线（若在池）。 */
+      id: "m9_21_gen2",
+      title: "9月 · 长约到期",
+      gate: st => !st.flags.gen2Done21 && Game.gen2Pool21(st).some(m => Game.GEN2_21.indexOf(m.name) >= 0),
+      pages: st => [
+        { nar: true, t: "九月的月度会上，叶盛把一叠合同抽出来排在桌上——全是二期生的名字。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "总监，你知道吧，从二期生开始，她们签的都是长约。但这几年下来，很大一部分二期生都已经达到标准了——荣誉、人气、代表作，该有的都有了。也许，可以让她们出去看看，不用继续呆在小剧场了。" },
+        { nar: true, t: "（二期生安置开放：总选落幕后逐人拍板去向——续约/影视约/毕业/转岗，同一期生安置口径；月度行动「二期生安置」已入行动区，拍板窗内含赵嘉敏·学业线〔若适用〕。）" },
+      ],
+      choices: [
+        { label: "「把名册给我——一个一个来。」", hint: "开启二期生安置：逐人拍板去向（默认全员续约，只需点需变更的成员）",
+          pickMode: "pickGen2" },
+      ],
+    },
+    {
+      /* 【2021·9月（用户口径 2026-XX）】赵嘉敏学业线回收：按 2017 年约定延期一年，
+         今年合约到期，安置去向（同一期生安置，并入 gen2 拍板窗池）。 */
+      id: "m9_21_zhao21",
+      title: "9月 · 延期的一年",
+      gate: st => !st.flags.gen2Done21 && Game.zjmStudyRoute(st)
+        && st.members.some(m => m.name === "赵嘉敏" && (m.status === "active" || m.status === "rest") && !m.hall),
+      pages: st => [
+        { nar: true, t: "叶盛敲门进来的时候，手里只拿着一份合同——封面右下角，写着赵嘉敏的名字。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "总监，根据当年和赵嘉敏的约定，学业延期了一年——今年，这份合约也到期了。她的去向，得有个说法了。" },
+        { nar: true, t: "（赵嘉敏并入二期生安置拍板窗：逐人拍板去向——续约/影视约/毕业/转岗，同一期生安置口径。）" },
+      ],
+      choices: [
+        { label: "「她的去向，我来定。」", hint: "开启安置：赵嘉敏并入二期生拍板窗（默认续约，可改影视约/毕业/转岗）",
+          pickMode: "pickGen2" },
+      ],
+    },
     {
       id: "m9_21_aw9_promo",
       title: "9月 · 大促备战",
@@ -400,8 +696,11 @@ STORY.monthly21 = {
    四、AW9 满员守卫（主线①机制，供引擎调用；用户口径）
    ----------------------------------------------------------------------------
    调用时机（引擎接线待补）：月首结算后、任何成员变动落地后。
-   规则：AW9 正式成员 9 人（decisions.unitsAW9）。凡因故不在籍（status!=="active"）
-   的正式成员：立即移出 AW9；预备役（decisions.unitsAW9R）中在籍且人气最高者
+   规则：AW9 正式成员 9 人（decisions.unitsAW9）。凡因故不在籍
+   （status!=='active' && status!=='branch'）的正式成员：立即移出 AW9；
+   【修复】分团在册（branch）算在籍——AW9 成团口径「分团在册者兼任不调动」
+   （见 engine.setAW9Reserve），刘倩倩（GNZ48 Team NIII 兼任）此前被误判为
+   离团触发补位/补选。预备役（decisions.unitsAW9R）中在籍且人气最高者
    自动顶上（pop+2 bond+2，备注登记）；随后总监需重新点将一名预备成员补足
    预备役（pickMode="aw9r21" → UI 弹窗，引擎接线后回收进 unitsAW9R）。
    返回值：补位事件文本数组（空数组=无需补位）。
@@ -414,14 +713,16 @@ STORY.aw9Guard21 = function (st) {
 
   const leave = formal.filter(n => {
     const m = st.members.find(x => x.name === n);
-    return !m || m.status !== "active";
+    /* 在籍=active/branch（分团兼任算在籍，同 setAW9Reserve 口径；修复刘倩倩误判离团） */
+    return !m || (m.status !== "active" && m.status !== "branch");
   });
   if (!leave.length) return out;
 
   const promoted = [];
   leave.forEach(name => {
     const pool = reserve
-      .map(n => ({ n, m: st.members.find(x => x.name === n && x.status === "active") }))
+      /* 预备役点将池本部/分团在册皆可选（同 showAw9r21Picker 口径），此处同步认 branch */
+      .map(n => ({ n, m: st.members.find(x => x.name === n && (x.status === "active" || x.status === "branch")) }))
       .filter(x => x.m)
       .sort((a, b) => b.m.pop - a.m.pop);
     if (!pool.length) return;   // 预备役无人可补：引擎待接 UI 提示「AW9 缺员，需点将」
@@ -504,3 +805,47 @@ for (const _fk of ["monthly", "monthly17", "monthly18", "monthly19", "monthly20"
   if (!STORY[_fk][8]) STORY[_fk][8] = [];
   STORY[_fk][8].push(STORY.filmEvent);
 }
+
+/* ========================================================================
+   【通用月度事件·预备生汇报公演（2018 制度延续，用户口径 2026-XX）】
+   2018-01 公布后逐年复用：2019 线原有 prepEv19；2020/2021 线原漏接线，
+   此处补挂共享事件（2027 线在 data_story_2027.js 末尾自挂——加载顺序在本文件之后）；
+   2026 线已有自己的升格通道（二十三期升格/CGT48 移籍升格），不重复挂载。
+   每 4 个月一次（4/8/12月），每场升格 2 人；候选与落地沿用引擎
+   prepStageCandidates / promotePrepStage（XII 保留时 XII 亦可作升格目标）。
+   ======================================================================== */
+STORY.prepStageShared = {
+  id: "m_prep_stage",
+  title: "预备生汇报公演",
+  gate: s => s.month % 4 === 0 && Game.prepStageCandidates(s).length > 0,   // 每 4 个月一次（4/8/12月）
+  pages: s => {
+    const stars = Game.prepStageCandidates(s).slice(0, 2);
+    const names = stars.map(m => m.name + "（" + (m.status === "branch" ? (m.branchTeam || "分团") + "预备生" : "预备生") + "）").join("、");
+    const fromBranch = stars.some(m => m.status === "branch");
+    const ord = Math.max(1, parseInt(s.era, 10) - 2018 + 1);   // 制度推行第 N 年（2018=第1年）
+    return [
+      { nar: true, t: "每四个月一次的预备生汇报公演如期开演——这项制度已推行到第 " + ord + " 年，轮换池里的孩子换了一茬又一茬。舞台总监马跃在本子上圈了两个名字——" + names + "。" },
+      { s: "马跃", cls: "", t: "（演出结束，拿着记录本来找你）总监，这两个孩子的进步是断层的：站姿、走位、开口都不说了——她们缺的不是能力，是一个正式的位置。怎么安排，您定。" },
+      { nar: true, t: (fromBranch
+        ? "（其中有人来自分团——上调本部后，人气与羁绊都会上一个台阶。）"
+        : "（预备生升格入队后，人气与羁绊将获得提升。）") },
+    ];
+  },
+  choices: [
+    { label: "宣布升格名单，为两人定队", hint: "逐人选择 SII / NII / HII / X（XII 保留时可选；人气与羁绊提升，分团上调加成更多）",
+      pickMode: "prepStagePromote" },
+    { label: "两人均继续留任预备生观察", hint: "本场暂不升格（下次公演再议）",
+      tag: "prepStage", value: "stay",
+      effect: () => "你在汇报表上写下「继续观察」。马跃点点头：「下次公演她们要是还这么稳，您可就不好说了。」" },
+  ],
+};
+for (const _pk of ["monthly20", "monthly21"]) {
+  if (!STORY[_pk]) continue;
+  for (const _pm of [4, 8, 12]) {
+    if (!STORY[_pk][_pm]) STORY[_pk][_pm] = [];
+    STORY[_pk][_pm].push(STORY.prepStageShared);
+  }
+}
+
+/* 中秋事件跨线复用：2021 线 9 月挂载（2021 专属文案分支见 data_story.js STORY.midAutumn） */
+STORY.monthly21[9].unshift(STORY.midAutumn);

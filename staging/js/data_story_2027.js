@@ -866,3 +866,15 @@ STORY.endings27 = {
     },
   },
 };
+
+/* ========================================================================
+   【通用月度事件·预备生汇报公演（2018 制度延续，用户口径 2026-XX）】
+   共享事件 STORY.prepStageShared 定义在 data_story_2021.js 末尾（加载顺序在其后，
+   可直接引用）；2027 线在此自挂 4/8/12 月——2018 公布后逐年复用的补接线。
+   ======================================================================== */
+if (STORY.prepStageShared) {
+  for (const _pm of [4, 8, 12]) {
+    if (!STORY.monthly27[_pm]) STORY.monthly27[_pm] = [];
+    STORY.monthly27[_pm].push(STORY.prepStageShared);
+  }
+}
