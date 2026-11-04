@@ -1167,6 +1167,22 @@ const DATA = {
         { rank: 11, song: "honor",        from: "", fixed: true, team: "SNH48 Team HII", teamKey: "HII", tag: "年度荣耀队歌", last: true },
       ],
     },
+    "2022": {   // 按用户口径挂载（2026-XX 批次）：本年无年度队歌（不设殿后条目）；
+                // 前三锁史实；4~8名 2 人、9名 4 人、10名 7 人为人数口径，
+                // 参演成员按人气生成（姓名待补充后可改 fixed 挂载）
+      list: [
+        { rank: 10, song: "MOONLIGHT",              from: "", gen: 7 },
+        { rank: 9,  song: "花园舞曲",               from: "", gen: 4 },
+        { rank: 8,  song: "Hold Me Tight",          from: "", gen: 2 },
+        { rank: 7,  song: "9 TO 9",                 from: "", gen: 2 },
+        { rank: 6,  song: "Look Out（讯号）",       from: "", gen: 2 },
+        { rank: 5,  song: "美杜莎的温柔",           from: "", gen: 2 },
+        { rank: 4,  song: "Liar（受理人）",         from: "", gen: 2 },
+        { rank: 3,  song: "SWEET TRAP（影）",       from: "", fixed: true, names: ["姜杉", "费沁源"] },
+        { rank: 2,  song: "未接来电",               from: "", fixed: true, names: ["张昕", "许杨玉琢"] },
+        { rank: 1,  song: "渊（DEEP DOWN）",        from: "", fixed: true, names: ["蒋芸", "王晓佳"], tag: "年度金曲" },
+      ],
+    },
   },
 
   /* 分团历史节点（主线任务节奏的史实锚点） */

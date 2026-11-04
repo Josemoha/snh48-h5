@@ -79,6 +79,7 @@ const Game = {
     const st = this.st;
     const pro = st.era === "2027" ? STORY.prologue27
       : st.era === "2026" ? STORY.prologue26
+      : st.era === "2022" ? STORY.prologue22
       : st.era === "2021" ? STORY.prologue21
       : st.era === "2020" ? STORY.prologue20
       : st.era === "2019" ? STORY.prologue19
@@ -600,7 +601,8 @@ const Game = {
       /* 快速通道 2020：伪造 2019 全年 → carryTo2020。
          补选：分团兼任 branchPost、对日基调 jpMode、XII 去留、葛佳慧承诺、
          分团撤资 branch19Keep（giveup 线含孟波保旗 branchFlag19）、
-         TEB48 推进 teb19Push（复刻线）、冯薪朵请缨 fengXinDuo19。 */
+         TEB48 推进 teb19Push（复刻线）+ 马嘉伶移籍 teb19Majia、双选秀 show19Plan、
+         冯薪朵请缨 fengXinDuo19。 */
       this.fastState2016(playerName, choices);
       this.carryTo2017();
       this.fastSim2017(choices);
@@ -619,7 +621,8 @@ const Game = {
     }
     if (era === "2021") {
       /* 快速通道 2021：伪造 2020 全年 → carryTo2021。
-         补选：2019 序章分团/TEB48/请缨 + 2020 一期生合约安置（gen1，默认全员续约）；
+         补选：2019 序章分团/TEB48（含马嘉伶移籍 teb19Majia）/双选秀 show19Plan/请缨
+         + 2020 一期生合约安置（gen1，默认全员续约）；
          浪彩少女 AW9（正式成员按史实锚点自动挂载 + 预备役按人气自动点将）、
          2020 连霸基准 ge2020Top1（按人气预填）均在 fastSim2020 内落定。 */
       this.fastState2016(playerName, choices);
@@ -918,7 +921,10 @@ const Game = {
       }
     }
 
-    /* —— TEB48 筹建（仅复刻线；补选推进则开业并建首批成员卡）—— */
+    /* —— TEB48 筹建（仅复刻线；补选推进则开业并建首批成员卡）——
+       开业同时按补选 teb19Majia 结算马嘉伶的移籍请求（实跑在 tebOpenMajia 场景拍板，
+       默认批准）：同意 → 与首批成员一起入册（在册卡移籍 / 无卡新建卡）；婉拒 → 留任本部。
+       马嘉伶已离团/暂休（majiaAvailable19=false）时不结算，同实跑口径场景不出现。 */
     if (this.isReplicate(st) && choices.teb19Push === "go") {
       st.decisions.teb19Push = "go";
       st.teb19 = st.teb19 || { stage: 0, done: false, open: false, openMonth: 0 };
@@ -927,6 +933,30 @@ const Game = {
       st.teb19.open = true; st.teb19.openMonth = 9;
       st.flags.teb19Open = true;
       this.deployTeb19Roster(st);
+      if (this.majiaAvailable19(st)) this.resolveTeb19Majia(st, (choices.teb19Majia || "agree") === "agree");
+    }
+
+    /* —— 限定团成团（2019-06 事件同口径：2018 派遣成员实力前3 暂休一年；
+       实跑为 6 月自动结算事件，快速通道直接落地；无派遣成员时内部自行拦截）—— */
+    this.formUnit19(st);
+
+    /* —— 双选秀派遣（2019-11 事件同口径；补选 show19Plan：both/T/I/none，默认 both；
+       自动点将同 showShow19Picker 池口径：在籍（active/branch）非殿堂按人气降序取 7，
+       两班互斥（爱奇艺避开鹅厂名单））—— */
+    const plan19 = choices.show19Plan || "both";
+    if (plan19 !== "none") {
+      const pool19 = () => st.members
+        .filter(m => (m.status === "active" || m.status === "branch") && !m.hall && m.pop != null)
+        .sort((a, b) => (b.pop || 0) - (a.pop || 0) || (a.name < b.name ? -1 : 1));
+      if (plan19 === "both") {
+        const tPicked = this.show19Squad("T", pool19().slice(0, 7).map(m => m.id));
+        const tIds = new Set(tPicked.ids);
+        const iPicked = this.show19Squad("I", pool19().filter(m => !tIds.has(m.id)).slice(0, 7).map(m => m.id));
+        this.show19Finalize("both", tPicked, iPicked);
+      } else {
+        const picked = this.show19Squad(plan19, pool19().slice(0, 7).map(m => m.id));
+        this.show19Finalize("one", plan19, picked);
+      }
     }
 
     /* —— 冯薪朵请缨（可选补选：bej=兼任 BEJ48 重心分团 / hq=留任本部 / 缺省=未请缨）—— */
@@ -962,6 +992,10 @@ const Game = {
         st.recruit19.br++;
       }
     }
+
+    /* 快速通道不跑 2019 总选结算，未成团派遣成员的未兑现加成（geBoost）在此清账，
+       避免带入下一年总选计分（实跑中由 resolveGE 结算后统一 delete） */
+    for (const m of st.members) delete m.geBoost;
 
     /* 年末经营盘面（合理中位值；保分团线含维稳专户支出，盘面略低） */
     st.money = keep ? 860 : 940;
@@ -1018,10 +1052,23 @@ const Game = {
       st.decisions.jpSplit20Fast = true;   // 快速默认标记（回归断言用）
     }
 
-    /* 年末经营盘面（疫情年线上口径合理中位值） */
+    /* —— 2019 双选秀限定团成团（2020-08 事件同口径，确定性选择器；
+       快速通道已按补选 show19Plan 自动派遣，此处落地成团）—— */
+    this.formUnit20(st);
+
+    /* 年末经营盘面（疫情年线上口径合理中位值）——月份先落 12 月，
+       供下方期满归队扫描判定「2020-06 起归队」*/
     st.money = 700;
     st.heat = 50; st.morale = 68; st.train = 45; st.burden = 46;
     st.month = 12;
+
+    /* —— 期满归队结算（快速通道无 monthStart）：unit19（2020-06 起）在此归队，
+       unit20 2021-08 起由 2021 实跑 monthStart 归队 —— */
+    this.limitUnitReturnCheck(st);
+
+    /* 快速通道不跑 2020 总选结算，未兑现的限定团落选加成（geBoost）在此清账 */
+    for (const m of st.members) delete m.geBoost;
+
     return st;
   },
 
@@ -1940,10 +1987,10 @@ const Game = {
     const jobs = [];
     if (st.flags.unit19Formed && st.unit19 && Array.isArray(st.unit19.members) && st.unit19.members.length &&
         !st.unit19.returned &&
-        ((st.era === "2020" && st.month >= 6) || st.era === "2021" || st.era === "2026" || st.era === "2027")) jobs.push("unit19");
+        ((st.era === "2020" && st.month >= 6) || st.era === "2021" || st.era === "2022" || st.era === "2026" || st.era === "2027")) jobs.push("unit19");
     if (st.flags.unit20Formed && st.unit20 && Array.isArray(st.unit20.members) && st.unit20.members.length &&
         !st.unit20.returned &&
-        ((st.era === "2021" && st.month >= 8) || st.era === "2026" || st.era === "2027")) jobs.push("unit20");
+        ((st.era === "2021" && st.month >= 8) || st.era === "2022" || st.era === "2026" || st.era === "2027")) jobs.push("unit20");
     for (const key of jobs) {
       const unit = st[key];
       const back = [];
@@ -2378,6 +2425,7 @@ const Game = {
       show18: src.show18,
       sm18: src.sm18,
       teb19: src.teb19,
+      unit19: src.unit19 || { formed: false, members: [] },   // 【限定团回归】2020-06 期满归队扫描依赖 unit19.members（此前未携带导致 2018 选秀限定团永远卡在暂休）
       /* 2020 新主线状态 */
       covid20: { stage: 0, done: false },                          // 主线②：防疫与返工
       reorg20: { stage: 0, done: false },                          // 主线①：分团安置（去年保住分团时）
@@ -2401,9 +2449,10 @@ const Game = {
     };
     delete st.flags.monthStarted;
     delete st.flags.freePromo;
-    /* 2019 一次性旗标不带入 2020 的判定流（保留在 history/decisions 中可回收） */
+    /* 2019 年间一次性旗标不带入 2020 的判定流（保留在 history/decisions 中可回收）。
+       注意：unit19Formed 必须保留——limitUnitReturnCheck 靠它判定 2020-06 起的
+       2018 选秀限定团期满归队（此前误删导致归队永不触发）。 */
     delete st.flags.reorg19Done;
-    delete st.flags.unit19Formed;
     delete st.flags.teb19RosterDone;
     /* 【2020·黄婷婷承诺线】年间计数旗标按年重置（htt19=promise 继承自 2019） */
     delete st.flags.httVisit20;
@@ -2706,6 +2755,196 @@ const Game = {
     [].concat(st.decisions.gePicked21 || [], st.decisions.geAutoPairs21 || [], st.decisions.geSupPairs21 || [], st.decisions.geAutoFill21 || []).forEach(p => { if (Array.isArray(p)) p.forEach(n => { used[n] = true; }); });
     return (st.decisions.geSingles21 || []).filter(n => !used[n] && (st.decisions.geB21Dropped || []).indexOf(n) < 0);
   },
+
+  /* ==================== 2022《最佳拍档》组队机制（年度拍档第二季/组合模式总选，用户口径） ====================
+     赛制同 2021（镜像 bp21* 机制，decisions 键位换 *22）：
+     ① 4月玩家钦点≤5组（同团两两）；② 4月末按好感度自动组队并公布；
+     ③ 5月起至期限前（classic 5月 / partner 7月）补配（不限同团）；
+     ④ 期限月首收口（奇数剔除人气最低、其余自动配对），汇总 decisions.gePairs22。
+     【2022 新规（用户口径，主线④）】不重复去年组队：自动组队与自动收口一律避开
+     2021 年最终组队名单（decisions.gePairs21）；总监钦点/补配属玩家拍板，允许重复。
+     （仅 classic 线挂载此限制——partner 线赛制同去年，不作限制。） */
+  bp22ForbidPairs(st) {
+    st = st || this.st;
+    return st.decisions && st.decisions.geMode21 === "classic" && Array.isArray(st.decisions.gePairs21) ? st.decisions.gePairs21 : [];
+  },
+
+  bp22Deadline() {
+    const st = this.st;
+    return st.decisions && st.decisions.geMode21 === "partner" ? 8 : 6;
+  },
+
+  /* 团内贪心组队（2022 版）：在 bp21AutoPairs 基础上加「避开去年组队」约束。
+     同队内全部候选对都被禁时跳出（剩余成员留在单身赛道，跨团兜底在收口处处理） */
+  bp22AutoPairs(st, excludeNames) {
+    const forbid = {};
+    this.bp22ForbidPairs(st).forEach(p => { if (Array.isArray(p)) forbid[p.slice().sort().join("|")] = true; });
+    const ex = {}; (excludeNames || []).forEach(n => { ex[n] = true; });
+    const byTeam = {};
+    for (const m of this.bp21Pool(st)) {
+      if (ex[m.name]) continue;
+      const k = this.bp21KeyOf(m);
+      (byTeam[k] = byTeam[k] || []).push(m);
+    }
+    const pairs = [];
+    for (const k in byTeam) {
+      const list = byTeam[k].slice();
+      while (list.length >= 2) {
+        let bi = -1, bj = -1, bs = -1;
+        for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+          if (forbid[[list[i].name, list[j].name].sort().join("|")]) continue;   // 不重复去年组队
+          const s = this.bp21RelScore(st, list[i], list[j]);
+          if (s > bs) { bs = s; bi = i; bj = j; }
+        }
+        if (bi < 0) break;
+        pairs.push([list[bi].name, list[bj].name]);
+        list.splice(bj, 1); list.splice(bi, 1);
+      }
+    }
+    return pairs;
+  },
+
+  /* ① 玩家钦点登记（UI.showB22PickPicker）：最多 5 组，每组 2 人同团（不可跨团指定）。
+     玩家拍板允许重复去年组队（用户口径：除了玩家点将的） */
+  setGePicked22(pairs) {
+    const st = this.st;
+    const used = {};
+    const pool = this.bp21Pool(st);
+    const valid = [];
+    for (const p of (pairs || [])) {
+      if (!Array.isArray(p) || p.length !== 2 || p[0] === p[1]) continue;
+      const ma = pool.find(m => m.name === p[0]), mb = pool.find(m => m.name === p[1]);
+      if (!ma || !mb || used[ma.name] || used[mb.name]) continue;
+      if (this.bp21KeyOf(ma) !== this.bp21KeyOf(mb)) continue;
+      used[ma.name] = used[mb.name] = true;
+      valid.push([ma.name, mb.name]);
+    }
+    st.decisions.gePicked22 = valid.slice(0, 5);
+    this.addLog(st, st.month, "《最佳拍档》第二季钦点登记（" + valid.slice(0, 5).length + "/5 组）：" + (valid.length ? valid.slice(0, 5).map(p => p.join(" & ")).join("、") : "未钦点，全团走自动组队") + "。", "main");
+    this.save();
+    return { text: "钦点登记完成：" + valid.slice(0, 5).length + "/5 组（同团限制内；玩家点将允许重复去年组队）。余下成员将在 4 月末按好感度自动组队（避开去年名单）。", tone: "main" };
+  },
+
+  /* ② 4月末：团内自动组队公布——余下成员按好感度团内组队（避开去年名单），未组队者入单身赛道 */
+  bp22Publish(st) {
+    if (st.decisions.geAutoPairs22) return null;
+    const picked = st.decisions.gePicked22 || [];
+    const exNames = [].concat.apply([], picked);
+    const auto = this.bp22AutoPairs(st, exNames);
+    const used = {};
+    exNames.forEach(n => { used[n] = true; });
+    auto.forEach(p => p.forEach(n => { used[n] = true; }));
+    const singles = this.bp21Pool(st).filter(m => !used[m.name]).sort((a, b) => (b.pop || 0) - (a.pop || 0));
+    st.decisions.geAutoPairs22 = auto;
+    st.decisions.geSingles22 = singles.map(m => m.name);
+    this.addLog(st, st.month, "《最佳拍档》第二季组队结果公布：钦点 " + picked.length + " 组 + 自动组队 " + auto.length + " 组（已避开去年名单）；单身赛道 " + singles.length + " 人（" + singles.map(m => m.name).join("、") + "）。", "main");
+    return {
+      title: "4月末 · 《最佳拍档》第二季组队公布",
+      pages: [
+        { nar: true, t: "四月末，《最佳拍档》第二季的首批组队名单贴上了排练室的白板：\n\n" +
+          (picked.length ? "【总监钦点】" + picked.map(p => p.join(" & ")).join("、") + "\n\n" : "") +
+          (auto.length ? "【自动组队】" + auto.map(p => p.join(" & ")).join("、") + "（均已避开去年的组队名单）\n\n" : "") +
+          (singles.length ? "【单身赛道】" + singles.map(m => m.name).join("、") + "——期限前还没找到拍档的话，就要靠节目组帮忙了。" : "全员配对完毕，没有单身赛道。") },
+        { s: "邓森林", cls: "", t: "总监，第二季的新规矩观众买账——去年看过的组合不再自动重逢，只有您亲自点头的「再续前缘」例外。剩下没配上的孩子，期限前您亲自安排。" },
+      ],
+    };
+  },
+
+  /* 当前仍在单身赛道（2022 版，*22 键位） */
+  bp22RemainingSingles(st) {
+    st = st || this.st;
+    if (!st.decisions || !st.decisions.geSingles22) return [];
+    const used = {};
+    [].concat(st.decisions.gePicked22 || [], st.decisions.geAutoPairs22 || [], st.decisions.geSupPairs22 || [], st.decisions.geAutoFill22 || []).forEach(p => { if (Array.isArray(p)) p.forEach(n => { used[n] = true; }); });
+    return (st.decisions.geSingles22 || []).filter(n => !used[n] && (st.decisions.geB22Dropped || []).indexOf(n) < 0);
+  },
+
+  /* ③ 单身赛道补配登记（UI.showB22SinglesPicker）：不限同团，玩家拍板允许重复去年组队 */
+  setGeSupPairs22(pairs) {
+    const st = this.st;
+    const pool = this.bp21Pool(st);
+    const taken = {};
+    [].concat(st.decisions.gePicked22 || [], st.decisions.geAutoPairs22 || [], st.decisions.geSupPairs22 || []).forEach(p => p.forEach(n => { taken[n] = true; }));
+    const valid = [];
+    for (const p of (pairs || [])) {
+      if (!Array.isArray(p) || p.length !== 2 || p[0] === p[1]) continue;
+      const ma = pool.find(m => m.name === p[0]), mb = pool.find(m => m.name === p[1]);
+      if (!ma || !mb || taken[ma.name] || taken[mb.name]) continue;
+      taken[ma.name] = taken[mb.name] = true;
+      valid.push([ma.name, mb.name]);
+    }
+    st.decisions.geSupPairs22 = (st.decisions.geSupPairs22 || []).concat(valid);
+    this.addLog(st, st.month, "《最佳拍档》第二季单身赛道补配（+" + valid.length + " 组）：" + (valid.length ? valid.map(p => p.join(" & ")).join("、") : "本轮未补配") + "。", "main");
+    this.save();
+    const left = this.bp22RemainingSingles(st);
+    return { text: "补配完成：新增 " + valid.length + " 组；单身赛道还剩 " + left.length + " 人（" + left.join("、") + "）。", tone: "main" };
+  },
+
+  /* ④ 期限月首：单身赛道收口（2022 版）——奇数剔除人气最低者，其余自动配对
+     （团内优先、跨团兜底，均避开去年名单），汇总 gePairs22 */
+  bp22AutoFill(st) {
+    st.flags.b22Filled22 = true;
+    const forbid = {};
+    this.bp22ForbidPairs(st).forEach(p => { if (Array.isArray(p)) forbid[p.slice().sort().join("|")] = true; });
+    const used = {};
+    const take = arr => { for (const p of (arr || [])) if (Array.isArray(p)) p.forEach(n => { used[n] = true; }); };
+    take(st.decisions.gePicked22); take(st.decisions.geAutoPairs22); take(st.decisions.geSupPairs22);
+    let singles = this.bp21Pool(st).filter(m => !used[m.name] && (st.decisions.geB22Dropped || []).indexOf(m.name) < 0);
+    const dropped = [];
+    if (singles.length % 2 === 1) {
+      const low = singles.slice().sort((a, b) => (a.pop || 0) - (b.pop || 0))[0];
+      dropped.push(low.name);
+      st.decisions.geB22Dropped = (st.decisions.geB22Dropped || []).concat(low.name);
+      singles = singles.filter(m => m !== low);
+    }
+    const fill = [];
+    const grab = list => {
+      while (list.length >= 2) {
+        let bi = -1, bj = -1, bs = -1;
+        for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+          if (forbid[[list[i].name, list[j].name].sort().join("|")]) continue;
+          const s = this.bp21RelScore(st, list[i], list[j]);
+          if (s > bs) { bs = s; bi = i; bj = j; }
+        }
+        if (bi < 0) break;
+        fill.push([list[bi].name, list[bj].name]);
+        list.splice(bj, 1); list.splice(bi, 1);
+      }
+    };
+    const byTeam = {};
+    for (const m of singles) { const k = this.bp21KeyOf(m); (byTeam[k] = byTeam[k] || []).push(m); }
+    for (const k in byTeam) grab(byTeam[k]);
+    grab(singles.filter(m => !fill.some(p => p.indexOf(m.name) >= 0)));
+    st.decisions.geAutoFill22 = (st.decisions.geAutoFill22 || []).concat(fill);
+    if (dropped.length) this.addLog(st, st.month, "《最佳拍档》第二季单身赛道收口：" + dropped.join("、") + " 人气最低且人数为单，本轮不参加拍档活动。", "warn");
+    const seen = {};
+    const all = [].concat(st.decisions.gePicked22 || [], st.decisions.geAutoPairs22 || [], st.decisions.geSupPairs22 || [], st.decisions.geAutoFill22 || [])
+      .filter(p => { const k = p.slice().sort().join("|"); if (seen[k]) return false; seen[k] = true; return true; });
+    st.decisions.gePairs22 = all;
+    this.addLog(st, st.month, "《最佳拍档》第二季拍档名单收口：共 " + all.length + " 组（" + all.map(p => p.join(" & ")).join("、") + "）。", "main");
+    return { dropped, fill };
+  },
+
+  /* 行动「最佳拍档 · 组队」（bp22）的描述/禁用判定（listActionsCore 2022） */
+  bp22ActionDesc(st) {
+    if (!st.decisions.geMode21) return "年度活动模式未定（沿用 2021 线拍板）";
+    if (st.month < 4) return "4 月启动：钦点 5 组拍档（同团两两，不可跨团）→ 余下按好感度自动组队（避开去年名单）";
+    if (st.flags.b22Filled22) return "✔ 第二季拍档名单已收口（共 " + (st.decisions.gePairs22 || []).length + " 组）";
+    if (!st.decisions.geAutoPairs22) return (st.decisions.gePicked22 || []).length
+      ? "钦点已登记（" + st.decisions.gePicked22.length + "/5 组），4 月末公布自动组队结果"
+      : "钦点 5 组拍档（玩家点将允许重复去年组队）；未钦点者自动组队避开去年名单；4月末公布结果";
+    const left = this.bp22RemainingSingles(st);
+    const dl = this.bp22Deadline();
+    return "单身赛道补配（剩 " + left.length + " 人；期限 " + dl + " 月，期限月首奇数剔除人气最低者、其余自动配对）";
+  },
+
+  bp22ActionLocked(st) {
+    if (st.month < 4 || st.flags.b22Filled22) return true;
+    if (!st.decisions.geAutoPairs22) return !!(st.decisions.gePicked22 || []).length;
+    const supWin = st.decisions.geMode21 === "partner" ? [5, 7] : [5, 5];
+    return st.month < supWin[0] || st.month > supWin[1] || !this.bp22RemainingSingles(st).length;
+  },
+
   /* 【2021】AW9 预备役缺口判定：正式名单在编而预备役不足 9 人时开放补员行动 */
   aw9r21Need(st) {
     st = st || this.st;
@@ -2796,6 +3035,11 @@ const Game = {
       show18: src.show18,
       teb19: src.teb19,
       teb20: src.teb20 || { done: false },   // 【2021 序章分手口径判定用】2020 主线④是否完成和平分手（仅复刻线有意义；carryTo2021 原不携带，现补上）
+      /* 【限定团回归】期满归队扫描依赖 unit19/unit20 的 members 名单（此前未携带，
+         导致 2018/2019 选秀限定团到期后永远卡在暂休）：unit19 跨档追补用，
+         unit20 供 2021-08 起的期满归队扫描。 */
+      unit19: src.unit19 || { formed: false, members: [] },
+      unit20: src.unit20 || { formed: false, members: [] },
       /* 2021 新主线状态 */
       aw9shop21: { stage: 0, done: false },     // 主线①：拓展电商领域（AW9 直播）
       vaccine21: { stage: 0, done: false },     // 主线②：全团疫苗接种（两针）
@@ -2828,6 +3072,227 @@ const Game = {
     this.addLog(st, 1, "2020 年交卷，2021「春潮」开卷：政策放宽但疫情未止——1~3 月收益八折；4 月起全面恢复，总选 4~7 月筹备、8 月开榜。年初实力均值 " + pwrBase + "。", "main");
     this.save();
     return st;
+  },
+
+  /* ========================================================================
+     2021 → 2022「元宇宙」线交接（结算界面「进入下一年」入口）
+     --------------------------------------------------------------------------
+     继承 2021 年末成员卡与经营状态（含 SHY48/CKG48/TEB48 旗号残留、IDFT、
+     AW9 编制 decisions.unitsAW9/unitsAW9R、实力系统）。
+     【年度活动模式自动沿用 2021 线】decisions.geMode21 原样继承：
+     partner=组合模式「年度最佳拍档」（8月开榜）/ classic=传统模式改称「青春盛典」
+     ＋《最佳拍档》第二季（6月开榜）。【不重复去年组队】依赖 decisions.gePairs21
+     （decisions 整体继承，无需特殊处理）。
+     新主线状态：mv22（元宇宙①）/ concert22（十周年演唱会③）。
+     2021 年间一次性旗标不带入 2022（删除前已 grep 确认无 2022 读取点；
+     aw9Shop21Done 保留——2022 月收入仍含电商常态化加成）。
+     ========================================================================== */
+  carryTo2022() {
+    const src = this.st;
+    const members = src.members;
+    const snapshot = members.map(m => ({
+      name: m.name, team: m.team, status: m.status, branchTeam: m.branchTeam || null,
+      pop: m.pop != null ? m.pop : null, bond: m.bond != null ? m.bond : null, hall: !!m.hall,
+    }));
+    const pwrBase = this.avgPwr(src);
+    const st = {
+      saveVersion: this.SAVE_VERSION,
+      playerName: src.playerName,
+      startStyle: src.startStyle,
+      era: "2022",
+      month: 1,
+      ap: 4,
+      money: src.money,
+      heat: src.heat,
+      morale: src.morale,
+      train: src.train,
+      burden: src.burden,
+      debt: 0,
+      members: members,
+      log: [],
+      flags: Object.assign({}, src.flags),
+      decisions: Object.assign({}, src.decisions),
+      branch: src.branch,   // 经典线 resolveGE 读 branch.announce（分团参选判定），必须携带
+      branch17: src.branch17,
+      orig: src.orig,
+      prep18: src.prep18,
+      show18: src.show18,
+      teb19: src.teb19,
+      teb20: src.teb20,
+      unit19: src.unit19 || { formed: false, members: [] },
+      unit20: src.unit20 || { formed: false, members: [] },
+      /* 2022 新主线状态 */
+      mv22: { stage: 0, done: false },          // 主线①：打造「元宇宙」概念基础（三段）
+      concert22: { stage: 0, done: false, n: 0 }, // 主线③：十周年演唱会（定档10月：立项→彩排→举办）
+      pwrBase: pwrBase,
+      bondBase: members.reduce((o, m) => { o[m.name] = m.bond || 0; return o; }, {}),
+      termLog: (src.termLog || []).slice(),
+      termArchive: Object.assign({}, src.termArchive, src.era ? { [src.era]: this.termArchiveYear(src) } : {}),
+      history: Object.assign({}, src.history, {
+        roster2021: snapshot,
+        money2021: src.money,
+        /* 连霸判定基准：2021 classic 登记个人第一；partner 登记第一名队伍全部成员
+           （applyHallReign 支持按 prevList 任一成员命中即连霸） */
+        ge2021Top1: (src.decisions && src.decisions.ge2021Top1) || null,
+        ge2021Top1All: (src.decisions && src.decisions.ge2021Top1All) || null,
+      }),
+      gePlan: 0, geDone: false, geResult: null,
+      rtPlan: 0, rtDone: false, rtScore: 0,
+    };
+    /* 2021 年间一次性旗标不带入 2022 判定流（保留在 decisions/history 中可回收） */
+    delete st.flags.vaccine21Done;
+    delete st.flags.gp21Done;
+    delete st.flags.eventPlan21Done;
+    delete st.flags.ge20BranchTop1;
+    delete st.flags.ge20Idft;
+    delete st.flags.ge20Branch1Done;   // 2021 的兼任拍板完成旗标——不清会挡住 2022 新名单的同一行动
+    delete st.flags.ge20IdftDone;      // 同上（IDFT 升格拍板）
+    delete st.flags.layoff21Choice;
+    this.st = st;
+    this.inheritRel(src, st);
+    this.addLog(st, 1, "2021 年交卷，2022「元宇宙」开卷：集团策略转向元宇宙，摆脱疫情对线下的影响；SNH48 十周年。年度活动模式自动沿用 2021 线拍板（" + (st.decisions.geMode21 === "partner" ? "组合模式「年度最佳拍档」" : "传统模式改称「青春盛典」＋《最佳拍档》第二季") + "），8 月开榜。年初实力均值 " + pwrBase + "。", "main");
+    this.save();
+    return st;
+  },
+
+  /* ==================== 2022 主线推进 ====================
+     ① mv22 元宇宙（三段：概念立项30万→技术搭建40万→首场特别公演30万）
+     ③ concert22 十周年演唱会（定档10月：立项→彩排30万→举办按名单结算）
+     ⑤ rule22 成员守则培训（classic 线；每队含分团至少一次）
+     ======================================================== */
+  /* 【2022 主线①】元宇宙：三段推进。完成后 flags.mv22Done，月收入 +STORY.MV22_INCOME */
+  advanceMv22() {
+    const st = this.st, c = st.mv22;
+    if (c.done) return { text: "元宇宙体系已立住——虚拟剧场常态化运营中。", tone: "blocked" };
+    const cost = STORY.MV22_COST[c.stage];
+    if (st.money < cost) return { text: "资金不足（本阶段需 " + cost + " 万）。", tone: "blocked" };
+    st.money -= cost;
+    if (c.stage === 0) {
+      c.stage = 1;
+      st.heat = this.clamp(st.heat + 4, 0, 100);
+      return { text: "「元宇宙 · 第一期」立项：虚拟舞台、数字分身、虚拟剧场三大板块入册。（资金-" + cost + " 热度+4）", tone: "main", vn: STORY.scenes22.mvPlan };
+    }
+    if (c.stage === 1) {
+      c.stage = 2;
+      st.heat = this.clamp(st.heat + 3, 0, 100);
+      st.train = this.clamp(st.train + 3, 0, 100);
+      return { text: "技术搭建完成：动捕、虚拟引擎与全员数字分身就绪。（资金-" + cost + " 热度+3 训练+3）", tone: "main", vn: STORY.scenes22.mvTech };
+    }
+    c.done = true; st.flags.mv22Done = true;
+    st.money += 35;
+    st.heat = this.clamp(st.heat + 8, 0, 100);
+    st.morale = this.clamp(st.morale + 4, 0, 100);
+    this.addLog(st, st.month, "★主线①「打造元宇宙概念基础」达成：首场元宇宙特别公演落幕——此后每月带来额外收入 " + STORY.MV22_INCOME + " 万。", "main");
+    this.save();
+    return { text: "首场元宇宙特别公演落幕：真人舞台与虚拟剧场同步开演。★主线①达成（资金-" + cost + " +35 热度+8 士气+4；此后每月收入+" + STORY.MV22_INCOME + " 万）", tone: "main", vn: STORY.scenes22.mvLive };
+  },
+
+  /* 【2022 主线③】十周年演唱会（用户口径：定档10月）三段推进：
+     ① 立项（免费）：自动回归名单与概率掷签一次落定（成本随之确定，防反复重掷）；
+     ② 彩排合成（30万）：须在 9 月及以前完成——10月前未完成则当年不可举办；
+     ③ 正式举办（仅10月当月）：按落定名单结算，参与人数越多成本越高、奖励越好。
+     参与口径（用户口径：普通毕业生不邀请，与续约/转岗同口径自动回归；数值可调）：
+     · 在籍成员（非影视部）全员参加；影视部（m.film）75% 概率参加；
+     · 毕业成员（含普通毕业生）、一二期续约（siba）、转工作人员（staff）自动参加、无需邀请；
+     · 荣誉毕业生（honorGrad）50% 概率参加。 */
+  advanceConcert22() {
+    const st = this.st, c = st.concert22;
+    if (c.done) return { text: "十周年演唱会已落幕——十年的注脚写完了。", tone: "blocked" };
+    if (c.stage === 0) {
+      if (st.month >= 10) {
+        if (!st.flags.concert22Missed) st.flags.concert22Missed = true;
+        return { text: "已过10月定档——今年办不成十周年演唱会了（年度评分将扣分）。", tone: "blocked" };
+      }
+      /* 自动回归名单与掷签（一次落定） */
+      const grad = st.members.filter(m => m.status === "left" && !m.siba && !m.honorGrad).map(m => m.name);
+      const siba = st.members.filter(m => m.status === "left" && m.siba).map(m => m.name);
+      const staff = st.members.filter(m => m.status === "staff").map(m => m.name);
+      const honor = st.members.filter(m => m.status === "left" && m.honorGrad && this.rnd(0, 99) < 50).map(m => m.name);
+      const film = st.members.filter(m => m.status === "active" && m.film && this.rnd(0, 99) < 75).map(m => m.name);
+      const resident = st.members.filter(m => m.status === "active" && !m.film).map(m => m.name);
+      const all = [].concat(resident, film, grad, siba, staff, honor);
+      st.flags.concert22Final = { names: all, resident, film, grad, siba, staff, honor };
+      c.stage = 1;
+      const guests = grad.length + siba.length + staff.length + honor.length + film.length;
+      this.addLog(st, st.month, "十周年演唱会立项（定档10月）：在籍 " + resident.length + " 人 + 影视部 " + film.length + " 人 + 自动回归 " + guests + " 人（毕业 " + grad.length + " · 续约/转岗 " + (siba.length + staff.length) + " · 荣誉毕业生 " + honor.length + "）。举办成本约 " + (STORY.CONCERT22_COST_BASE + guests * STORY.CONCERT22_COST_PER) + " 万。", "main");
+      this.save();
+      return { text: "十周年演唱会立项完成（定档10月）：预计参与 " + all.length + " 人（在籍 " + resident.length + " · 影视部 " + film.length + " · 自动回归 " + guests + " 人——毕业成员、一二期续约、转工作人员无需邀请自动回归，荣誉毕业生五成概率、影视部七成五概率）。\n\n注意：彩排合成须在 9 月及以前完成——10月前未完成彩排，当年将无法举办（影响年度评分）。下一步：彩排合成（资金-" + STORY.CONCERT22_REHEARSE_COST + " 万）。", tone: "main" };
+    }
+    if (c.stage === 1) {
+      if (st.month >= 10) return { text: "十周年演唱会定档10月——彩排未能在10月前完成，今年无法举办了（年度评分将扣分）。", tone: "blocked" };
+      if (st.money < STORY.CONCERT22_REHEARSE_COST) return { text: "资金不足（彩排合成需 " + STORY.CONCERT22_REHEARSE_COST + " 万）。", tone: "blocked" };
+      st.money -= STORY.CONCERT22_REHEARSE_COST;
+      c.stage = 2;
+      return { text: "彩排合成完成：返校名单与现役站位全部合练走台——10月，正式开唱。（资金-" + STORY.CONCERT22_REHEARSE_COST + " 万）", tone: "main", vn: STORY.scenes22.concertRehearse };
+    }
+    /* 正式举办：仅10月当月（用户口径）；错过档期（missed）后不可补办；
+       参与人数越多成本越高、奖励越好 */
+    if (st.month !== 10 || st.flags.concert22Missed)
+      return { text: st.flags.concert22Missed
+        ? "十周年演唱会已错过10月定档——当年无法举办。"
+        : "十周年演唱会定档10月——只能在10月当月正式举办。", tone: "blocked" };
+    const f = st.flags.concert22Final;
+    if (!f || !Array.isArray(f.names)) return { text: "演唱会尚未立项。", tone: "blocked" };
+    const guests = f.grad.length + f.siba.length + f.staff.length + f.honor.length + f.film.length;
+    const cost = STORY.CONCERT22_COST_BASE + guests * STORY.CONCERT22_COST_PER;
+    if (st.money < cost) return { text: "资金不足（按已落定名单举办需 " + cost + " 万，账面 " + st.money + " 万）。", tone: "blocked" };
+    st.money -= cost;
+    const income = STORY.CONCERT22_INCOME_BASE + guests * STORY.CONCERT22_INCOME_PER;
+    st.money += income;
+    st.heat = this.clamp(st.heat + Math.min(35, STORY.CONCERT22_HEAT_BASE + guests * STORY.CONCERT22_HEAT_PER), 0, 100);
+    st.morale = this.clamp(st.morale + 3, 0, 100);
+    /* 参与加成：在籍/影视部成员 人气+1 羁绊+1；特邀中仍在册的（staff/影视部）同样登记 */
+    for (const nm of f.names) {
+      const m = st.members.find(x => x.name === nm);
+      if (m) { m.pop = this.clamp((m.pop || 0) + 1, 0, 100); m.bond = this.clamp((m.bond || 0) + 1, 1, 100); }
+    }
+    c.done = true; c.stage = 3; c.n = f.names.length; st.flags.concert22Done = true;
+    this.addLog(st, st.month, "★主线③「十周年演唱会」达成：参与 " + f.names.length + " 人（在籍 " + f.resident.length + " + 影视部 " + f.film.length + " + 自动回归 " + guests + "）；成本 " + cost + " 万，收入 " + income + " 万。", "gold");
+    this.save();
+    return { text: "★主线③「十周年演唱会」达成：参与 " + f.names.length + " 人（成本-" + cost + " 万 收入+" + income + " 万 热度+" + Math.min(35, STORY.CONCERT22_HEAT_BASE + guests * STORY.CONCERT22_HEAT_PER) + " 士气+3；参与者人气+1 羁绊+1）", tone: "main", vn: { label: "十周年演唱会 · 当晚", pages: STORY.scenes22.concertLive(st) } };
+  },
+
+  /* 【2022 主线⑤·classic】成员守则培训：待覆盖队伍清单（在册队伍 + 分团 + 预备生；
+     影视部（HALL）为分类非队伍，不参训；IDFT 训练生无队伍编制，不在清单） */
+  rule22PendingTeams(st) {
+    st = st || this.st;
+    const done = st.flags.rule22Teams || {};
+    const keys = [...new Set(st.members
+      .filter(m => (m.status === "active" || m.status === "branch") && !m.hall)
+      .map(m => this.teamKeyOf(m)).filter(Boolean))]
+      .filter(k => k !== "HALL");
+    return keys.filter(k => !done[k]);
+  },
+
+  /* 【2022 主线⑤·classic】单队培训落地（UI.showRule22Picker 回调）：
+     同 dqTrain 口径（资金-15 全队失格值-20 士气+1）+ 登记 flags.rule22Teams；
+     全部队伍覆盖后 flags.rule22AllDone（士气+3 叶盛负担-10）。 */
+  applyRule22(team) {
+    const st = this.st;
+    if ((st.flags.rule22Teams || {})[team]) return { text: team + " 今年已经培训过了——规矩过一遍就够，别把孩子们训成木头。", tone: "blocked" };
+    const roster = this.teamRoster(st, team).filter(m => !m.hall && (m.status === "active" || m.status === "branch") && m.dq != null);
+    if (!roster.length) return { text: "该队伍当前没有可培训的在册成员。", tone: "blocked" };
+    if (st.money < STORY.RULE22_COST) return { text: "资金不足（成员守则培训需 " + STORY.RULE22_COST + " 万）。", tone: "blocked" };
+    st.money -= STORY.RULE22_COST;
+    let lowered = 0;
+    for (const m of roster) { const d0 = m.dq; m.dq = Math.max(0, m.dq - 20); lowered += d0 - m.dq; }
+    st.morale = this.clamp(st.morale + 1, 0, 100);
+    st.flags.rule22Teams = st.flags.rule22Teams || {};
+    st.flags.rule22Teams[team] = true;
+    const left = this.rule22PendingTeams(st);
+    let extra = "";
+    if (!left.length) {
+      st.flags.rule22AllDone = true;
+      st.morale = this.clamp(st.morale + 3, 0, 100);
+      st.burden = this.clamp(st.burden - 10, 0, 100);
+      this.addLog(st, st.month, "★主线⑤「成员守则培训」达成：每队（含分团）至少培训一次，全员覆盖。", "main");
+      extra = "\n\n★主线⑤达成：每队（含分团）培训全覆盖——士气+3 叶盛负担-10。";
+      this.save();
+      return { text: team + " 成员守则培训结束（全队失格值-20，合计 -" + lowered + "；士气+1）。" + extra, tone: "main", vn: STORY.scenes22.ruleDone };
+    }
+    this.addLog(st, st.month, "成员守则培训（主线⑤）：" + team + " 全队参训；待覆盖 " + left.length + " 队。", "good");
+    this.save();
+    return { text: team + " 成员守则培训结束（全队失格值-20，合计 -" + lowered + "；士气+1）。\n\n（主线⑤进度：待覆盖 " + left.length + " 队——" + left.join("、") + "）", tone: "good" };
   },
 
   /* 【2020 主线②】防疫与返工：两段推进 */
@@ -3178,6 +3643,38 @@ const Game = {
     else if (st.gp21.stage >= 1) score += 6;
     if (st.eventplan21.done) score += 10;
     if (st.geDone) score += 15;
+    if (st.rtScore >= 85) score += 12;
+    else if (st.rtScore >= 65) score += 8;
+    else if (st.rtDone) score += 4;
+    score += this.clamp(Math.round((this.avgPwr(st) - (st.pwrBase || 0)) * 2), 0, 10);
+    score += Math.min(8, Math.round(st.heat / 5));
+    score += Math.min(5, Math.round(st.morale / 10));
+    score += Math.min(5, Math.floor(st.money / 60));
+    if (st.debt >= 1) score -= 10;
+    if (score >= 85) return "S";
+    if (score >= 65) return "A";
+    if (score >= 50) return "B";
+    return "C";
+  },
+
+  /* 2022 线年度评分「元宇宙」：
+     元宇宙①(20) + 十周年演唱会③(20) + 年度活动 geDone(15) + classic：守则培训⑤(10)+拍档第二季(5)
+     + 大赏(12) + 实力成长(10) + 热度(≤8) + 士气(≤5) + 资金(≤5) − 赤字10 → S≥85 / A≥65 / B≥50
+     （经典线拍档组队为年度活动组成部分，与 partner 线共用 geDone 分值。） */
+  computeGrade22(st) {
+    st = st || this.st;
+    let score = 0;
+    if (st.mv22.done) score += 20;
+    else if (st.mv22.stage >= 1) score += 8;
+    if (st.concert22.done) score += 20;
+    else if (st.flags.concert22Missed) score -= 8;   // 错过10月定档：当年不可举办，年度评分扣分（用户口径）
+    else if (st.concert22.stage >= 1) score += 8;
+    if (st.geDone) score += 15;
+    if (st.decisions.geMode21 !== "partner") {
+      if (st.flags.rule22AllDone) score += 10;
+      else if (Object.keys(st.flags.rule22Teams || {}).length) score += 4;
+      if (st.flags.bp22ClassicDone) score += 5;
+    }
     if (st.rtScore >= 85) score += 12;
     else if (st.rtScore >= 65) score += 8;
     else if (st.rtDone) score += 4;
@@ -5018,6 +5515,7 @@ const Game = {
                                                         // 十三期招新仍由 9 月剧情事件承载（主线③）
       : st.era === "2020" ? (DATA.joining2020 || [])   // 【2020】疫情年史实入团表（分团新期生建简卡）
       : st.era === "2021" ? (DATA.joining2021 || [])   // 【2021】史实入团表（按用户口径挂载：本部十五/十六期 + GNZ/CKG/BEJ 分团新期生建简卡）
+      : st.era === "2022" ? []                         // 【2022】2022 史实入团表待用户口径（宁缺毋滥，暂为空）
       : st.era === "2027" ? (DATA2026.joining2027 || [])
       : DATA2026.joining2026;
     for (const j of joinSrc) {
@@ -5088,6 +5586,7 @@ const Game = {
                                                        // 二次组阁/IDFT 移籍照旧由主线②承载，本表只负责散点离团
       : st.era === "2021" ? (DATA.leaving2021 || [])   // 【2021】史实离团表挂载（按用户口径，月份精度）：
                                                        // 成员精简同 2020 线设计（layoff21 动态分配+拍板），通用离团直接落地
+      : st.era === "2022" ? []                         // 【2022】2022 史实离团表待用户口径（宁缺毋滥，暂为空）
       : st.era === "2018" ? DATA.leaving2018
       : st.era === "2017" ? DATA.leaving2017 : DATA.leaving2016;
     for (const lv of leaveSrc) {
@@ -5287,6 +5786,28 @@ const Game = {
           + (r.dropped.length ? r.dropped.join("、") + " 人气最低且人数为单，本轮不参加拍档活动。" : "")
           + (r.fill.length ? "未配对的成员按好感度自动配对：" + r.fill.map(p => p.join(" & ")).join("、") + "。" : "")
           + "\n\n（最终拍档名单已汇总：" + (st.decisions.gePairs21 || []).length + " 组。）" },
+      ] });
+    }
+    /* 【2022·最佳拍档第二季/年度拍档】期限月首收口（partner=8月 / classic=6月）：
+       奇数剔除人气最低者、其余自动配对（自动配对避开去年名单，用户口径主线④），
+       汇总最终名单 gePairs22。 */
+    if (st.era === "2022" && st.decisions.geMode21 && st.month === this.bp22Deadline()
+      && st.decisions.geAutoPairs22 && !st.flags.b22Filled22) {
+      const r22 = this.bp22AutoFill(st);
+      steps.push({ type: "vn", title: "《最佳拍档》第二季 · 单身赛道收口", pages: [
+        { nar: true, t: "期限已到，节目组按规则收口单身赛道（自动配对已避开去年的组队名单）："
+          + (r22.dropped.length ? r22.dropped.join("、") + " 人气最低且人数为单，本轮不参加拍档活动。" : "")
+          + (r22.fill.length ? "未配对的成员按好感度自动配对：" + r22.fill.map(p => p.join(" & ")).join("、") + "。" : "")
+          + "\n\n（最终拍档名单已汇总：" + (st.decisions.gePairs22 || []).length + " 组。）" },
+      ] });
+    }
+    /* 【2022·十周年演唱会定档10月（用户口径）】10月已过仍未举办 → 错过档期：
+        当年不可再办，年度评分扣分（computeGrade22）。 */
+    if (st.era === "2022" && st.month === 11 && !st.concert22.done && !st.flags.concert22Missed) {
+      st.flags.concert22Missed = true;
+      this.addLog(st, st.month, "十周年演唱会错过10月定档——当年无法举办（年度评分将扣分）。", "bad");
+      steps.push({ type: "vn", title: "十周年 · 错过档期", pages: [
+        { nar: true, t: "十月的最后一个周末过去了。体育馆的档期、四面台的搭建、返校老将们的行程——都没能等来那声「正式开演」。\n\n叶盛把场馆发来的解约函放在你桌上，没说话。十周年只有一次——错过了，就是错过了。\n\n（十周年演唱会未能在10月举办：当年不可再办，年度评分扣分。）" },
       ] });
     }
     /* 【落盘保障（修复 2026-XX）】月初的所有人员/状态变更（入团/离团/追补归队/
@@ -5516,6 +6037,55 @@ const Game = {
       return acts21;
     }
 
+    /* ============ 2022 线（元宇宙）：主线①③ + 年度活动（模式自动沿用 2021） ============ */
+    if (st.era === "2022") {
+      const partner22 = st.decisions.geMode21 === "partner";
+      const acts22 = [
+        { id: "mv22", main: true, name: "元宇宙企划", desc: st.mv22.done
+          ? "✔ 元宇宙体系立住（虚拟剧场常态化，每月+" + (STORY.MV22_INCOME || 10) + "万）"
+          : ["概念立项（需资金≥" + STORY.MV22_COST[0] + "万）", "技术搭建（需资金≥" + STORY.MV22_COST[1] + "万）", "首场元宇宙特别公演（需资金≥" + STORY.MV22_COST[2] + "万）"][st.mv22.stage],
+          disabled: st.mv22.done || st.money < STORY.MV22_COST[st.mv22.stage],
+          disabledTip: st.mv22.done ? "" : "资金不足（需≥" + STORY.MV22_COST[st.mv22.stage] + "万）" },
+        { id: "concert22", main: true, name: "十周年演唱会", desc: st.concert22.done
+          ? "✔ 已落幕（参与 " + st.concert22.n + " 人）"
+          : st.concert22.stage === 0 ? "立项（定档10月）：毕业成员/一二期续约/转工作人员自动回归，荣誉毕业生50%、影视部75%概率参加"
+            : st.concert22.stage === 1 ? "彩排合成（需资金≥" + STORY.CONCERT22_REHEARSE_COST + "万；须9月及以前完成——10月前未完成则当年不可举办）" : "正式举办（仅10月当月；名单已落定：" + (st.flags.concert22Final ? st.flags.concert22Final.names.length : 0) + " 人）",
+          disabled: st.concert22.done
+            || (st.concert22.stage === 0 && st.month >= 10)
+            || (st.concert22.stage === 1 && (st.money < STORY.CONCERT22_REHEARSE_COST || st.month >= 10))
+            || (st.concert22.stage === 2 && st.month !== 10),
+          disabledTip: st.concert22.done ? "" : st.concert22.stage === 1 && st.month >= 10 ? "已过10月定档——今年无法举办" : st.concert22.stage === 2 && st.month !== 10 ? "档期：10月" : st.concert22.stage <= 1 && st.money < (st.concert22.stage === 1 ? STORY.CONCERT22_REHEARSE_COST : 0) ? "资金不足" : "" },
+        { id: "ge", main: true, name: partner22 ? "年度最佳拍档 · 总选筹备" : "筹备青春盛典",
+          desc: partner22 ? "搭档拉票与总选筹备（4~7月筹备，8月开榜，公开前33名）——组队见「最佳拍档 · 组队」"
+            : "「青春盛典」打投组织与物料（行业规范不再称总选；4~7月筹备，8月开榜）",
+          disabled: st.month < 4 || st.month > 7 || st.geDone },
+        { id: "bp22", main: true, name: "最佳拍档 · 组队", desc: this.bp22ActionDesc(st),
+          disabled: this.bp22ActionLocked(st) },
+        { id: "rt", main: true, name: "筹备金曲大赏", desc: "舞台编排与新歌打磨（12月大赏前，筹备度+20）",
+          disabled: st.month < 10 || st.month > 12 || st.rtDone },
+        { id: "visit", main: true, name: "走访成员", desc: "与一名成员谈心：羁绊〉 士气〉 叶盛负担〉" },
+        { id: "duty", name: "替叶盛值班", desc: "接手一轮成员事务：叶盛负担-15" },
+        { id: "show", name: "剧场公演", desc: "稳定票仓：资金〉 热度〉 士气〉" },
+        { id: "business", name: "商务合作", desc: "接代言与商演：资金〉〉 热度〉 叶盛负担〉" },
+        { id: "train", name: "全团特训", desc: "提升训练度：花费15万，全员弱项技能+1（唱功/舞蹈/MC）" },
+        { id: "promo", name: "宣传造势", desc: "投放物料与线下活动：热度+10（花费20万）" },
+      ];
+      /* 【2022 主线⑤·仅 classic】成员守则培训（叶盛要求：每队含分团至少一次） */
+      if (!partner22 && !st.flags.rule22AllDone && this.rule22PendingTeams(st).length) {
+        acts22.push({ id: "rule22", main: true, name: "成员守则培训（主线⑤）",
+          desc: "叶盛要求：每队（含分团）今年至少培训一次——已覆盖 " + Object.keys(st.flags.rule22Teams || {}).length + " 队，待覆盖 " + this.rule22PendingTeams(st).length + " 队（" + this.rule22PendingTeams(st).join("、") + "）" });
+      }
+      /* 【延续·用户口径】2020 年起的两项总选奖励机制（8月开榜后开放安排）：
+         分团 TOP1 兼任本部 / 入榜 IDFT 升格移籍——落地沿用 applyGe20Branch1/applyGe20Idft */
+      if (st.geDone && (st.flags.ge20BranchTop1 || []).length && !st.flags.ge20Branch1Done) {
+        acts22.push({ id: "ge20branch1", main: true, name: "分团TOP1兼任本部", desc: "本年开榜各分团 TOP1：" + st.flags.ge20BranchTop1.join("、") + "（兼任不调动，人气+4 羁绊+4）" });
+      }
+      if (st.geDone && (st.flags.ge20Idft || []).length && !st.flags.ge20IdftDone) {
+        acts22.push({ id: "ge20idft", main: true, name: "IDFT升格拍板", desc: "本年入榜 IDFT：" + st.flags.ge20Idft.join("、") + "（升格本部/移籍分团/留任）" });
+      }
+      return acts22;
+    }
+
     /* ============ 2020 线（共渡）：疫情年，五条主线 ============ */
     if (st.era === "2020") {
       const lockPeak = st.month <= 3;   // 1~3 月：聚众类行动停办（公演/团建）
@@ -5743,9 +6313,9 @@ const Game = {
         desc: "逐队拍板大歌 16 人站位与五个 unit（每队 1 行动点）：已拍板 " + doneN + "/" + stageTeamsAvail.length + " 队",
       });
     }
-    /* 【2016~2021 通用·影视投资（用户口径 2026-XX）】8月解锁、保留至年末，
-       每投资一部消耗 1 行动点；项目书剩佘可投项目才显示。 */
-    if (st.era >= "2016" && st.era <= "2021" && st.month >= 8 && st.month <= 12) {
+    /* 【2016~2022 通用·影视投资（用户口径 2026-XX）】8月解锁、保留至年末，
+       每投资一部消耗 1 行动点；项目书剩余可投项目才显示。 */
+    if (st.era >= "2016" && st.era <= "2022" && st.month >= 8 && st.month <= 12) {
       const filmRem = this.filmRemaining(st);
       if (filmRem.length) {
         const cheapest = Math.min.apply(null, filmRem.map(p => p.cost));
@@ -5990,17 +6560,56 @@ const Game = {
         break;
       }
       case "ge": {
-        const geWin = st.era === "2020" ? [2, 7] : st.era === "2021" ? [4, 7] : [2, 6];
+        const geWin = st.era === "2020" ? [2, 7] : st.era === "2021" || st.era === "2022" ? [4, 7] : [2, 6];
         if (st.month < geWin[0] || st.month > geWin[1] || st.geDone)
           return { text: st.era === "2020" ? "当前不在总选举筹备期（2-7月，8月线上开榜）。"
             : st.era === "2021" ? "当前不在总选举筹备期（4-7月，8月开榜）。"
+            : st.era === "2022" ? "当前不在" + (st.decisions.geMode21 === "partner" ? "年度最佳拍档" : "青春盛典") + "筹备期（4-7月，8月开榜）。"
             : "当前不在总选举筹备期（2-6月）。", tone: "blocked" };
         /* 【2021】组队改由独立行动「bp21」承载（两线通用，4月钦点/5月起补配）；
            首次筹备不再强制组队。 */
         st.gePlan = this.clamp(st.gePlan + 18, 0, 100);
         st.money -= 25;
-        res = { text: "总选举筹备推进" + (st.era === "2020" || st.era === "2021" ? "（线上打投体系）" : "") + "：打投组、物料组就位。筹备度+18，资金-25万。", tone: "main" };
+        res = st.era === "2022"
+          ? { text: (st.decisions.geMode21 === "partner" ? "年度最佳拍档" : "青春盛典") + "筹备推进：打投组、物料组就位。筹备度+18，资金-25万。", tone: "main" }
+          : { text: "总选举筹备推进" + (st.era === "2020" || st.era === "2021" ? "（线上打投体系）" : "") + "：打投组、物料组就位。筹备度+18，资金-25万。", tone: "main" };
         break;
+      }
+      case "mv22": {
+        /* 【2022 主线①】元宇宙三段：概念立项→技术搭建→首场特别公演 */
+        res = this.advanceMv22();
+        break;
+      }
+      case "concert22": {
+        /* 【2022 主线③】十周年演唱会（定档10月）：三段推进/结算，档期门控在 advance 内 */
+        if (st.concert22.done) return { text: "十周年演唱会已落幕。", tone: "blocked" };
+        res = this.advanceConcert22();
+        break;
+      }
+      case "rule22": {
+        /* 【2022 主线⑤·仅 classic】成员守则培训：先弹队伍选择窗（早退不耗AP），选定后落地 */
+        if (st.decisions.geMode21 === "partner") return { text: "主线⑤仅传统模式（青春盛典）线挂载。", tone: "blocked" };
+        if (!payload || !payload.team) return { text: "", tone: "rule22pick" };
+        res = this.applyRule22(payload.team);
+        break;
+      }
+      case "bp22": {
+        /* 【2022·两线通用】《最佳拍档》第二季组队：4月钦点 5 队（同团两两，玩家点将
+           允许重复去年组队）；4月末公布自动组队（避开去年名单）与单身赛道；
+           5月起至期限前（partner 7月 / classic 5月）补配。 */
+        if (st.era !== "2022" || !st.decisions.geMode21)
+          return { text: "《最佳拍档》尚未立项——年度活动模式沿用 2021 线拍板。", tone: "blocked" };
+        if (st.month < 4) return { text: "《最佳拍档》第二季组队 4 月启动——先等邓森林把方案排上日程。", tone: "blocked" };
+        if (st.flags.b22Filled22) return { text: "第二季拍档名单已收口，等正片开录吧。", tone: "blocked" };
+        if (!st.decisions.geAutoPairs22) {
+          return { text: "", tone: "bp22pick" };   // 4月：钦点窗（不耗 AP，可重开覆盖）
+        }
+        const supWin22 = st.decisions.geMode21 === "partner" ? [5, 7] : [5, 5];
+        if (st.month < supWin22[0] || st.month > supWin22[1])
+          return { text: "当前不在单身赛道补配期（5月起至期限前，期限月首自动收口）。", tone: "blocked" };
+        const leftS22 = this.bp22RemainingSingles(st);
+        if (!leftS22.length) return { text: "单身赛道已全部配对完毕。", tone: "blocked" };
+        return { text: "", tone: "bp22singles" };   // 补配窗（不耗 AP）
       }
       case "bp21": {
         /* 【2021·两线通用】《最佳拍档》组队：4月钦点 5 队（同团两两，不可跨团）；
@@ -6394,7 +7003,7 @@ const Game = {
      热度/训练度低迷、人浮于事的月份，是真会亏的。 */
   SALARY_UNIT: 0.5,            // 本部成员月薪（万）
   BRANCH_UPKEEP_UNIT: 0.35,    // 分团成员月薪估算（万）
-  FIXED_EXPENSE: { "2016": 25, "2017": 30, "2018": 32, "2019": 34, "2020": 34, "2026": 26, "2027": 28 },
+  FIXED_EXPENSE: { "2016": 25, "2017": 30, "2018": 32, "2019": 34, "2020": 34, "2022": 36, "2026": 26, "2027": 28 },
 
   /* 在册本部成员数（暂休 rest 不计工资） */
   hqPayrollCount(st) {
@@ -6438,6 +7047,15 @@ const Game = {
         + (st.teb19 && st.teb19.open ? 25 : 0)
         + (st.flags.aw9Shop21Done ? 15 : 0);
       income = base * (st.month <= 3 ? 0.8 : 1);
+    } else if (st.era === "2022") {
+      /* 2022「元宇宙」：线下全面恢复年（基数 88）。分团/TEB 开业收入延续；
+         AW9 电商常态化（2021 主线①）与元宇宙体系（本年主线①）各贡献月收入。 */
+      let base = 88 + st.heat * 0.5 + st.train * 0.25
+        + (st.branch17 && st.branch17.shyOpen ? 20 : 0) + (st.branch17 && st.branch17.ckgOpen ? 25 : 0)
+        + (st.teb19 && st.teb19.open ? 25 : 0)
+        + (st.flags.aw9Shop21Done ? 15 : 0)
+        + (st.flags.mv22Done ? (STORY.MV22_INCOME || 10) : 0);
+      income = base;
     } else if (st.era === "2026") {
       /* 2026：危局之年（人头成本重校后基数 95）；CGT48 重建成功后贡献月收入 */
       income = 95 + st.heat * 0.5 + st.train * 0.25 + (st.cgt.open ? 25 : 0);
@@ -6517,12 +7135,26 @@ const Game = {
       const pub = this.bp21Publish(st);
       if (pub) steps.push({ type: "vn", title: pub.title, pages: pub.pages.map(p => ({ ...p, t: this.fmt(p.t) })) });
     }
+    /* 【2022】最佳拍档（第二季/年度拍档）4月末公布：钦点 + 自动组队（避开去年名单）；
+       未组队者进入单身赛道（5月起至期限前可补配；期限月首收口——见 monthStart）。 */
+    if (st.era === "2022" && st.decisions.geMode21 && st.month === 4 && !st.decisions.geAutoPairs22) {
+      const pub22 = this.bp22Publish(st);
+      if (pub22) steps.push({ type: "vn", title: pub22.title, pages: pub22.pages.map(p => ({ ...p, t: this.fmt(p.t) })) });
+    }
     /* 【2021·综艺线】classic 线 6 月开榜：公布前五、低额奖励、第一名组合双人旅行（tag 待明年回收）。
        （monthStart 已在 6 月月首完成单身赛道收口，此处结算用最终名单。） */
     if (st.era === "2021" && st.decisions.geMode21 === "classic" && st.month === 6
       && st.decisions.geAutoPairs21 && !st.flags.bp21ClassicDone) {
       const vn6 = this.bp21ClassicSettle(st);
       if (vn6) steps.push({ type: "vn", title: vn6.title, pages: vn6.pages.map(p => ({ ...p, t: this.fmt(p.t) })) });
+    }
+    /* 【2022·主线④】classic 线《最佳拍档》第二季 6 月开榜：公布前五、奖励与去年同、
+       第一名组合双人旅行（tag bp22Travel22 留档待明年回收）。
+       （monthStart 已在 6 月月首完成单身赛道收口，此处结算用最终名单。） */
+    if (st.era === "2022" && st.decisions.geMode21 === "classic" && st.month === 6
+      && st.decisions.geAutoPairs22 && !st.flags.bp22ClassicDone) {
+      const vn6b = this.bp22ClassicSettle(st);
+      if (vn6b) steps.push({ type: "vn", title: vn6b.title, pages: vn6b.pages.map(p => ({ ...p, t: this.fmt(p.t) })) });
     }
 
     /* ① 收支结算 */
@@ -6702,14 +7334,15 @@ const Game = {
       if (ev) steps.push(this.buildEventStep(ev, st));
     }
 
-    /* ⑥ 七月：总选举结算（2020 疫情年与 2021「春潮」年延迟至 8 月开榜，见下） */
-    if (st.month === 7 && !st.geDone && st.era !== "2020" && st.era !== "2021") {
+    /* ⑥ 七月：总选举结算（2020 疫情年、2021「春潮」年与 2022「元宇宙」年延迟至 8 月开榜，见下） */
+    if (st.month === 7 && !st.geDone && st.era !== "2020" && st.era !== "2021" && st.era !== "2022") {
       steps.push(this.resolveGE(st));
       this.applyHallReign(st, steps);   // 【荣誉殿堂】连霸升堂统一判定（各年代线通用规则）
     }
-    /* 【2020/2021】8 月开榜：2020 疫情年线上直播收费、不卖票（活动收益减半）；
-       2021 总选 4~7 月筹备、8 月开榜（用户口径；「春潮」年线上线下双轨常规口径）。 */
-    if (st.month === 8 && !st.geDone && (st.era === "2020" || st.era === "2021")) {
+    /* 【2020/2021/2022】8 月开榜：2020 疫情年线上直播收费、不卖票（活动收益减半）；
+       2021 总选 4~7 月筹备、8 月开榜（用户口径；「春潮」年线上线下双轨常规口径）；
+       2022 同窗口——组合模式开「年度最佳拍档」，传统模式开「青春盛典」（不再称总选）。 */
+    if (st.month === 8 && !st.geDone && (st.era === "2020" || st.era === "2021" || st.era === "2022")) {
       if (st.era === "2020") st.flags.geOnline20 = true;
       steps.push(this.resolveGE(st));
       this.applyHallReign(st, steps);
@@ -6772,12 +7405,16 @@ const Game = {
     st.flags[mark] = true;
     const prevTop1 = st.era === "2026" ? "杨冰怡"
       : (st.history && st.history["ge" + (parseInt(st.era, 10) - 1) + "Top1"]) || null;
-    /* 【2021·最佳拍档总选·用户口径】前三队伍共同记作第一名：去年第一人在
-       第一名队伍成员（geResult.top1All）中即连霸；今年第一名队伍全体成员
-       登记 ge2021Top1All，明年连霸判定同样以队伍成员为准。 */
-    const champNames = st.era === "2021" ? (st.geResult.top1All || [st.geResult.top1]) : [st.geResult.top1];
-    if (!prevTop1 || champNames.indexOf(prevTop1) < 0) return;   // 非连霸：不升堂
-    const top1 = st.members.find(m => m.name === prevTop1);
+    /* 【2021/2022·最佳拍档制·用户口径】前三队伍共同记作第一名：去年第一人
+       （或去年第一名队伍任一成员，history.ge{n-1}Top1All）在今年的第一名队伍
+       成员中即连霸；今年第一名队伍全体成员登记 ge{n}Top1All，明年连霸判定
+       同样以队伍成员为准。 */
+    const champNames = (st.era === "2021" || st.era === "2022") && st.geResult.top1All ? st.geResult.top1All : [st.geResult.top1];
+    const prevAll = st.history && st.history["ge" + (parseInt(st.era, 10) - 1) + "Top1All"];
+    const prevList = (Array.isArray(prevAll) && prevAll.length) ? prevAll : (prevTop1 ? [prevTop1] : []);
+    const champHit = prevList.find(p => champNames.indexOf(p) >= 0);
+    if (!champHit) return;   // 非连霸：不升堂
+    const top1 = st.members.find(m => m.name === champHit);
     if (!top1 || top1.status === "left" || top1.hall) return;  // 防御：不在籍/已殿堂不重复升
     if (st.era !== "2026") st.flags["reignHall" + st.era.slice(2)] = true;
     top1.hall = true; top1.hallIdol = true; top1.team = "HALL"; top1.branchTeam = null; top1.status = "active";
@@ -6785,6 +7422,7 @@ const Game = {
       : st.era === "2017" ? "第三届、第四届总决选连霸 · 升入荣誉殿堂"
       : st.era === "2018" ? "第四届、第五届总决选连霸 · 升入荣誉殿堂"
       : st.era === "2019" ? "第五届、第六届总决选连霸 · 升入荣誉殿堂"
+      : st.era === "2022" ? (st.geResult.top1All ? "上届、本届年度最佳拍档连霸 · 升入荣誉殿堂" : "上届、本届青春盛典第一名 · 升入荣誉殿堂")
       : st.era === "2021" ? "上届、本届《最佳拍档》总选连霸 · 升入荣誉殿堂"
       : "第十三届、第十四届总决选连霸 · 升入荣誉殿堂";
     st.morale = this.clamp(st.morale + 3, 0, 100);
@@ -6792,6 +7430,7 @@ const Game = {
     const vn = st.era === "2017" ? STORY.hallAscend17 : st.era === "2018" ? STORY.hallAscend18
       : st.era === "2019" ? STORY.hallAscend19
       : st.era === "2021" ? null   // 2021 连霸升堂沿用通用结算，专属剧情页待补
+      : st.era === "2022" ? null   // 2022 同 2021：沿用通用结算，专属剧情页待补
       : st.era === "2026" ? STORY.hallAscension : STORY.hallAscend27;
     const title = st.era === "2017" ? "荣誉殿堂 · 首位升堂"
       : st.era === "2026" ? "荣誉殿堂 · 升堂仪式" : "荣誉殿堂 · 连霸升堂";
@@ -6939,6 +7578,122 @@ const Game = {
     };
   },
 
+  /* 【2022·主线④】《最佳拍档》第二季 6 月开榜（仅 classic，赛制同去年＋不重复去年组队）：
+     只公布前五；组分同 bp21PairScore 口径但不含总监羁绊加成；奖励与去年同
+     （第1组50万/第2组30万/第3组20万 + 搭档好感度 +3/+2/+2）；第一名组合双人旅行
+     综艺 tag bp22Travel22 留档待明年回收。 */
+  bp22ClassicSettle(st) {
+    if (st.flags.bp22ClassicDone) return null;
+    const pairs = (st.decisions.gePairs22 || []).filter(p => Array.isArray(p) && p.length === 2);
+    if (!pairs.length) return null;
+    const pool = st.members.filter(m => (m.status === "active" || m.status === "branch" || m.status === "idft") && !m.hall && m.team !== "HALL");
+    const byName = {};
+    pool.forEach(m => { byName[m.name] = m; });
+    const used = {};
+    const entries = [];
+    for (const pr of pairs) {
+      const ma = byName[pr[0]], mb = byName[pr[1]];
+      if (!ma || !mb || used[ma.name] || used[mb.name]) continue;
+      used[ma.name] = used[mb.name] = true;
+      entries.push({ ms: [ma, mb], score: this.bp21PairScore(st, ma, mb, false) });
+    }
+    if (!entries.length) return null;
+    entries.sort((a, b) => b.score - a.score);
+    const top5 = entries.slice(0, 5);
+    st.flags.bp22ClassicDone = true;
+    st.decisions.bp22ClassicTop5 = top5.map((e, i) => ({ rank: i + 1, names: e.ms.map(m => m.name), votes: Math.round(e.score * 1200) }));
+    const rewards = [50, 30, 20], relUp = [3, 2, 2];
+    let money = 0;
+    const lines = top5.map((e, i) => "第" + (i + 1) + "名 " + e.ms.map(m => m.name).join(" & "));
+    top5.slice(0, 3).forEach((e, i) => { money += rewards[i]; this.relAdd(st, e.ms[0].id, e.ms[1].id, relUp[i]); });
+    st.money += money;
+    st.heat = this.clamp(st.heat + 8, 0, 100);
+    const champ = top5[0].ms;
+    /* 第一名组合双人旅行综艺（tag 留档，待明年回收） */
+    st.decisions.bp22Travel22 = { members: champ.map(m => m.name), used: false };
+    champ.forEach(m => { m.pop = this.clamp(m.pop + 4, 0, 100); });
+    this.addLog(st, st.month, "《最佳拍档》第二季开榜（公布前五），年度拍档：" + champ.map(m => m.name).join(" & ") + "。奖励合计 " + money + " 万；双人旅行综艺已立项（tag bp22Travel22，待明年回收）。", "gold");
+    return {
+      title: "6月 · 《最佳拍档》第二季 · 开榜",
+      pages: [
+        { nar: true, t: "六月，《最佳拍档》第二季正片收官，名次揭晓：\n\n" + lines.join("\n") + "\n\n年度拍档 " + champ.map(m => m.name).join(" & ") + " 将获得一次双人旅行，全程跟拍，录成综艺特辑。" },
+        { s: "邓森林", cls: "", t: "第二季稳稳落地——去年的名单今年再没自动重逢过，观众反而更买账：缘分要自己挣，才是这条河的浪漫。旅行特辑照旧压一压，留到明年回收。" },
+        { nar: true, t: "（前三组奖励：" + rewards.join("/") + " 万，搭档好感度 +" + relUp.join("/") + "；决策 tag bp22Travel22 已登记：第一名组合 " + champ.map(m => m.name).join("、") + " 的双人旅行综艺，待明年回收。）" },
+      ],
+    };
+  },
+
+  /* 【2022·组合模式】年度最佳拍档总选结算（geMode21=partner，赛制同去年）：
+     参赛单位为两人一组（decisions.gePairs22）；组分口径同 2021（bp21PairScore，
+     含总监羁绊加成）；公开前 33 名；前三队伍额外奖励（100/60/40万）并提升搭档
+     好感度（+4/+3/+3）；前三队伍共同记作第一名（ge2022Top1All，明年连霸判定基准）。
+     本年度冠军组合另获双人旅行综艺（tag bp22Travel22 留档）。 */
+  resolveGEPartner22(st) {
+    st.geDone = true;
+    const pairs = (st.decisions.gePairs22 || []).filter(p => Array.isArray(p) && p.length === 2);
+    const pool = st.members.filter(m => (m.status === "active" || m.status === "branch" || m.status === "idft") && !m.hall && m.team !== "HALL");
+    const byName = {};
+    pool.forEach(m => { byName[m.name] = m; });
+    const used = {};
+    const entries = [];
+    for (const pr of pairs) {
+      const ma = byName[pr[0]], mb = byName[pr[1]];
+      if (!ma || !mb || used[ma.name] || used[mb.name]) continue;
+      used[ma.name] = used[mb.name] = true;
+      entries.push({ ms: [ma, mb], score: this.bp21PairScore(st, ma, mb, true) });
+    }
+    for (const m of pool) {
+      if (used[m.name]) continue;
+      entries.push({ ms: [m], score: m.pop * 1.5 + st.gePlan * 0.3 + st.heat * 0.25 + this.rnd(0, 16) });
+    }
+    entries.sort((a, b) => b.score - a.score);
+    const top33 = entries.slice(0, 33).map((e, i) => ({
+      rank: i + 1,
+      name: e.ms.map(m => m.name).join(" & "),
+      team: e.ms[0].status === "branch" ? e.ms[0].branchTeam : e.ms[0].team,
+      votes: Math.round(e.score * 1200),
+      bondBonus: e.ms.length === 2,
+    }));
+    const champTeams = entries.slice(0, 3).filter(e => e.ms.length === 2);
+    const champ = entries[0];
+    const champLabel = champ.ms.map(m => m.name).join(" & ");
+    const top1All = champTeams.length ? champTeams.flatMap(e => e.ms.map(m => m.name)) : [champ.ms[0].name];
+    st.geResult = { top1: champLabel, top1All, top48: top33, strategy: st.geStrategy, bejTop7: null, gnzTop7: null, partner: true };
+    st.decisions["ge2022Top1"] = champLabel;
+    st.decisions["ge2022Top1All"] = top1All;   // 明年连霸判定基准：第一名队伍全部成员
+    st.flags.geTop7 = [];
+    for (const m of st.members) delete m.geBoost;
+    for (const m of champ.ms) { m.pop = this.clamp(m.pop + 6, 0, 100); m.bond = this.clamp(m.bond + 4, 0, 100); }
+    /* 本年度冠军组合双人旅行综艺（tag 留档，待明年回收） */
+    if (champ.ms.length === 2) st.decisions.bp22Travel22 = { members: champ.ms.map(m => m.name), used: false };
+    const rewards = [100, 60, 40];
+    const relUp = [4, 3, 3];
+    let bonus = 0;
+    const rewardNames = [];
+    champTeams.forEach((e, i) => {
+      bonus += rewards[i];
+      this.relAdd(st, e.ms[0].id, e.ms[1].id, relUp[i]);
+      rewardNames.push("第" + (i + 1) + "名 " + e.ms.map(m => m.name).join(" & ") + "（+" + rewards[i] + "万 / 好感度+" + relUp[i] + "）");
+    });
+    st.money += bonus;
+    const money = Math.round(120 + st.heat * 0.8);
+    st.money += money;
+    st.heat = this.clamp(st.heat + 12, 0, 100);
+    this.addLog(st, st.month, "年度最佳拍档开榜（公开前33名），年度拍档：" + champLabel + "。"
+      + (rewardNames.length ? "前三队伍额外奖励：" + rewardNames.join("；") + "。" : ""), "gold");
+    const narr = STORY.geNarrative.good;
+    const crownPages = STORY.geNarrative.crown.map(p => ({
+      ...p, s: p.s === "{top1}" ? champ.ms.map(m => m.name).join(" & ") : p.s, t: this.fmt(p.t),
+    }));
+    const aftermath = STORY.geAftermath22(st);
+    return {
+      type: "geResult", top48: st.geResult.top48, bejTop7: null, gnzTop7: null, money,
+      title: "年度最佳拍档 · 结果",
+      pagesAfter: [...crownPages, ...narr.map(p => ({ ...p, t: this.fmt(p.t) })),
+        ...aftermath.map(p => ({ ...p, t: this.fmt(p.t) }))],
+    };
+  },
+
   /* ========================================================================
      【通用月度事件·影视资源兑现（2016~2021 线，用户口径 2026-XX）】
      每年 8 月影视部将年度项目全部发送给总监：事件只做两件事——
@@ -6966,18 +7721,61 @@ const Game = {
     { title: "星航学院", type: "动画企划", cost: 260, role2: false },
   ],
 
-  /* 年度项目书：每 era 生成一次并缓存（5 个项目，保证 ≥2 部设女二号槽位） */
+  /* 【2016 专属项目书（用户口径 2026-XX）】史实投资项目固定 7 部，替代虚构模板
+     （仅 2016 线 filmSlate 采用，全量入书不随机抽取；投资额度 Agent 拟定口径，可调）。
+     noLead：仅设女二号槽位（女主角由公司外演员出演，点将时不点女主）；
+     leadRole/secondRole：剧中角色名（项目书/点将窗/回款账展示用）；
+     flagship：年度主打——主演（女主/女二）仅限影视部成员（film/HALL）或总选前三。 */
+  filmTemplates2016: [
+    { title: "楚留香之桃花传奇", type: "古装武侠剧", cost: 300, leadRole: "张洁洁" },
+    { title: "秾李夭桃", type: "古装剧", cost: 220, leadRole: "李小夭" },
+    { title: "那时，可爱的她们", type: "电视剧", cost: 400, role2: true, flagship: true },
+    { title: "小夜曲", type: "音乐爱情片", cost: 200, leadRole: "蔚蓝" },
+    { title: "白银之歌", type: "网剧", cost: 260, role2: true },
+    { title: "劲舞团", type: "青春歌舞片", cost: 280, role2: true },
+    { title: "十国千娇", type: "古装剧", cost: 180, noLead: true, role2: true, secondRole: "符金盏" },
+  ],
+
+  /* 项目槽位描述（项目书/点将窗共用）：女主槽 + 女二槽，带角色名；仅女二号项目无女主槽 */
+  filmSlotDesc(p) {
+    const lead = p.noLead ? null : "女主角" + (p.leadRole ? "（" + p.leadRole + "）" : "");
+    const second = p.role2 ? "女二号" + (p.secondRole ? "（" + p.secondRole + "）" : "") : null;
+    return [lead, second].filter(Boolean).join(" + ") || "—";
+  },
+
+  /* 【年度主打点将资格】影视部成员（film=true / hall / HALL）或总选前三（并列 " & " 拆分） */
+  filmFlagshipAllowed(st) {
+    const names = new Set();
+    const t48 = st.geResult && st.geResult.top48 ? st.geResult.top48 : [];
+    for (const row of t48.slice(0, 3)) (row.name || "").split(" & ").forEach(n => { if (n) names.add(n); });
+    return names;
+  },
+
+  /* 年度项目书：每 era 生成一次并缓存。
+     2016 线：专属固定项目书 7 部（filmTemplates2016，用户口径 2026-XX，额度固定不掷随机）；
+     其余年份：虚构模板随机抽 5 部（保证 ≥2 部设女二号槽位）。 */
   filmSlate(st) {
     if (st.flags.filmSlate && st.flags.filmSlate.era === st.era) return st.flags.filmSlate.projects;
-    const pool = this.filmTemplates.slice();
-    const picks = [];
-    while (picks.length < 5 && pool.length) picks.push(pool.splice(this.rnd(0, pool.length - 1), 1)[0]);
-    const projects = picks.map((t, i) => ({
-      pid: st.era + "_" + i,
-      title: t.title, type: t.type,
-      cost: t.cost + this.rnd(-10, 10),
-      role2: t.role2,
-    }));
+    let projects;
+    if (st.era === "2016") {
+      projects = this.filmTemplates2016.map((t, i) => ({
+        pid: st.era + "_" + i,
+        title: t.title, type: t.type, cost: t.cost,
+        role2: !!t.role2, noLead: !!t.noLead, flagship: !!t.flagship,
+        leadRole: t.leadRole || null, secondRole: t.secondRole || null,
+      }));
+    } else {
+      const pool = this.filmTemplates.slice();
+      const picks = [];
+      while (picks.length < 5 && pool.length) picks.push(pool.splice(this.rnd(0, pool.length - 1), 1)[0]);
+      projects = picks.map((t, i) => ({
+        pid: st.era + "_" + i,
+        title: t.title, type: t.type,
+        cost: t.cost + this.rnd(-10, 10),
+        role2: !!t.role2, noLead: false, flagship: false,
+        leadRole: null, secondRole: null,
+      }));
+    }
     st.flags.filmSlate = { era: st.era, projects };
     return projects;
   },
@@ -7005,7 +7803,7 @@ const Game = {
         const avgPop = cast.length ? cast.reduce((s, m) => s + m.pop, 0) / cast.length : 55;
         const ret = Math.round(p.cost * (1 + 0.10 + avgPop * 0.0012));
         total += ret;
-        lines.push("《" + p.title + "》投资 " + p.cost + " 万 → 回款 " + ret + " 万（女主：" + (p.lead || "—") + (p.second ? "／女二：" + p.second : "") + "）");
+        lines.push("《" + p.title + "》投资 " + p.cost + " 万 → 回款 " + ret + " 万（女主" + (p.leadRole ? "·" + p.leadRole : "") + "：" + (p.lead || "外聘") + (p.second ? "／女二" + (p.secondRole ? "·" + p.secondRole : "") + "：" + p.second : "") + "）");
       }
       st.money += total;
       st.heat = this.clamp(st.heat + 2 * prev.length, 0, 100);
@@ -7014,7 +7812,7 @@ const Game = {
     }
     const slate = this.filmSlate(st);
     const sum = slate.reduce((s, p) => s + p.cost, 0);
-    pages.push({ nar: true, t: "每年八月，影视部都会把今年度的项目全部摆上桌：\n\n" + slate.map(p => "《" + p.title + "》（" + p.type + "，投资 " + p.cost + " 万，" + (p.role2 ? "设女主角、女二号" : "仅设女主角") + "）").join("；\n") + "\n\n项目书合计 " + sum + " 万——账上的钱，得算清楚了再签字。" });
+    pages.push({ nar: true, t: "每年八月，影视部都会把今年度的项目全部摆上桌：\n\n" + slate.map(p => "《" + p.title + "》（" + p.type + (p.flagship ? "·年度主打" : "") + "，投资 " + p.cost + " 万，" + this.filmSlotDesc(p) + (p.flagship ? "；主演限影视部成员/总选前三" : "") + "）").join("；\n") + "\n\n项目书合计 " + sum + " 万——账上的钱，得算清楚了再签字。" });
     pages.push({ s: "王婧", cls: "speaker-wangjing", t: "（把项目书放在你手边）投资拍板在行动板上——「影视投资」，这个月解锁，一直留到年末。每签一部，占你一个行动点。丑话说在前面：总选第一得有一部当女主角的戏，第二、第三名也得各有一部女二号——年底要是交不出来，孩子们心里会有数的。" });
     return pages;
   },
@@ -7031,10 +7829,18 @@ const Game = {
     if (st.money < t.cost) return { ok: false, text: "资金不足（《" + t.title + "》需 " + t.cost + " 万，账面 " + st.money + " 万）。" };
     /* id/姓名归一：showMultiPick 回传 id，引擎按姓名比对——落地时统一存姓名 */
     const resolve = n => st.members.find(x => x.name === n) || st.members.find(x => x.id === n);
-    const lr = lead ? resolve(lead) : null;
-    const sr = second ? resolve(second) : null;
+    let lr = lead ? resolve(lead) : null;
+    let sr = second ? resolve(second) : null;
+    /* 仅女二号项目（2016《十国千娇》）：女主由公司外演员出演，不点女主 */
+    if (t.noLead) lr = null;
+    /* 【年度主打】主演限影视部成员（film/HALL）或总选前三（拦截不耗 AP/资金） */
+    if (t.flagship) {
+      const allow = this.filmFlagshipAllowed(st);
+      const okCast = m => !m || m.film || m.hall || m.team === "HALL" || allow.has(m.name);
+      if (!okCast(lr) || !okCast(sr)) return { ok: false, text: "《" + t.title + "》是年度主打——主演只从影视部成员与总选前三中出（请重看点将）。" };
+    }
     st.money -= t.cost;
-    const rec = { pid: pid, title: t.title, cost: t.cost, lead: lr ? lr.name : null, second: sr ? sr.name : null };
+    const rec = { pid: pid, title: t.title, cost: t.cost, leadRole: t.leadRole || null, secondRole: t.secondRole || null, lead: lr ? lr.name : null, second: sr ? sr.name : null };
     taken.push(rec);
     st.flags["filmTaken" + st.era] = taken;
     st.decisions["filmInv" + st.era] = taken.length;
@@ -7070,7 +7876,7 @@ const Game = {
   /* 硬性要求年末清算（12月月末调用，先于年度评分；每 era 只跑一次）。
      返回 vn 页数组（有内容时由调用方推进为剧情页）。 */
   filmReqCheck(st) {
-    if (!(st.era >= "2016" && st.era <= "2021")) return [];
+    if (!(st.era >= "2016" && st.era <= "2022")) return [];
     this.filmNormalizeTaken(st);   // 旧档：id 误存归一为姓名
     if (st.flags["filmReq" + st.era]) return [];
     st.flags["filmReq" + st.era] = true;
@@ -7114,6 +7920,8 @@ const Game = {
     /* 【2021·方案一 geMode21=partner】《最佳拍档》改造总选：两人一组参赛，
        总选人气为两人之和；组内羁绊较高（双方均≥70）时额外获得加成（+20）。 */
     if (st.era === "2021" && st.decisions.geMode21 === "partner") return this.resolveGEPartner21(st);
+    /* 【2022·组合模式】年度最佳拍档（geMode21=partner 沿用）：两人一组参赛，组分同 2021 口径 */
+    if (st.era === "2022" && st.decisions.geMode21 === "partner") return this.resolveGEPartner22(st);
     // 策略效果
     if (st.geStrategy === "focus") {
       const top = this.activeMembers(st).filter(m => m.team !== "HALL").sort((a, b) => b.pop - a.pop)[0];
@@ -7136,7 +7944,7 @@ const Game = {
       : (st.branch.announce ? st.members.filter(m => m.status === "branch") : []);
     /* 【2020 新机制·用户口径】IDFT 训练生池成员入总选名单——入榜者可升格移籍（含分团，由玩家安排）；
        2020 总选除赵嘉敏外一期生不参选（一期生合约年，毕业公演后安置）。 */
-    if (st.era === "2020" || st.era === "2021") extraPool.push(...st.members.filter(m => m.status === "idft"));
+    if (st.era === "2020" || st.era === "2021" || st.era === "2022") extraPool.push(...st.members.filter(m => m.status === "idft"));
     const pool = this.activeMembers(st).concat(extraPool)
       .filter(m => !(st.era === "2016" && m.name === "赵嘉敏") && m.team !== "HALL")   // 荣誉殿堂/影视部成员不参选
       .filter(m => st.era !== "2020" || m.gen !== "一期生" || m.name === "赵嘉敏");   // 2020：除赵嘉敏外一期生不参选
@@ -7185,7 +7993,7 @@ const Game = {
     /* 【2020 新机制·用户口径】登记各分团 TOP1（每个分团的第一名都可兼任本部队伍）
        与入榜 IDFT 成员（可升格移籍），由玩家在 9 月事件中逐项安排
        （flags.ge20BranchTop1 = 各分团 TOP1 名单数组 / ge20Idft）。 */
-    if (st.era === "2020" || st.era === "2021") {
+    if (st.era === "2020" || st.era === "2021" || st.era === "2022") {
       const brTeams = [];
       const b1List = [];
       for (const r of ranked) {
@@ -7196,8 +8004,8 @@ const Game = {
       }
       st.flags.ge20BranchTop1 = b1List;
       st.flags.ge20Idft = ranked.filter(r => r.m.status === "idft" && top48.some(t => t.name === r.m.name)).map(r => r.m.name);
-      /* 【2021 延续·用户口径】去年总选的两项奖励机制——分团 TOP1 兼任本部、IDFT 入榜升格——本年延续：
-         同套 flags 登记，拍板行动 ge20branch1 / ge20idft 沿用（见 listActionsCore 2021 线）。 */
+      /* 【2022 延续·Agent 判断】分团 TOP1 兼任本部、IDFT 入榜升格两项机制自 2020 年起逐年延续，
+         本年照旧登记同套 flags，拍板行动 ge20branch1 / ge20idft 沿用（见 listActionsCore 2022 线）。 */
     }
     /* 【经济系统 v2】TOP7 分成名单：总选后按名次登记（flags 跨年继承），
        此后每月按 第1名3万/2~3名2万/4~7名1万 支付分成，升堂/离团自动停付。 */
@@ -7210,13 +8018,16 @@ const Game = {
     const money = Math.round((120 + st.heat * 0.8) * (st.era === "2020" ? 0.5 : 1));
     st.money += money;
     st.heat = this.clamp(st.heat + (st.geStrategy === "focus" ? 15 : 12), 0, 100);
-    this.addLog(st, st.month, "总选举落幕（" + (st.era === "2020" ? "线上直播" : "") + "），第一名：" + ranked[0].m.name + "。全团话题度暴涨。", "gold");
+    this.addLog(st, st.month, st.era === "2022"
+      ? "青春盛典落幕（行业规范：不再称总选举），第一名：" + ranked[0].m.name + "。全团话题度暴涨。"
+      : "总选举落幕（" + (st.era === "2020" ? "线上直播" : "") + "），第一名：" + ranked[0].m.name + "。全团话题度暴涨。", "gold");
 
     const narr = st.geStrategy === "balance" ? STORY.geNarrative.balance : STORY.geNarrative.good;
     const crownPages = STORY.geNarrative.crown.map(p => ({
       ...p, s: p.s === "{top1}" ? ranked[0].m.name : p.s, t: this.fmt(p.t),
     }));
     const title = st.era === "2027" ? "第十四届偶像年度人气总决选 · 结果"
+      : st.era === "2022" ? "第九届青春盛典 · 结果"
       : st.era === "2021" ? "第八届偶像年度人气总决选 · 结果"
       : st.era === "2020" ? "第七届偶像年度人气总决选 · 线上直播 · 结果"
       : st.era === "2026" ? "SNH48 年度人气总决选 · 结果"
@@ -7226,6 +8037,7 @@ const Game = {
       : "「比翼齐飞」第三届总决选 · 结果";
     const aftermath = st.era === "2027" ? STORY.geAftermath27(st)
       : st.era === "2026" ? STORY.geAftermath26
+      : st.era === "2022" ? STORY.geAftermath22(st)
       : st.era === "2021" ? STORY.geAftermath21(st)
       : st.era === "2020" ? STORY.geAftermath20(st)
       : st.era === "2019" ? STORY.geAftermath19(st)
@@ -7282,6 +8094,7 @@ const Game = {
     st.heat = this.clamp(st.heat + heat, 0, 100);
     this.addLog(st, 12, "年度金曲大赏落幕（评价：" + tier + (origBonus ? "，含原创曲目加成" : "") + "）。资金+" + money + "万。", "gold");
     const rtNar = st.era === "2027" ? STORY.rtNarrative27 : st.era === "2020" ? STORY.rtNarrative20
+      : st.era === "2022" ? STORY.rtNarrative22
       : st.era === "2021" ? STORY.rtNarrative21
       : st.era === "2019" ? STORY.rtNarrative19
       : st.era === "2018" ? STORY.rtNarrative18
