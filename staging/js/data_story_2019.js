@@ -277,7 +277,11 @@ STORY.scenes19 = {
   },
 
   /* ---------- TEB48 开业 + 马嘉伶移籍请求（点将完毕、马嘉伶可用时使用本场景） ----------
-     TEB48 首批成员卡已在开业落地时建好；此处追加马嘉伶的移籍请求与拍板。 */
+     TEB48 首批成员卡已在开业落地时建好；此处追加马嘉伶的移籍请求与拍板。
+     【结算顺序修复 2026-XX】决策 tag（decisions.teb19Majia）改由 resolveTeb19Majia
+     统一登记——此前选项同时挂 tag/value，UI 在 apply 之前先 recordDecision 把
+     decisions.teb19Majia 预先写入，导致 resolveTeb19Majia 的幂等卫兵误判
+     「已有定论」，移籍结算永不执行（拍板后无事发生）。 */
   tebOpenMajia: {
     label: "TEB48 · 开业首演",
     pages: st => [
@@ -290,10 +294,8 @@ STORY.scenes19 = {
     ],
     choices: [
       { label: "批准移籍——她与 TEB48 首批成员一起入册", hint: "马嘉伶移籍 TEB48（在册卡移籍 / 无卡新建卡）；人气+6 羁绊-4",
-        tag: "teb19Majia", value: "agree",
         apply: st => Game.resolveTeb19Majia(st, true) },
       { label: "婉拒——她留在 SNH48 的舞台上", hint: "马嘉伶留在 SNH48 方面，台北首批名册上没有她",
-        tag: "teb19Majia", value: "reject",
         apply: st => Game.resolveTeb19Majia(st, false) },
     ],
   },

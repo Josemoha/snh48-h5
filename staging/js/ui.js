@@ -1797,7 +1797,7 @@ const UI = {
     this.modal(c);
   },
 
-  /* 【2021】成员精简补偿拍板窗（layoff21Pick，同 2020 线 layoff20Pick 设计）：
+  /* 【2021/2022】成员精简补偿拍板窗（layoff21Pick，同 2020 线 layoff20Pick 设计）：
      逐批拍板是否支付补偿金（15 万/人，同 2020 口径）；
      不支付：士气-4 热度-3，涉分团在册成员羁绊-4，涉本部在册成员羁绊-2。 */
   showLayoff21Picker(names) {

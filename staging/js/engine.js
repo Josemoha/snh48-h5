@@ -3148,6 +3148,7 @@ const Game = {
     delete st.flags.ge20Branch1Done;   // 2021 的兼任拍板完成旗标——不清会挡住 2022 新名单的同一行动
     delete st.flags.ge20IdftDone;      // 同上（IDFT 升格拍板）
     delete st.flags.layoff21Choice;
+    delete st.flags.layoff21Names;     // 2022 线复用 layoff21 机制，跨年清位（正常已在年末分配块清空）
     this.st = st;
     this.inheritRel(src, st);
     this.addLog(st, 1, "2021 年交卷，2022「元宇宙」开卷：集团策略转向元宇宙，摆脱疫情对线下的影响；SNH48 十周年。年度活动模式自动沿用 2021 线拍板（" + (st.decisions.geMode21 === "partner" ? "组合模式「年度最佳拍档」" : "传统模式改称「青春盛典」＋《最佳拍档》第二季") + "），8 月开榜。年初实力均值 " + pwrBase + "。", "main");
@@ -4868,7 +4869,7 @@ const Game = {
     return { text: text, tone: "main" };
   },
 
-  /* 【2021】成员精简补偿落地（用户口径，同 2020 线设计）：
+  /* 【2021/2022】成员精简补偿落地（用户口径，同 2020 线设计）：
      names = 待裁成员名（已按卡况过滤）；pay=true 支付补偿金 15 万/人（同 2020 口径，
      资金支出，士气+2 体面转身）；pay=false 不支付（士气-4 热度-3；涉分团则该分团在册
      成员羁绊-4，涉本部则本部在册成员羁绊-2）。
@@ -5504,9 +5505,10 @@ const Game = {
     }
 
     // ① 新成员入队（2016：六期生3月 / 七期生9、10月；2017：八期生4、5、6、9、10月 + SHY48二期生；2018：九/十/十一期生+分团新期生；
-    //    2026：二十四期生5月；2027：预挂载表；2021：十五/十六期生 + GNZ/CKG/BEJ 分团新期生）。
-    //    2017 起支持 branchTeam 字段：分团新期生建分团预备生简卡（2021 线不做分团开关校验，
-    //    继承 2020 年末旗号/编号状态直接入册）。
+    //    2026：二十四期生5月；2027：预挂载表；2021：十五/十六期生 + GNZ/CKG/BEJ 分团新期生；
+    //    2022：CKG 五期续批/GNZ 十二、十三期/BEJ 十一期 + 本部十七期生）。
+    //    2017 起支持 branchTeam 字段：分团新期生建分团预备生简卡（2021/2022 线不做分团开关校验，
+    //    继承上年末旗号/编号状态直接入册）。
     //    （2017 线仅限对应分团已开业，未开业则不入册，后续离团表自然跳过）。
     const joinSrc = st.era === "2016" ? DATA.joining2016
       : st.era === "2017" ? DATA.joining2017
@@ -5515,7 +5517,7 @@ const Game = {
                                                         // 十三期招新仍由 9 月剧情事件承载（主线③）
       : st.era === "2020" ? (DATA.joining2020 || [])   // 【2020】疫情年史实入团表（分团新期生建简卡）
       : st.era === "2021" ? (DATA.joining2021 || [])   // 【2021】史实入团表（按用户口径挂载：本部十五/十六期 + GNZ/CKG/BEJ 分团新期生建简卡）
-      : st.era === "2022" ? []                         // 【2022】2022 史实入团表待用户口径（宁缺毋滥，暂为空）
+      : st.era === "2022" ? (DATA.joining2022 || [])   // 【2022】史实入团表（按用户口径挂载：CKG 五期续批/GNZ 十二、十三期/BEJ 十一期建简卡 + 本部十七期生 PREP 卡）
       : st.era === "2027" ? (DATA2026.joining2027 || [])
       : DATA2026.joining2026;
     for (const j of joinSrc) {
@@ -5542,7 +5544,7 @@ const Game = {
           this.addLog(st, st.month, j.branchTeam + " 新成员入团：" + j.name + "（" + j.gen + " · " + (j.branchLabel || "预备生") + "）", "good");
           continue;
         }
-        if ((st.era === "2017" || st.era === "2018" || st.era === "2020" || st.era === "2021") && j.branchTeam) {
+        if ((st.era === "2017" || st.era === "2018" || st.era === "2020" || st.era === "2021" || st.era === "2022") && j.branchTeam) {
           /* 【2017】分团未开业则不入册（如玩家未点亮沈阳剧场，SHY48二期生张羽涵不入册） */
           if (st.era === "2017" && st.branch17) {
             const bOpen = j.branchTeam === "SHY48" ? st.branch17.shyOpen : j.branchTeam === "CKG48" ? st.branch17.ckgOpen : true;
@@ -5576,7 +5578,7 @@ const Game = {
       }
     }
 
-    // ② 离团/移籍生效（2016/2017/2018/2019/2020/2027 线；2026 线的人员退出走末位淘汰事件）
+    // ② 离团/移籍生效（2016/2017/2018/2019/2020/2021/2022/2027 线；2026 线的人员退出走末位淘汰事件）
     //    移籍分团（type 以「移籍」开头）→ status='branch'；兼任（type 以「兼任」开头）→ 保留在籍仅备注
     const leaveSrc = st.era === "2026" ? []
       : st.era === "2027" ? (DATA2026.leaving2027 || [])
@@ -5586,7 +5588,8 @@ const Game = {
                                                        // 二次组阁/IDFT 移籍照旧由主线②承载，本表只负责散点离团
       : st.era === "2021" ? (DATA.leaving2021 || [])   // 【2021】史实离团表挂载（按用户口径，月份精度）：
                                                        // 成员精简同 2020 线设计（layoff21 动态分配+拍板），通用离团直接落地
-      : st.era === "2022" ? []                         // 【2022】2022 史实离团表待用户口径（宁缺毋滥，暂为空）
+      : st.era === "2022" ? (DATA.leaving2022 || [])   // 【2022】史实离团表挂载（按用户口径，月份精度）：
+                                                       // 成员精简同 2021 线 layoff21 机制（动态分配+拍板），通用离团直接落地
       : st.era === "2018" ? DATA.leaving2018
       : st.era === "2017" ? DATA.leaving2017 : DATA.leaving2016;
     for (const lv of leaveSrc) {
@@ -5615,10 +5618,10 @@ const Game = {
         st.flags.layoff17Names = (st.flags.layoff17Names || []).concat(lv.name);
         continue;
       }
-      /* 【2021】成员精简（用户口径，同 2020 线设计，多月份散点）：不走通用离团，
+      /* 【2021/2022】成员精简（用户口径，同 2020 线设计，多月份散点）：不走通用离团，
          先登记待裁名单，离团表循环结束后按成员卡现状动态分配落地
          （见下方 layoff21 分配块）。 */
-      if (st.era === "2021" && (lv.note || "").indexOf("成员精简") >= 0) {
+      if ((st.era === "2021" || st.era === "2022") && (lv.note || "").indexOf("成员精简") >= 0) {
         st.flags.layoff21Names = (st.flags.layoff21Names || []).concat(lv.name);
         continue;
       }
@@ -5716,11 +5719,11 @@ const Game = {
       if (choice.length) st.flags.layoff17Choice = (st.flags.layoff17Choice || []).concat(choice);
     }
 
-    /* 【2021】成员精简落地·动态分配（用户口径，同 2020 线设计）：逐人查卡判定归属——
+    /* 【2021/2022】成员精简落地·动态分配（用户口径，同 2020 线设计）：逐人查卡判定归属——
        本部成员（active，含 PREP）或玩家兼任分团（concur17）成员 → layoff21Choice，
        由玩家拍板是否支付补偿（主线行动「layoff21」→ UI layoff21Pick 拍板窗）；
        未兼任分团成员 → 默认自动支付 15 万/人（同 2020 口径）。 */
-    if (st.era === "2021" && (st.flags.layoff21Names || []).length) {
+    if ((st.era === "2021" || st.era === "2022") && (st.flags.layoff21Names || []).length) {
       const pend = st.flags.layoff21Names;
       st.flags.layoff21Names = [];
       const concur = st.flags.concur17 || {};
@@ -6082,6 +6085,10 @@ const Game = {
       }
       if (st.geDone && (st.flags.ge20Idft || []).length && !st.flags.ge20IdftDone) {
         acts22.push({ id: "ge20idft", main: true, name: "IDFT升格拍板", desc: "本年入榜 IDFT：" + st.flags.ge20Idft.join("、") + "（升格本部/移籍分团/留任）" });
+      }
+      /* 【2022】成员精简补偿拍板（同 2021 线 layoff21 机制，复用拍板窗 applyLayoff21） */
+      if ((st.flags.layoff21Choice || []).length) {
+        acts22.push({ id: "layoff21", main: true, name: "成员精简补偿拍板", desc: "待拍板：" + st.flags.layoff21Choice.join("、") + "（支付 15 万/人 / 不支付）" });
       }
       return acts22;
     }
