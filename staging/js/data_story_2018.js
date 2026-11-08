@@ -287,6 +287,36 @@ const prepEv18 = {
   ],
 };
 
+/* 【2018 通用·史实锚点】《芸汐传》开播事件点将解析（用户口径 2026-XX）。
+   剧名/角色/名单一律按 2017 影视投资落地档（f.filmTaken2017 pid="2017_0"《芸汐传》）取用：
+   · 女主：按投资点将（主演加成，殿堂/成员身份文案自适应）；空置 → 剧情口径改为
+     「顶流明星」领衔（无成员加成）；
+   · 女二：按投资点将；空置 → 默认许佳琪（用户口径）；
+   · 女配：按投资点将；空置/不足额 → 默认按本事件说明的出镜成员补足
+     （林思意、刘炅然、谢蕾蕾、邵雪聪——出镜五人中除女二默认许佳琪外的四人，名额 4）。
+   离团成员自动跳过；返回 { rec, lead, leadName, second, secondName, supports, supNames }
+   （lead/second/supports 为成员对象数组；lead=null 表示女主空置=顶流明星）。 */
+const YUNXI_PID = "2017_0";                       // filmTemplates2017《芸汐传》固定 pid
+const YUNXI_DEFAULT_SECOND = "许佳琪";
+const YUNXI_DEFAULT_SUPPORTS = ["林思意", "刘炅然", "谢蕾蕾", "邵雪聪"];
+function yunxiCast18(st) {
+  const rec = (st.flags.filmTaken2017 || []).find(p => p.pid === YUNXI_PID) || null;
+  const alive = nm => st.members.find(x => x.name === nm && x.status !== "left") || null;
+  const leadName = rec && rec.lead ? rec.lead : null;
+  const lead = leadName ? alive(leadName) : null;
+  const secondName = (rec && rec.second) || (alive(YUNXI_DEFAULT_SECOND) ? YUNXI_DEFAULT_SECOND : null);
+  const second = secondName ? alive(secondName) : null;
+  const supN = rec && rec.support ? rec.support : 4;
+  let supNames = (rec && Array.isArray(rec.supports) ? rec.supports.filter(Boolean) : []).slice(0, supN);
+  supNames = supNames.filter(nm => nm !== secondName);   // 女二去重（含默认女二许佳琪）
+  for (const nm of YUNXI_DEFAULT_SUPPORTS) {
+    if (supNames.length >= supN) break;
+    if (supNames.indexOf(nm) < 0 && nm !== secondName && alive(nm)) supNames.push(nm);
+  }
+  const supports = supNames.map(alive).filter(Boolean);
+  return { rec, lead, leadName, second, secondName, supports, supNames };
+}
+
 STORY.monthly18 = {
   /* ---------- 1月：交接周 + 组阁专班 + 张怡的请求 + 预备生公演推行 ---------- */
   1: [
@@ -712,48 +742,63 @@ STORY.monthly18 = {
       ],
     },
     {
-      /* 【2018 通用·史实锚点】《芸汐传》大爆（2018-06-25 爱奇艺独播，鞠婧祎主演）。
-         文本按鞠婧祎是否荣誉殿堂在堂分叉（2017 总选夺冠=殿堂偶像 / 未升堂=成员）；
-         出镜成员林思意、许佳琪、刘炅然、谢蕾蕾、邵雪聪获得加成——未升堂时鞠婧祎
-         （主演）也享受加成。在册即加成（含分团在籍，如谢蕾蕾），离团跳过。 */
+      /* 【2018 通用·史实锚点】《芸汐传》大爆（2018-06-25 爱奇艺独播）。
+         触发条件（用户口径 2026-XX）：《芸汐传》2017 影视投资落地（f.filmTaken2017
+         pid="2017_0"）；未投资则本年无此剧，事件不触发。
+         涉及成员按投资点将变动（yunxiCast18）：女主=点将者（空置→文案改顶流明星、无加成）；
+         女二=点将者（空置→默认许佳琪）；女配=点将者（空置/不足额→默认出镜四人补足）。
+         在册即加成（含分团在籍），离团跳过；女主加成不再区分殿堂/成员（按点将统一结算）。 */
       id: "m6_18_yunxi",
       title: "6月 · 《芸汐传》开播",
-      gate: st => !st.decisions.yunxi18 && st.members.some(m => m.name === "鞠婧祎" && m.status !== "left"),
+      gate: st => !st.decisions.yunxi18 && !!(st.flags.filmTaken2017 || []).find(p => p.pid === YUNXI_PID),
       pages: st => {
-        const jjy = st.members.find(m => m.name === "鞠婧祎" && m.status !== "left");
-        const hall = !!(jjy && jjy.hall);
+        const c = yunxiCast18(st);
+        const leadDesc = c.lead
+          ? (c.lead.hall ? "殿堂偶像" + c.lead.name : "成员" + c.lead.name)
+          : null;
+        const p1 = leadDesc
+          ? "六月末，由" + leadDesc + "领衔主演的古装剧《芸汐传》在爱奇艺开播——上线三天，播放量破了十亿；上线两周，全网讨论度登顶。剧外的标签第一次盖过了「SNH48」这五个字母：这条河的孩子，扛起了自己的女主角时代。"
+          : "六月末，古装剧《芸汐传》在爱奇艺开播——女主角由剧方外请的顶流明星出演，SNH48 的孩子们倾力配戏。上线三天，播放量破了十亿；上线两周，全网讨论度登顶。这条河的孩子，第一次以「剧组班底」的姿态站进了出圈的热搜里。";
+        const supporting = [c.secondName].concat(c.supNames).filter(Boolean);
+        const p2 = supporting.length
+          ? "镜头往配角名单里数过去，全是这条河的自家人：" + supporting.join("、") + "——一部戏，" + supporting.length + "张熟脸。官微连夜把剧照排成九宫格，转发在半小时内破了十万。"
+          : "镜头往配角名单里数过去，配角清一色是剧方签约的外请演员——这条河的孩子们，只在这部戏里留了个远远的背影。官微连夜把剧照排成九宫格，转发在半小时内破了十万。";
         return [
-          { nar: true, t: (hall
-            ? "六月末，由殿堂偶像鞠婧祎领衔主演的古装剧《芸汐传》在爱奇艺开播——上线三天，播放量破了十亿；上线两周，全网讨论度登顶。剧外的标签第一次盖过了「SNH48」这五个字母：这条河的孩子，扛起了自己的男主角时代。"
-            : "六月末，由成员鞠婧祎领衔主演的古装剧《芸汐传》在爱奇艺开播——上线三天，播放量破了十亿；上线两周，全网讨论度登顶。剧外的标签第一次盖过了「SNH48」这五个字母：这条河的孩子，扛起了自己的女主角时代。") },
-          { nar: true, t: "镜头往配角名单里数过去，全是这条河的自家人：林思意、许佳琪、刘炅然、谢蕾蕾、邵雪聪——一部戏，五张熟脸。官微连夜把剧照排成九宫格，转发在半小时内破了十万。" },
-          { s: "叶盛", cls: "speaker-yesheng", t: "（把数据报表放到你桌上，语速比平时快）总监，这不是普通的热搜——是正剧出圈。影视部那边说了，趁剧还热着，五个出镜孩子的通告费都能往上报一报。怎么接这波，您定。" },
+          { nar: true, t: p1 },
+          { nar: true, t: p2 },
+          { s: "叶盛", cls: "speaker-yesheng", t: (supporting.length
+            ? "（把数据报表放到你桌上，语速比平时快）总监，这不是普通的热搜——是正剧出圈。影视部那边说了，趁剧还热着，出镜孩子们的通告费都能往上报一报。怎么接这波，您定。"
+            : "（把数据报表放到你桌上，语速比平时快）总监，这不是普通的热搜——是正剧出圈。可惜主角配角一个都没点将，这波热度咱们只能远远看著。怎么接，您定。") },
         ];
       },
       choices: [
-        { label: "庆功与乘势宣传，一条龙安排上", hint: "出镜五人（林思意/许佳琪/刘炅然/谢蕾蕾/邵雪聪）人气+6 羁绊+3；热度+3；未升堂时鞠婧祎（主演）人气+8 羁绊+3",
+        { label: "庆功与乘势宣传，一条龙安排上", hint: "按投资点将名单结算：主演人气+8 羁绊+3，女二/女配各人气+6 羁绊+3（女主空置=顶流明星出演，无成员加成；女二空置默认许佳琪、女配空置默认出镜四人）；热度+3",
           tag: "yunxi18", value: "hit",
           effect: st => {
-            const CAST = ["林思意", "许佳琪", "刘炅然", "谢蕾蕾", "邵雪聪"];
+            const c = yunxiCast18(st);
+            const lines = [];
+            if (c.lead) {
+              c.lead.pop = Math.min(100, (c.lead.pop || 0) + 8);
+              c.lead.bond = Math.min(100, (c.lead.bond || 0) + 3);
+              c.lead.note = (c.lead.note ? c.lead.note + "；" : "") + "2018《芸汐传》主演（剧集大爆）";
+              lines.push("主演" + c.lead.name + " 人气+8 羁绊+3");
+            }
+            if (c.second) {
+              c.second.pop = Math.min(100, (c.second.pop || 0) + 6);
+              c.second.bond = Math.min(100, (c.second.bond || 0) + 3);
+              c.second.note = (c.second.note ? c.second.note + "；" : "") + "2018《芸汐传》女二（剧集大爆）";
+              lines.push("女二" + c.second.name + "（" + (c.rec && c.rec.second ? "点将" : "默认补位") + "）人气+6 羁绊+3");
+            }
             let n = 0;
-            for (const nm of CAST) {
-              const m = st.members.find(x => x.name === nm && x.status !== "left");
-              if (m) {
-                m.pop = Math.min(100, (m.pop || 0) + 6);
-                m.bond = Math.min(100, (m.bond || 0) + 3);
-                m.note = (m.note ? m.note + "；" : "") + "2018《芸汐传》出镜（剧集大爆）";
-                n++;
-              }
+            for (const m of c.supports) {
+              m.pop = Math.min(100, (m.pop || 0) + 6);
+              m.bond = Math.min(100, (m.bond || 0) + 3);
+              m.note = (m.note ? m.note + "；" : "") + "2018《芸汐传》出镜（剧集大爆）";
+              n++;
             }
-            const jjy = st.members.find(x => x.name === "鞠婧祎" && x.status !== "left");
-            const hall = !!(jjy && jjy.hall);
-            if (jjy && !hall) {
-              jjy.pop = Math.min(100, (jjy.pop || 0) + 8);
-              jjy.bond = Math.min(100, (jjy.bond || 0) + 3);
-              jjy.note = (jjy.note ? jjy.note + "；" : "") + "2018《芸汐传》主演（剧集大爆）";
-            }
+            if (n) lines.push("女配 " + n + " 人（" + c.supNames.join("、") + "）人气+6 羁绊+3");
             st.heat = Math.min(100, st.heat + 3);
-            return "庆功宴摆在剧组杀青的同一间酒店。灯牌、热搜、通稿三线齐发——影视部预估，剧的热度至少还能吃两个月。\n\n（决策已登记：yunxi18=hit。出镜成员 " + n + " 人在册加成（人气+6 羁绊+3）" + (hall ? "" : "，主演鞠婧祎人气+8 羁绊+3（未升堂，总选年正需要这股东风）") + "，热度+3。）";
+            return "庆功宴摆在剧组杀青的同一间酒店。灯牌、热搜、通稿三线齐发——影视部预估，剧的热度至少还能吃两个月。\n\n（决策已登记：yunxi18=hit。" + (lines.length ? lines.join("；") : "女主由顶流明星出演，无成员加成") + "，热度+3。）";
           } },
       ],
     },

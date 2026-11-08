@@ -613,27 +613,45 @@ STORY.monthly21 = {
       /* 【2021·9月（用户口径 2026-XX）】二期生长约到期安置：从二期生开始签的都是长约，
          大部分人已达到标准（总选连霸/前三/殿堂等荣誉口径），可以出去看看。
          安置池 GEN2_21 十人中的在册者；同一期生安置口径（续约/影视约/毕业/转岗），
-         拍板窗含赵嘉敏·学业线（若在池）。 */
+         拍板窗含赵嘉敏·学业线（若在池）。
+         【延迟口径（用户口径 2026-XX；修订：延迟仅限选秀限定团）】
+         跟随选秀限定团活动期未满/选秀成团既往（unit19/unit20）者延入 2022 池，
+         本年拍板窗不含（页面动态列出延迟名单）；全延迟时仅展示存档选项。 */
       id: "m9_21_gen2",
       title: "9月 · 长约到期",
-      gate: st => !st.flags.gen2Done21 && Game.gen2Pool21(st).some(m => Game.GEN2_21.indexOf(m.name) >= 0),
-      pages: st => [
-        { nar: true, t: "九月的月度会上，叶盛把一叠合同抽出来排在桌上——全是二期生的名字。" },
-        { s: "叶盛", cls: "speaker-yesheng", t: "总监，你知道吧，从二期生开始，她们签的都是长约。但这几年下来，很大一部分二期生都已经达到标准了——荣誉、人气、代表作，该有的都有了。也许，可以让她们出去看看，不用继续呆在小剧场了。" },
-        { nar: true, t: "（二期生安置开放：总选落幕后逐人拍板去向——续约/影视约/毕业/转岗，同一期生安置口径；月度行动「二期生安置」已入行动区，拍板窗内含赵嘉敏·学业线〔若适用〕。）" },
-      ],
+      gate: st => !st.flags.gen2Done21
+        && (Game.gen2Pool21(st).some(m => Game.GEN2_21.indexOf(m.name) >= 0) || Game.gen2DeferList21(st).length > 0),
+      pages: st => {
+        const deferred = Game.gen2DeferList21(st);
+        const pages = [
+          { nar: true, t: "九月的月度会上，叶盛把一叠合同抽出来排在桌上——全是二期生的名字。" },
+          { s: "叶盛", cls: "speaker-yesheng", t: "总监，你知道吧，从二期生开始，她们签的都是长约。但这几年下来，很大一部分二期生都已经达到标准了——荣誉、人气、代表作，该有的都有了。也许，可以让她们出去看看，不用继续呆在小剧场了。" },
+        ];
+        if (deferred.length)
+          pages.push({ nar: true, t: "（名单上有几个名字被圈了出来：" + deferred.join("、") + "——跟随选秀限定团活动期未满/既往成团的成员，去向延迟一年再议〔延入 2022 池〕，本年拍板窗不含她们。）" });
+        pages.push({ nar: true, t: "（二期生安置开放：总选落幕后逐人拍板去向——续约/影视约/毕业/转岗，同一期生安置口径；月度行动「二期生安置」已入行动区，拍板窗内含赵嘉敏·学业线〔若适用〕。）" });
+        return pages;
+      },
       choices: [
         { label: "「把名册给我——一个一个来。」", hint: "开启二期生安置：逐人拍板去向（默认全员续约，只需点需变更的成员）",
+          gate: st => Game.gen2Pool21(st).length > 0,
           pickMode: "pickGen2" },
+        { label: "「这些名字，明年再议。」", hint: "延迟名单存档：成团未回归/选秀成团既往者延入 2022 池",
+          gate: st => Game.gen2Pool21(st).length === 0 && Game.gen2DeferList21(st).length > 0,
+          effect: st => "成团成员的去向延后一年再议——名单已存档（flags.gen2Defer22），明年此时再谈。" },
       ],
     },
     {
       /* 【2021·9月（用户口径 2026-XX）】赵嘉敏学业线回收：按 2017 年约定延期一年，
-         今年合约到期，安置去向（同一期生安置，并入 gen2 拍板窗池）。 */
+         今年合约到期，安置去向（同一期生安置，并入 gen2 拍板窗池）。
+         【延迟口径（用户口径 2026-XX；修订：延迟仅限选秀限定团）】若赵嘉敏因选秀
+         限定团（unit19/unit20）未回归或既往成团而延迟，本事件不触发——
+         去向延入 2022 池（flags.gen2Defer22），延迟名单由 m9_21_gen2 页面动态展示；
+         小分队/7SENSES 经历不影响她入池。 */
       id: "m9_21_zhao21",
       title: "9月 · 延期的一年",
       gate: st => !st.flags.gen2Done21 && Game.zjmStudyRoute(st)
-        && st.members.some(m => m.name === "赵嘉敏" && (m.status === "active" || m.status === "rest") && !m.hall),
+        && Game.gen2Pool21(st).some(m => m.name === "赵嘉敏"),
       pages: st => [
         { nar: true, t: "叶盛敲门进来的时候，手里只拿着一份合同——封面右下角，写着赵嘉敏的名字。" },
         { s: "叶盛", cls: "speaker-yesheng", t: "总监，根据当年和赵嘉敏的约定，学业延期了一年——今年，这份合约也到期了。她的去向，得有个说法了。" },
@@ -651,6 +669,44 @@ STORY.monthly21 = {
       pages: st => [
         { nar: true, t: "九月，电商部的日历上圈满了红色数字：大促季来了。AW9 的选品会从一周一次改成一周三次，仓库的打包胶带声，成了排练室之外最勤快的节拍器。" },
         { s: "叶盛", cls: "speaker-yesheng", t: "（抱着一摞选品清单）总监，大促三倍备货，主播排班拉满——孩子们说，比总选冲刺还累，但账好看。（资金+40 热度+3）" },
+      ],
+    },
+    {
+      /* 【2021·9月（用户口径 2026-XX）】郑奕雯非绿色直播曝光：处置权在玩家（本部
+         在册或玩家兼任其所在分团时）；两案均无需支付解约金（用户口径）：
+         ①发布声明并开除（主动切割，舆情止损：热度-2 士气-2）
+         ②仅开除（无声明，舆情发酵：热度-5 士气-4）——数值 Agent 拟定可调；
+         未在本部且玩家未兼任其分团 → 默认发布声明并开除（engine.monthStart 落地，不走本事件）。
+         【同源陷阱①】登记权归 UI（tag zyw21），effect 不得读写该 key 作卫兵。 */
+      id: "m9_21_zyw",
+      title: "9月 · 直播间的另一面",
+      gate: st => !st.decisions.zyw21
+        && st.members.some(m => m.name === "郑奕雯" && !m.hall && m.status !== "left" && m.status !== "rest"
+          && (m.status === "active" || (m.branchTeam && st.flags.concur17 && st.flags.concur17[m.branchTeam]))),
+      pages: st => [
+        { nar: true, t: "九月的一个深夜，一条热搜悄悄爬上了榜单：某女子团体成员被曝参与非绿色直播。截图模糊，但眼熟的马尾和应援色骗不了人——郑奕雯。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把平板推到你面前，声音压得很低）总监，截图已经传开了，公司舆情组七点前会拿到完整报告。现在能定的只有一件事：怎么开除她——顺便，要不要让外界听到我们的声音。" },
+        { nar: true, t: "（两案均无需支付解约金；处置口径由你拍板。）" },
+      ],
+      choices: [
+        { label: "「先发声明，再办开除——把话说清楚。」", hint: "发布声明并开除：主动切割、舆情止损（热度-2 士气-2；无解约金）",
+          tag: "zyw21", value: "statementFire",
+          effect: st => {
+            const m = st.members.find(x => x.name === "郑奕雯");
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2021-09 非绿色直播曝光，发布声明并开除（无解约金）"; }
+            st.heat = Math.max(0, st.heat - 2);
+            st.morale = Math.max(0, st.morale - 2);
+            return "声明凌晨发出，措辞克制：绝不容忍，即刻解约，配合调查。热搜下的骂声找到了宣泄口，矛头从公司转给了个人——舆情在第二天中午回落。她交出工牌时没人多说一句话，但排练室安静了一个星期。\n\n（决策已登记：zyw21=statementFire。郑奕雯已发布声明并开除（无解约金）；热度-2 士气-2。）";
+          } },
+        { label: "「直接开除，不发任何声明。」", hint: "仅开除：不表态、外累解读（热度-5 士气-4；无解约金）",
+          tag: "zyw21", value: "fire",
+          effect: st => {
+            const m = st.members.find(x => x.name === "郑奕雯");
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2021-09 非绿色直播曝光，仅开除（无解约金，未发声明）"; }
+            st.heat = Math.max(0, st.heat - 5);
+            st.morale = Math.max(0, st.morale - 4);
+            return "解约函当天送达，官网一个字没提。你以为冷处理能压下去，可空白的公告栏反而成了最大的新闻——「公司装死」的词条在第二天早上接了棒。孩子们私下里议论纷纷，谁也不知道公司到底怎么想。\n\n（决策已登记：zyw21=fire。郑奕雯仅开除（无解约金，未发声明）；热度-5 士气-4。）";
+          } },
       ],
     },
   ],

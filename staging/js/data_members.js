@@ -565,9 +565,11 @@ const DATA = {
      · 2018-11-02 十一期生首位颜沁公布；
      · 分团新期生：BEJ48 三期（2018-01-19，2人）/ SHY48 三期（2018-03-17，7人）/
        CKG48 二期（2018-04-07，8人）/ BEJ48 五期（2018-06，3人）/ CKG48 三期（2018-09-01，7人）/
-       GNZ48 六期（2018-10-05，4人）/ SHY48 四期（2018-10-05，12人）/ BEJ48 六期（2018-11-08，2人）。
+       GNZ48 六期（2018-10-05，4人）/ SHY48 四期（2018-10-05，12人）/ BEJ48 六期（2018-11-08，2人）/
+        GNZ48 五期（2018-04，1人，章泽婷——按用户口径 2026-XX 补挂，月份精度）。
      本部新期生 team 挂 PREP；分团新期生带 branchTeam（引擎建分团预备生简卡）。 */
   joining2018: [
+    { month: 4,  name: "章泽婷", branchTeam: "GNZ48", gen: "GNZ48五期生", join: "2018-04" },   // 按用户口径 2026-XX 补挂建卡（月份精度；GNZ48 未开业则不入册）
     { month: 1,  name: "杨鑫",   branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2018-01-19" },
     { month: 1,  name: "周洁艺", branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2018-01-19" },
     { month: 2,  name: "陈盼",     team: "PREP", gen: "九期生", join: "2018-02-03" },
@@ -769,6 +771,8 @@ const DATA = {
     { month: 1,  name: "刘炅然", date: "2019-01", type: "毕业", story: false, note: "三期生" },
     { month: 2,  name: "杜秋霖", date: "2019-02", type: "退团", story: false, note: "GNZ48一期生" },
     { month: 2,  name: "李丽满", date: "2019-02", type: "退团", story: false, note: "BEJ48五期生" },
+     { month: 3,  name: "章泽婷", date: "2019-03", type: "退团", story: false, note: "GNZ48五期生" },   // 按用户口径 2026-XX（通用离团；joining2018 补挂建卡，无卡自动跳过）
+     { month: 3,  name: "任玥霖", date: "2019-03", type: "退团", story: false, note: "BEJ48一期生" },   // 按用户口径 2026-XX（通用离团；BEJ48 开业后建卡，未开业/无卡自动跳过）
     { month: 4,  name: "李瑜璇", date: "2019-04", type: "退团", story: false, note: "CKG48一期生" },
     { month: 6,  name: "李沁洁", date: "2019-06", type: "毕业", story: false, note: "五期生" },
     { month: 6,  name: "栾嘉仪", date: "2019-06", type: "离团", story: false, note: "十期生（预备生）" },

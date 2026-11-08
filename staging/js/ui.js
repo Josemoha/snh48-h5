@@ -158,6 +158,7 @@ const UI = {
       rows.push(["本部工资（" + d.hqCount + " 人 × 0.5 万，暂休不计）", "-" + d.salary + " 万", "sr-minus"]);
       if (d.top7Count > 0) rows.push(["总选TOP7分成（" + d.top7Count + " 人）", "-" + d.top7 + " 万", "sr-minus"]);
       if (d.branchCost > 0) rows.push(["分团维系·分团工资（" + d.brCount + " 人）", "-" + d.branchCost + " 万", "sr-minus"]);
+      if (d.jpCost > 0) rows.push(["日本模式 · 日方授权分成", "-" + d.jpCost + " 万", "sr-minus"]);   // 【日本模式】复刻线进行中成本上浮（分手后消失）
       rows.push(["固定运营支出", "-" + d.fixed + " 万", "sr-minus"]);
     } else {
       rows.push(["固定运营支出", "-" + step.expense + " 万", "sr-minus"]);
@@ -1448,7 +1449,7 @@ const UI = {
       }
       box.appendChild(mkCard("主线② · 两大年度活动",
         st.geDone && st.rtDone ? "✔ 双活动收官" : "进行中", st.geDone && st.rtDone ? "q-done" : "q-open", bAct));
-      /* 主线④⑤（仅 classic） */
+      /* 主线④（仅 classic） */
       if (!partner22) {
         box.appendChild(mkCard("主线④ · 《最佳拍档》第二季",
           st.flags.bp22ClassicDone ? "✔ 已开榜" : st.flags.b22Filled22 ? "名单已收口 · 待开榜" : "进行中",
@@ -1456,13 +1457,14 @@ const UI = {
           this.el("div", "quest-detail", st.flags.bp22ClassicDone
             ? "✔ 第二季开榜（前五已公布；第一名组合双人旅行待明年回收）"
             : "赛制同去年，但除了你点将的，不许重复去年的组队（自动组队/收口均避开去年名单）")));
-        const ruleDoneN = Object.keys(st.flags.rule22Teams || {}).length;
-        box.appendChild(mkCard("主线⑤ · 成员守则培训",
-          st.flags.rule22AllDone ? "✔ 全员覆盖" : "进行中", st.flags.rule22AllDone ? "q-done" : "q-open",
-          this.el("div", "quest-detail", st.flags.rule22AllDone
-            ? "✔ 每队（含分团）至少培训一次——叶盛的台账写满了"
-            : "叶盛要求：每队（含分团）今年至少一次——已覆盖 " + ruleDoneN + " 队")));
       }
+      /* 主线⑤（通用，双模式均可） */
+      const ruleDoneN = Object.keys(st.flags.rule22Teams || {}).length;
+      box.appendChild(mkCard("主线⑤ · 成员守则培训",
+        st.flags.rule22AllDone ? "✔ 全员覆盖" : "进行中", st.flags.rule22AllDone ? "q-done" : "q-open",
+        this.el("div", "quest-detail", st.flags.rule22AllDone
+          ? "✔ 每队（含分团）至少培训一次——叶盛的台账写满了"
+          : "叶盛要求：每队（含分团）今年至少一次——已覆盖 " + ruleDoneN + " 队")));
       this.renderActions();
       return;
     }
@@ -1890,6 +1892,8 @@ const UI = {
     if (res.tone === "pickGen1") { this.showGen1Picker(); return; }
     /* 【2021】二期生/赵嘉敏合约安置（同一期生口径）：落地在 Game.applyGen221 */
     if (res.tone === "pickGen2") { this.showGen2Picker(); return; }
+    /* 【2022 主线③】十周年特邀点将（不强制全邀，可空确认）；落地在 Game.applyConcert22Invite */
+    if (res.tone === "concert22Invite") { this.showConcert22InvitePicker(); return; }
     /* TEB48 派遣移籍决定（2019 主线①第四段）：弹 0~5 人可选点将窗 */
     if (res.tone === "pickTeb19") { this.showTeb19Picker(); return; }
     /* 选秀派遣点将（2018）：弹十一人点将窗（葛佳慧承诺自动占位） */
@@ -1953,26 +1957,31 @@ const UI = {
      （赴日五人 / 开拓者六人等「选 N 人」交互共用） */
   showMultiPick(cfg) {
     const picked = new Set();
+    /* 不限人数模式（cfg.count 省略）：点选任意子集（可空）即可确认，如十周年特邀点将；
+       带 cfg.max 的可选模式：0~max 人任意（可不选不满额），如影视投资赦免条款（角色可不点满） */
+    const optional = cfg.count == null;
+    const cap = optional ? (cfg.max != null ? cfg.max : cfg.pool.length) : cfg.count;
     const c = this.card(cfg.title, cfg.sub);
-    const counter = this.el("p", "modal-text", "已选 0 / " + cfg.count);
+    const counter = this.el("p", "modal-text", "已选 0" + (optional ? "" : " / " + cap));
     const grid = this.el("div", "pick-grid");
     const confirmBtn = this.el("button", "btn btn-primary modal-close", cfg.confirmLabel);
     confirmBtn.disabled = true;
     const refresh = () => {
-      counter.textContent = "已选 " + picked.size + " / " + cfg.count + (picked.size === cfg.count ? "　✔ 可以确认" : "　（点击卡片选择 / 取消）");
-      confirmBtn.disabled = picked.size !== cfg.count;
+      counter.textContent = "已选 " + picked.size + (optional ? (cfg.max != null ? "（至多 " + cap + " 人，可不选不满额）" : "（点选 / 取消；可不选）") : " / " + cap + (picked.size === cap ? "　✔ 可以确认" : "　（点击卡片选择 / 取消）"));
+      confirmBtn.disabled = !optional && picked.size !== cap;
     };
     for (const m of cfg.pool) {
       const b = this.el("button", "pick-btn", "");
       b.innerHTML = m.name + '<span class="pb-team">' + cfg.cardInfo(m) + "</span>";
       b.onclick = () => {
         if (picked.has(m.id)) { picked.delete(m.id); b.classList.remove("on"); }
-        else if (picked.size < cfg.count) { picked.add(m.id); b.classList.add("on"); }
-        else { this.toast("最多" + cfg.count + "个人——先取消一位再选"); return; }
+        else if (picked.size < cap) { picked.add(m.id); b.classList.add("on"); }
+        else { this.toast("至多" + cap + "个人——先取消一位再选"); return; }
         refresh();
       };
       grid.appendChild(b);
     }
+    refresh();
     confirmBtn.onclick = () => {
       this.closeModal();
       cfg.onConfirm([...picked]);
@@ -1994,10 +2003,14 @@ const UI = {
      影视投资（2016~2021 线通用·月度行动「filmInvest」，用户口径 2026-XX）：
      8月事件只做「前年回款结算 + 引导」，投资在行动板上拍板：
      ① 项目邁选窗：列出剩余可投项目（点击即选，资金不足置灰）；
-     ② 逐部点将：女主角（人气+3 演技+2 羁绊+2），设女二号的项目再点一位女二（+2/+1/+1）；
-        荣誉殿堂/影视部（HALL）成员可点将；
-     ③ 落地 Game.doAction('filmInvest',{pid,lead,second})：每部耗 1 行动点，无上限。
-     低点击量：投 1 部 = 1 次项目点选 + 1~2 次点将，无逐人循环。 */
+     ② 逐部点将：女主角（人气+3 演技+2 羁绊+2），设女二号的项目再点一位女二（+2/+1/+1），
+        有女配名额的项目再点女配（人气+1 演技+1，多选一次点齐）；
+        赦免条款：各槽位均可空置（女主/女二可不点、女配可不足额），价格不变、投资照常落地，
+        空置槽位无演出收益；
+        荣誉殿堂/影视部（HALL）成员可点将；女主限影视部/殿堂的项目（2017《芸汐传》）
+        女主槽仅限 film/hall/HALL 成员；
+     ③ 落地 Game.doAction('filmInvest',{pid,lead,second,supports})：每部耗 1 行动点，无上限。
+     低点击量：投 1 部 = 1 次项目点选 + 女主/女二各 1 次 + 女配 1 次多选，无逐人循环。 */
   showFilmProjectPicker() {
     const st = Game.st;
     const rem = Game.filmRemaining(st);
@@ -2005,7 +2018,7 @@ const UI = {
     const grid = this.el("div", "pick-grid");
     for (const p of rem) {
       const b = this.el("button", "pick-btn", "");
-      b.innerHTML = "《" + p.title + "》" + '<span class="pb-team">' + p.type + (p.flagship ? "·年度主打" : "") + " · 投资 " + p.cost + " 万 · " + Game.filmSlotDesc(p) + (p.flagship ? " · 主演限影视部/总选前三" : "") + "</span>";
+      b.innerHTML = "《" + p.title + "》" + '<span class="pb-team">' + p.type + (p.flagship ? "·年度主打" : "") + " · 投资 " + p.cost + " 万 · " + Game.filmSlotDesc(p) + (p.flagship ? " · 主演限影视部/总选前三" : "") + (p.leadHallOnly ? " · 女主限影视部/殿堂偶像" : "") + "</span>";
       if (st.money < p.cost) { b.disabled = true; b.title = "资金不足"; }
       b.onclick = () => { this.closeModal(); this.castFilmProjects([p], 0, [], null); };
       grid.appendChild(b);
@@ -2033,25 +2046,43 @@ const UI = {
       return;
     }
     const p = projects[i];
-    /* 点将池：本部/分团在册 + 荣誉殿堂/影视部（HALL，走影视方向）均可点；
-       年度主打（flagship）仅限影视部成员或总选前三 */
+    /* 点将池（按槽位收紧）：基础池 = 本部/分团在册 + 荣誉殿堂/影视部（HALL，走影视方向）；
+       年度主打（flagship）：女主/女二限影视部成员或总选前三；
+       女主限殿堂（leadHallOnly，2017《芸汐传》用户口径）：女主限 film/hall/HALL 成员（不含总选前三豁免）；
+       女配槽不受限 */
     const flagNames = p.flagship ? Game.filmFlagshipAllowed(st) : null;
-    const pool = () => st.members.filter(m => (m.status === "active" || m.status === "branch") && m.pop != null && m.status !== "left")
-      .filter(m => !flagNames || m.film || m.hall || m.team === "HALL" || flagNames.has(m.name));
+    const isFilmStaff = m => m.film || m.hall || m.team === "HALL";
+    const pool = () => st.members.filter(m => (m.status === "active" || m.status === "branch") && m.pop != null && m.status !== "left");
+    const poolFor = roleKey => {
+      let arr = pool();
+      if (p.flagship && (roleKey === "lead" || roleKey === "second"))
+        arr = arr.filter(m => isFilmStaff(m) || (flagNames && flagNames.has(m.name)));
+      if (p.leadHallOnly && roleKey === "lead") arr = arr.filter(isFilmStaff);
+      return arr;
+    };
     const teamLabel = m => (m.hall || m.team === "HALL") ? "影视部" : (m.status === "branch" ? m.branchTeam : m.team);
     const pickRole = (roleKey, roleLabel, reward, exclude, next) => {
+      /* 限制说明按槽位取对应口径：年度主打女主兼 leadHallOnly 时只展示更严的殿堂口径 */
+      let limitNote = "";
+      if (p.flagship && (roleKey === "lead" || roleKey === "second")) {
+        limitNote = (p.leadHallOnly && roleKey === "lead")
+          ? "；年度主打——女主限影视部成员/荣誉殿堂偶像"
+          : "；年度主打——主演限影视部成员或总选前三";
+      } else if (p.leadHallOnly && roleKey === "lead") {
+        limitNote = "；女主限影视部成员/荣誉殿堂偶像";
+      }
       this.showMultiPick({
         title: "《" + p.title + "》 · " + roleLabel + "点将（投资 " + p.cost + " 万）",
-        sub: "被选中者 " + reward + "（荣誉殿堂/影视部成员亦可出演）" + (p.flagship ? "；年度主打——主演限影视部成员或总选前三" : ""),
-        pool: pool().filter(m => m.name !== exclude),
-        count: 1,
+        sub: "被选中者 " + reward + "（荣誉殿堂/影视部成员亦可出演；可不点——角色空置，不影响落地）" + limitNote,
+        pool: poolFor(roleKey).filter(m => m.name !== exclude),
+        max: 1,   /* 赦免条款：可不点（角色空置），至多 1 人 */
         confirmLabel: "「" + roleLabel + "」定了 →",
         cardInfo: m => teamLabel(m) + " · 人气" + m.pop + " 羁绊" + m.bond + (m.skills ? " 演技" + m.skills.ac : ""),
         onConfirm: ids => {
-          /* showMultiPick 回传成员 id——归一为姓名存档（engine 按姓名比对，
+          /* showMultiPick 回传成员 id（可为空 = 空置）——归一为姓名存档（engine 按姓名比对，
              修复：误存 id 导致年末清算匹配不上、达标仍扣羁绊） */
-          const m = st.members.find(x => x.id === ids[0]);
-          next(m ? m.name : ids[0]);
+          const m = ids.length ? st.members.find(x => x.id === ids[0]) : null;
+          next(m ? m.name : null);
         },
       });
     };
@@ -2060,12 +2091,33 @@ const UI = {
       if (p.noLead) { next(null); return; }
       pickRole("lead", "女主角" + (p.leadRole ? "（" + p.leadRole + "）" : ""), "人气+3 演技+2 羁绊+2", null, next);
     };
+    /* 女配点将（2017 专属项目书口径）：一次性多选点齐（低点击量），
+       赦免条款：可不足额/不点（空置），0~名额 任意；女二/女配互不重复；
+       收益 人气+1 演技+1（结算在 filmApplyInvest） */
+    const pickSupports = (leadName, secondName) => {
+      if (!p.support) { this.castFilmProjects(projects, i + 1, acc, onDone); return; }
+      const roles = p.supportRoles && p.supportRoles.length ? "（" + p.supportRoles.join("、") + "）" : "";
+      const takenNames = [leadName, secondName].filter(Boolean);
+      this.showMultiPick({
+        title: "《" + p.title + "》 · 女配点将（投资 " + p.cost + " 万）",
+        sub: "女配至多 " + p.support + " 人" + roles + "——被选中者 人气+1 演技+1（荣誉殿堂/影视部成员亦可出演；可不满额——空置角色不影响落地）",
+        pool: pool().filter(m => takenNames.indexOf(m.name) < 0),
+        max: p.support,   /* 赦免条款：0~名额 任意（可不满额） */
+        confirmLabel: "女配名单敲定 →",
+        cardInfo: m => teamLabel(m) + " · 人气" + m.pop + " 羁绊" + m.bond + (m.skills ? " 演技" + m.skills.ac : ""),
+        onConfirm: ids => {
+          /* showMultiPick 回传成员 id——归一为姓名存档（engine 按姓名比对） */
+          acc[acc.length - 1].supports = ids.map(id => { const m = st.members.find(x => x.id === id); return m ? m.name : id; });
+          this.castFilmProjects(projects, i + 1, acc, onDone);
+        },
+      });
+    };
     pickLead(leadName => {
-      acc.push({ pid: p.pid, lead: leadName, second: null });
-      if (!p.role2) { this.castFilmProjects(projects, i + 1, acc, onDone); return; }
+      acc.push({ pid: p.pid, lead: leadName, second: null, supports: null });
+      if (!p.role2) { pickSupports(leadName, null); return; }
       pickRole("second", "女二号" + (p.secondRole ? "（" + p.secondRole + "）" : ""), "人气+2 演技+1 羁绊+1", leadName, secondName => {
         acc[acc.length - 1].second = secondName;
-        this.castFilmProjects(projects, i + 1, acc, onDone);
+        pickSupports(leadName, secondName);
       });
     });
   },
@@ -3124,6 +3176,27 @@ const UI = {
         this.renderGame();
         this.toast(res.text);
         if (onDone) onDone();
+      },
+    });
+  },
+
+  /* 【2022 主线③】十周年特邀点将窗（用户口径 2026-XX：不强制全邀——不限人数多选，
+     可全邀/部分/不邀）：池 = 特邀十二人名单 ∩ 立项时已离团者（立项掷签后登记
+     concert22Candidates）；被邀者全部应允、以虚拟形象出演；落地在 Game.applyConcert22Invite。 */
+  showConcert22InvitePicker() {
+    const st = Game.st;
+    const cand = (st.flags.concert22Candidates || [])
+      .map(n => st.members.find(m => m.name === n)).filter(Boolean);
+    this.showMultiPick({
+      title: "十周年演唱会 · 特邀点将（虚拟形象出演）",
+      sub: "特邀候选 " + cand.length + " 人（来自特邀名单且已离团）——全部会应允前来，以虚拟形象登台；每人除人头成本外加收虚拟形象出场费 " + STORY.CONCERT22_AVATAR_FEE + " 万（随举办成本一并结算）。可全邀、可部分、可不邀",
+      pool: cand,
+      confirmLabel: "特邀名单敲定 →",
+      cardInfo: m => "已离团 · 人气" + (m.pop || 0),
+      onConfirm: ids => {
+        const res = Game.applyConcert22Invite(ids);
+        this.renderGame();
+        this.toast(res.text);
       },
     });
   },
@@ -4797,7 +4870,7 @@ const UI = {
       ["年度活动模式", st.decisions.geMode21 === "partner" ? "组合模式 · 年度最佳拍档（组队制）" : st.decisions.geMode21 === "classic" ? "青春盛典（不再称总选）＋《最佳拍档》第二季" : "未拍板"],
       ["元宇宙", st.mv22.done ? "✔ 元宇宙体系立住（每月+" + (STORY.MV22_INCOME || 10) + "万）" : st.mv22.stage >= 1 ? "推进到第 " + (st.mv22.stage + 1) + "/3 步" : "未启动"],
       ["十周年演唱会", st.concert22.done ? "✔ 已举办（参与 " + st.concert22.n + " 人）" : st.flags.concert22Missed ? "✘ 错过10月定档（不可举办）" : st.concert22.stage >= 1 ? "筹备中（名单 " + (st.flags.concert22Final ? st.flags.concert22Final.names.length : 0) + " 人 · 定档10月）" : "未启动（定档10月）"],
-      ...(st.decisions.geMode21 !== "partner" ? [["成员守则培训", st.flags.rule22AllDone ? "✔ 每队（含分团）全覆盖" : "已覆盖 " + Object.keys(st.flags.rule22Teams || {}).length + " 队"]] : []),
+      ["成员守则培训", st.flags.rule22AllDone ? "✔ 每队（含分团）全覆盖" : "已覆盖 " + Object.keys(st.flags.rule22Teams || {}).length + " 队"],
       ["开榜第一名", st.geResult ? st.geResult.top1 : "—"],
       ["金曲大赏", st.rtDone ? st.rtScore + " / 100" : "—"],
       ["全团平均实力", Game.avgPwr(st) + "（年初 " + (st.pwrBase || 0) + "）"],
