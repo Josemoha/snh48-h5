@@ -183,6 +183,29 @@ const UI = {
 
   /* 通用 VN 事件弹窗（含 choices 分支）：逐页点击推进，末页出选项/继续 */
   stepVN(step, next) {
+    /* 【来电模拟（2026-XX）】step.call 配置时先走来电界面：
+       · 通话内拍板（call.choices）→ 结算文本/公共剧情在通话内播完，直接进入下一步；
+       · 通话内不拍板 → 挂断后按普通事件卡继续（剩余剧情 + 选项）。
+       含点将窗（pickMode）的事件不走来电路径（通话界面承载不了点将交互）。 */
+    if (step.call && !(step.choices || []).some(ch => ch.pickMode)) {
+      const call = step.call;
+      this.showCallSim({
+        mode: call.mode, caller: call.caller, sub: call.sub || "", complaint: call.complaint || "",
+        pages: call.pages || step.pages || [],   // call.pages 不填时全部事件页进通话
+        refreshBoard: true,   // 月度流程：拒接回拨等待期间刷出经营界面，允许玩家继续其他操作
+        choices: call.choices ? (step.choices || []).map(ch => ({
+          label: ch.label, hint: ch.hint, gate: ch.gate,
+          run: () => { const rt = ch.run(); Game.logTermChoice(step.title, ch.label); return rt; },
+        })) : null,
+        after: call.choices ? (step.after || []) : [],
+      }, () => {
+        if (call.choices) { if (next) next(); return; }   // 通话内已拍板
+        delete step.call;
+        if (!(step.pages || []).length && !(step.choices || []).length) { if (next) next(); return; }
+        this.stepVN(step, next);   // 挂断后：剩余剧情 + 选项走普通事件卡
+      });
+      return;
+    }
     const pages = step.pages.slice();
     const c = this.card(step.title || "", "");
     const body = this.el("div", "vn-body");
@@ -744,8 +767,8 @@ const UI = {
           { v: "release", label: "允许支付违约金解约", d: "葛佳慧已离团；无专辑线" },
         ] },
         { key: "branch19Keep", title: "2019 序章 · 分团撤资危机", def: "giveup", opts: [
-          { v: "giveup", label: "放弃分团（史实路线）", d: "SHY48/CKG48 停运；未保旗成员移籍 IDFT；孟波保旗按兼任口径落定（默认）" },
-          { v: "keep", label: "保住分团", d: "SHY48/CKG48 在册分团卡维持原状；2020 序章需安置两团成员（主线①）" },
+          { v: "giveup", label: "放弃分团（史实路线）", d: "SHY48/CKG48 停运；未保旗成员移籍 IDFT；下放名单随撤资离团；孟波保旗按兼任口径落定（默认）" },
+          { v: "keep", label: "保住分团", d: "SHY48/CKG48 在册分团卡维持原状；2020 序章需安置两团成员（主线①）；下放名单延迟至安置时离团" },
         ] },
         { key: "teb19Push", title: "2019 主线 · TEB48 筹建（仅复刻模式生效）", def: "none", opts: [
           { v: "none", label: "不推进", d: "台北未开业；2020 无 TEB48 安置（非复刻线强制此项）" },
@@ -788,8 +811,8 @@ const UI = {
           { v: "release", label: "允许支付违约金解约", d: "葛佳慧已离团；无专辑线" },
         ] },
         { key: "branch19Keep", title: "2019 序章 · 分团撤资危机", def: "giveup", opts: [
-          { v: "giveup", label: "放弃分团（史实路线）", d: "SHY48/CKG48 停运；未保旗成员移籍 IDFT；孟波保旗按兼任口径落定（默认）" },
-          { v: "keep", label: "保住分团", d: "SHY48/CKG48 在册分团卡维持原状；2021 分团旗号延续（CKG48 五期照常入册）" },
+          { v: "giveup", label: "放弃分团（史实路线）", d: "SHY48/CKG48 停运；未保旗成员移籍 IDFT；下放名单随撤资离团；孟波保旗按兼任口径落定（默认）" },
+          { v: "keep", label: "保住分团", d: "SHY48/CKG48 在册分团卡维持原状；2021 分团旗号延续（CKG48 五期照常入册）；下放名单延迟至分团解散/安置时离团" },
         ] },
         { key: "teb19Push", title: "2019 主线 · TEB48 筹建（仅复刻模式生效）", def: "none", opts: [
           { v: "none", label: "不推进", d: "台北未开业；2020 无 TEB48 安置（非复刻线强制此项）" },
@@ -917,6 +940,28 @@ const UI = {
       if (!pc) { startClosing(); return; }
       const rest = queue.slice(1);
       if (pc.gate && !pc.gate(Game.st)) { runPathChoices(rest); return; }   // 整轮 gate（2019 TEB48 仅复刻线）
+      /* 【来电模拟（2026-XX）】pc.call 配置时：来电界面 → 通话内播放引入页 →
+         通话内拍板（apply 结算文本作为通话页）→ 挂断 → 下一轮。 */
+      if (pc.call) {
+        body.onclick = null; footer.innerHTML = "";   // 挂起期间禁止残留点击推进序章
+        const callPages = (pc.pages ? (typeof pc.pages === "function" ? pc.pages(Game.st) : pc.pages) : [])
+          .map(p => ({ ...p, t: Game.fmt(p.t), s: p.s ? Game.fmt(p.s) : p.s }));
+        this.showCallSim({
+          mode: pc.call.mode, caller: pc.call.caller, sub: pc.call.sub || "", complaint: pc.call.complaint || "",
+          recallSec: (Game.CALL_SIM && Game.CALL_SIM.RECALL_SEC_PROLOGUE) || 5,   // 序章无事可干：拒接后 5 秒重拨
+          pages: callPages,
+          choices: pc.choices.filter(c => !c.gate || c.gate(Game.st)).map(c => ({
+            label: c.label,
+            hint: typeof c.hint === "function" ? c.hint(Game.st) : (c.hint || ""),
+            run: () => {
+              if (c.tag) Game.recordDecision(c.tag, c.value !== undefined ? c.value : c.id);
+              Game.logTermChoice((typeof pc.sceneLabel === "function" ? pc.sceneLabel(Game.st) : (pc.sceneLabel || (typeof pro.sceneLabel === "function" ? pro.sceneLabel(Game.st) : pro.sceneLabel))), c.label);
+              return c.apply(Game.st);
+            },
+          })),
+        }, () => runPathChoices(rest));
+        return;
+      }
       body.onclick = null;
       const after = (pc.after || []).map(p => ({ ...p, t: Game.fmt(p.t) }));
       const renderChoices = () => {
@@ -997,6 +1042,160 @@ const UI = {
     render();
   },
 
+  /* ---------------- 来电模拟（手机通话 / 微信视频通话，2026-XX） ----------------
+     cfg = { mode:'phone'|'wechat', caller, sub?, complaint?, pages, choices?, after? }
+     流程：来电界面（接听/拒接）→ 拒接后 CALL_SIM.RECALL_SEC 秒再次来电；
+     累计拒接 ≥ CALL_SIM.COMPLAIN_AT 次后接通，通话开头插入来电者抱怨；
+     累计拒接 ≥ CALL_SIM.AUTO_ANSWER_AT 次自动接通（兑底，不再询问）。
+     接通后对话嵌入通话界面；choices 存在时在通话内拍板（结算文本作为通话页，
+     后接 after 公共剧情页），播完挂断回调；无 choices 挂断后直接回调。 */
+  showCallSim(cfg, onDone) {
+    const declines = { n: 0 };   // 本次来电累计拒接次数（会话内计数）
+    const stAtCall = Game.st;    // 读档/新开局会替换 st 对象：残留倒计时来电作废（防跨档弹出）
+    const timers = [];
+    const later = (fn, ms, iv) => { const t = iv ? setInterval(fn, ms) : setTimeout(fn, ms); timers.push(t); return t; };
+    const clearTimers = () => { while (timers.length) { const t = timers.pop(); clearInterval(t); clearTimeout(t); } };
+    const mode = cfg.mode === "wechat" ? "wechat" : "phone";
+    const SIM = Game.CALL_SIM || { RECALL_SEC: 60, RECALL_SEC_PROLOGUE: 5, COMPLAIN_AT: 2, AUTO_ANSWER_AT: 5 };
+    const recallSec = cfg.recallSec != null ? cfg.recallSec : SIM.RECALL_SEC;   // 序章来电由调用方传短回拨秒数
+    const fmtTime = s => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    let pill = null;   // 非阻塞回拨倒计时悬浮条
+
+    const finish = () => {
+      clearTimers();
+      if (pill) { pill.remove(); pill = null; }
+      this.closeModal();
+      if (onDone) onDone();
+    };
+
+    /* —— 来电界面 —— */
+    const incoming = () => {
+      const c = this.el("div", "modal-card call-sim call-" + mode);
+      c.appendChild(this.el("div", "call-tag", mode === "wechat" ? "微信视频通话" : "手机通话"));
+      c.appendChild(this.el("div", "call-avatar", (cfg.caller || "?").slice(0, 1)));
+      c.appendChild(this.el("div", "call-name", cfg.caller || "未知来电"));
+      c.appendChild(this.el("div", "call-sub", (cfg.sub ? cfg.sub + " · " : "") + (declines.n > 0 ? "第 " + (declines.n + 1) + " 次来电" : "来电")));
+      c.appendChild(this.el("div", "call-status", mode === "wechat" ? "对方邀请你进行视频通话…" : "来电响铃中…"));
+      const btns = this.el("div", "call-btns");
+      const refuse = this.el("button", "call-btn call-refuse", "拒接");
+      refuse.onclick = (e) => {
+        e.stopPropagation();
+        declines.n++;
+        if (declines.n >= SIM.AUTO_ANSWER_AT) { connected(); return; }   // 兑底：拒接满 5 次自动接通
+        hungUp();
+      };
+      const answer = this.el("button", "call-btn call-answer", "接听");
+      answer.onclick = (e) => { e.stopPropagation(); connected(); };
+      btns.appendChild(refuse); btns.appendChild(answer);
+      c.appendChild(btns);
+      this.modal(c);
+    };
+
+    /* —— 挂断：非阻塞回拨——关闭来电窗，倒计时悬浮条提示，期间玩家可继续其他操作；
+          倒计时结束再次弹出来电（若玩家另有弹窗打开则延后至其关闭）；
+          读档/新开局（st 对象被替换）后残留倒计时自动作废。 —— */
+    const hungUp = () => {
+      clearTimers();
+      if (pill) { pill.remove(); pill = null; }
+      this.closeModal();
+      if (cfg.refreshBoard) { try { this.renderGame(); } catch (e) {} }   // 月度流程挂起期间刷出经营界面，供玩家操作
+      let left = recallSec;
+      pill = this.el("div", "call-wait", "");
+      const tick = () => { pill.textContent = "📵 已拒接 " + (cfg.caller || "来电") + " · 对方将在 " + left + " 秒后再次来电"; };
+      tick();
+      document.body.appendChild(pill);
+      const tryIncoming = () => {
+        if (Game.st !== stAtCall) { if (pill) { pill.remove(); pill = null; } clearTimers(); return; }
+        const root = this.$("modal-root");
+        if (root && !root.classList.contains("hidden") && root.childElementCount > 0) { later(tryIncoming, 3000); return; }   // 另有弹窗：延后 3 秒重试
+        if (pill) { pill.remove(); pill = null; }
+        incoming();
+      };
+      later(() => {
+        left--;
+        if (left <= 0) { tryIncoming(); return; }
+        if (Game.st !== stAtCall) { if (pill) { pill.remove(); pill = null; } clearTimers(); return; }
+        tick();
+      }, 1000, true);
+    };
+
+    /* —— 接通：通话界面 + 嵌入对话 —— */
+    const connected = () => {
+      clearTimers();
+      let secs = 0;
+      const c = this.el("div", "modal-card call-sim call-" + mode + " call-live");
+      const head = this.el("div", "call-head");
+      head.appendChild(this.el("div", "call-head-name", (mode === "wechat" ? "微信视频 · " : "手机通话 · ") + (cfg.caller || "")));
+      const timer = this.el("div", "call-head-timer", "0:00");
+      head.appendChild(timer);
+      c.appendChild(head);
+      later(() => { secs++; timer.textContent = fmtTime(secs); }, 1000, true);
+      const body = this.el("div", "call-body");
+      c.appendChild(body);
+      this.modal(c);
+
+      const pages = [];
+      if (declines.n >= SIM.COMPLAIN_AT) {
+        pages.push({ s: cfg.caller, t: cfg.complaint || "（听筒那头传来一声无奈的叹息）总监，可算接了——电话都快被你按成热线了。" });
+      }
+      for (const p of (cfg.pages || [])) pages.push(p);
+      let idx = 0;
+      let ended = false;   // 选项已拍板 → 队尾播完直接挂断
+
+      const renderPage = () => {
+        body.innerHTML = "";
+        const p = pages[idx];
+        if (p.nar) {
+          const line = this.el("div", "call-line call-nar");
+          line.appendChild(this.el("div", "call-text", p.t));
+          body.appendChild(line);
+        } else {
+          const line = this.el("div", "call-line");
+          line.appendChild(this.el("span", "call-speaker", p.s || cfg.caller || ""));
+          line.appendChild(this.el("div", "call-text", p.t));
+          body.appendChild(line);
+        }
+        body.appendChild(this.el("div", "call-hint", idx < pages.length - 1 ? "点击继续 ▼" : ""));
+        body.onclick = () => {
+          if (idx < pages.length - 1) { idx++; renderPage(); return; }
+          if (ended) { body.onclick = null; finish(); return; }
+          showChoicesOrEnd();
+        };
+      };
+
+      const showChoicesOrEnd = () => {
+        body.onclick = null;
+        const choices = (cfg.choices || []).filter(ch => ch.gate !== false);
+        if (!choices.length) {
+          body.innerHTML = "";
+          body.appendChild(this.el("div", "call-hint call-end", "—— 通话结束 ——"));
+          body.onclick = () => { body.onclick = null; finish(); };
+          return;
+        }
+        body.innerHTML = "";
+        const box = this.el("div", "call-choices");
+        for (const ch of choices) {
+          const b = this.el("button", "vn-choice", ch.label + (ch.hint ? "　—— " + ch.hint : ""));
+          b.onclick = (e) => {
+            e.stopPropagation();
+            const rt = ch.run ? ch.run() : "";
+            ended = true;
+            pages.length = idx + 1;   // 截断选项页之后的旧队列
+            pages.push({ nar: true, t: rt });
+            for (const q of (cfg.after || [])) pages.push(q);
+            idx++;
+            renderPage();
+          };
+          box.appendChild(b);
+        }
+        body.appendChild(box);
+      };
+      renderPage();
+    };
+
+    incoming();
+  },
+
   /* 行动剧情场景播放器（分团主线各阶段、走访小剧场共用）。
      scene 结构：{ label, pages, choices?, after? }
        pages  先播放；播完若有 choices 显示选项（apply(st) 返回结算文本，
@@ -1009,6 +1208,39 @@ const UI = {
     const rawPages = typeof scene.pages === "function" ? scene.pages(st) : (scene.pages || []);
     const main = rawPages.map(p => ({ ...p, t: fmt(p.t), s: p.s ? fmt(p.s) : p.s }));
     const after = (scene.after || []).map(p => ({ ...p, t: fmt(p.t), s: p.s ? fmt(p.s) : p.s }));
+    /* 【来电模拟（2026-XX）】scene.call 配置时：来电界面 → 通话内播放 call.pages
+       （不填则全部 pages 进通话）→（有 choices 时通话内拍板）→ 挂断后继续播放剩余
+       pages（call.pages 提供时 scene.pages 视为挂断后的剩余剧情）→ 回调。 */
+    if (scene.call) {
+      const call = scene.call;
+      const vb0 = this.$("vn-body"); if (vb0) vb0.onclick = null;   // 挂起期间禁止残留点击推进旧剧情
+      const callPages = (typeof call.pages === "function" ? call.pages(st) : (call.pages || main))
+        .map(p => ({ ...p, t: fmt(p.t), s: p.s ? fmt(p.s) : p.s }));
+      const restPages = call.pages ? main : [];
+      this.showCallSim({
+        mode: call.mode, caller: call.caller, sub: call.sub || "", complaint: call.complaint || "",
+        pages: callPages,
+        choices: scene.choices ? scene.choices.map(ch => ({
+          label: ch.label,
+          hint: typeof ch.hint === "function" ? ch.hint(st) : (ch.hint || ""),
+          run: () => {
+            if (ch.tag) Game.recordDecision(ch.tag, ch.value !== undefined ? ch.value : ch.id);   // 决策标签登记
+            Game.logTermChoice(typeof scene.label === "function" ? scene.label(st) : scene.label, ch.label);   // 总结任期：抉择记录
+            const rt = ch.apply(Game.st);   // 选项效果落地
+            Game.logChoice(rt);             // 结算文本记入当月日志
+            return rt;
+          },
+        })) : null,
+      }, () => {
+        if (restPages.length) {
+          this.playVNFull(restPages, scene.label ? fmt(scene.label) : "", () => { this.showScreen("screen-game"); if (onDone) onDone(); });
+        } else {
+          this.showScreen("screen-game");
+          if (onDone) onDone();
+        }
+      });
+      return;
+    }
     this.showScreen("screen-vn");
     this.$("vn-scene-label").textContent = scene.label ? fmt(scene.label) : "";
     const body = this.$("vn-body");

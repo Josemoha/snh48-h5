@@ -160,9 +160,15 @@ STORY.prologue19 = {
             for (const m of st.members) {
               if (m.status === "branch" && (m.branchTeam === "SHY48" || m.branchTeam === "CKG48")) n++;
             }
+            /* 【2019下放离团（用户口径 2026-XX）】DATA.branchDown2019 名单随撤资离团，
+               不进二次组阁池、不移籍 IDFT、不占孟波保旗留任名额 */
+            const downN = Game.applyBranchDown19(st, "2019撤资 · 随分团下放离团");
             st.flags.branchesClosed19 = true;
             if (st.branch17) { st.branch17.shyOpen = false; st.branch17.ckgOpen = false; }
-            return "你在撤资意向书的回执上落了笔：「同意。条件——所有在册成员，由集团全数接收。」\n\n沈阳与重庆的剧场灯，会在今年春天次第熄灭；但两团" + n + "名在册成员一个不少地回到了上海名册上——二次组阁的编制会，会给每个人一个去处；一时给不出去处的，进入集团新设的训练生池 IDFT。\n\n（决策已登记：branch19Keep=giveup。SHY48/CKG48 停运（月收入终止）；两团成员进入二次组阁池，未编入者移籍 IDFT。资金无消耗。）";
+            return "你在撤资意向书的回执上落了笔：「同意。条件——所有在册成员，由集团全数接收。」\n\n沈阳与重庆的剧场灯，会在今年春天次第熄灭；但两团" + (n - downN) + "名在册成员一个不少地回到了上海名册上"
+              + (downN ? "；另有 " + downN + " 人选择随分团一同离团，不进接收名单" : "")
+              + "——二次组阁的编制会，会给每个人一个去处；一时给不出去处的，进入集团新设的训练生池 IDFT。\n\n（决策已登记：branch19Keep=giveup。SHY48/CKG48 停运（月收入终止）；两团成员进入二次组阁池，未编入者移籍 IDFT"
+              + (downN ? "；" + downN + " 人随分团下放离团" : "") + "。资金无消耗。）";
           } },
       ],
     },
@@ -173,6 +179,17 @@ STORY.prologue19 = {
     {
       gate: st => st.decisions.branch19Keep === "giveup",
       title: "孟波的请求 · 分团的旗号",
+      /* 【来电模拟（2026-XX）】孟波来电改为微信视频通话界面：接听后通话内拍板；
+         拒接后 60 秒回拨，累计 2 次及以上拒接后接通先抱怨一句，拒接满 5 次自动接通。 */
+      call: {
+        mode: "wechat", caller: "孟波", sub: "微信视频通话",
+        complaint: "（视频那头的孟波吹了吹火气）好家伙总监，我这面子还不如一纸公文是吧？再不接，我可真把合同挂到公告栏上去了。",
+      },
+      pages: st => [
+        { s: "孟波", cls: "speaker-mengbo", t: "（视频接通，孟波身后是沈阳办公室的灯）总监，长话短说——"
+          + (st.decisions.branchPost === "CKG48" ? "SHY48" : "CKG48")
+          + " 这块牌子是我看着立起来的。队伍我养不起——旗号，我出钱保。十六个孩子，留给我；其余的，拜托总监了。" },
+      ],
       choices: [
         /* 单选项：孟总亲自出资，集团没有理由拒绝——选项仅承载 tag，
            实际保留哪家旗号在 apply 内按 branchPost 同 2020 年线口径落定：

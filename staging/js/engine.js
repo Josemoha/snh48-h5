@@ -28,6 +28,13 @@ const Game = {
      2026-10-26 翻页式改版后不再使用：任意年份结算画面均可打开总结任期。保留常量仅供参考 */
   LATEST_STORY_ERA: "2020",
 
+  /* 【来电模拟（2026-XX）】通话界面参数（UI.showCallSim 消费）：
+     RECALL_SEC          拒接后多少秒再次来电；
+     RECALL_SEC_PROLOGUE 序章拒接后的回拨秒数（序章无事可干，缩短为 5 秒）；
+     COMPLAIN_AT    累计拒接达该次数后，接通时通话开头加入来电者抱怨；
+     AUTO_ANSWER_AT 累计拒接达该次数后自动接通（兜底，不再询问）。 */
+  CALL_SIM: { RECALL_SEC: 60, RECALL_SEC_PROLOGUE: 5, COMPLAIN_AT: 2, AUTO_ANSWER_AT: 5 },
+
   /* ============================ 新开局 ============================ */
 
   newGame(playerName, styleId, era) {
@@ -893,7 +900,8 @@ const Game = {
   /* 【快速通道·2019 全年】在 fastState2016 → … → fastSim2018 → carryTo2019 的
      状态上快进 2019 一年（2020 快速通道专用，v0.13.11）。
      快进内容：史实离团（leaving2019）→ 序章撤资决策（branch19Keep 补选；giveup 线
-     按 branchPost 口径落孟波保旗 branchFlag19，未保旗的 SHY/CKG 分团成员移籍 IDFT）→
+     按 branchPost 口径落孟波保旗 branchFlag19，未保旗的 SHY/CKG 分团成员移籍 IDFT；
+     下放名单 branchDown2019 随撤资离团）→
      TEB48（复刻线补选推进则开业并建首批卡）→ 年度招新（按考据归属自动入册，
      同 applyRecruit19 默认口径）→ 冯薪朵请缨 tag → 年末经营盘面。 */
   fastSim2019(choices) {
@@ -913,6 +921,9 @@ const Game = {
       }
       st.flags.branchesClosed19 = true;
       if (st.branch17) { st.branch17.shyOpen = false; st.branch17.ckgOpen = false; }
+      /* 【2019下放离团（用户口径 2026-XX）】名单随撤资离团（不进保旗留任/IDFT 分流，
+         先离团再算保旗留任池，避免占 16 人名额） */
+      this.applyBranchDown19(st, "2019撤资 · 随分团下放离团");
       const flag19 = st.decisions.branchFlag19;
       /* 保旗分团至多留任 16 人（按人气降序，同旗号留任口径），其余移籍 IDFT */
       const flagPool = flag19 ? st.members
@@ -2995,6 +3006,27 @@ const Game = {
     return { text: "原创公演官宣：" + names + "。新歌新舞台排进日程——站位调整已解锁。\n\n（资金-" + cost + " 万（制作费）；热度+6；行动区解锁「公演站位调整」。）", tone: "main", vn: STORY.scenes21.orig21Debut };
   },
 
+  /* 【2019下放离团（用户口径 2026-XX）】DATA.branchDown2019 名单随分团撤资/解散离团：
+     giveup 线在撤资落地时调用（序章 apply / fastSim2019 / 旧档追补）；keep 线延迟到
+     2020 主线①分团安置落地时调用（advanceReorg20）。仅命中在册分团卡（status=branch
+     且 SHY48/CKG48）——已进组阁池/上调/IDFT 的旧档成员不追改；无卡（分团未开业）自动跳过。
+     幂等旗标 flags.branchDown19Done（carryTo* 原样继承 flags，无需显式携带）。返回离团人数。 */
+  applyBranchDown19(st, note) {
+    st = st || this.st;
+    if (st.flags.branchDown19Done) return 0;
+    let n = 0;
+    for (const name of ((DATA && DATA.branchDown2019) || [])) {
+      const m = st.members.find(x => x.name === name && x.status === "branch"
+        && (x.branchTeam === "SHY48" || x.branchTeam === "CKG48"));
+      if (!m || m.hall) continue;
+      m.status = "left";
+      m.note = (m.note ? m.note + "；" : "") + note;
+      n++;
+    }
+    st.flags.branchDown19Done = true;
+    return n;
+  },
+
   /* 【2020】保留旗号的分团（序章决策汇总）：孟波出资保住的旗号 + 兼任总监自费保留的旗号 */
   keptBranchFlags20(st) {
     st = st || this.st;
@@ -3398,8 +3430,21 @@ const Game = {
   advanceReorg20() {
     const st = this.st, r = st.reorg20;
     if (r.done) return { text: "分团安置已完成，名单早已归档。", tone: "blocked" };
-    if (!st.members.some(m => m.status === "branch" && (m.branchTeam === "SHY48" || m.branchTeam === "CKG48")))
+    /* 【2019下放离团（用户口径 2026-XX）】keep 线延迟点：分团解散/安置落地时，
+       DATA.branchDown2019 名单随分团离团（不进安置池、不参与上调/留任/IDFT）。 */
+    const downN = this.applyBranchDown19(st, "2020分团解散 · 随分团下放离团");
+    if (downN) this.addLog(st, st.month, "分团解散落地：" + downN + " 名 SHY48 成员随分团下放离团（不进安置名单）。", "bad");
+    if (!st.members.some(m => m.status === "branch" && (m.branchTeam === "SHY48" || m.branchTeam === "CKG48"))) {
+      /* 下放后安置池清空（其余分团成员均已不在册）：主线①直接落定关停，避免卡死 */
+      if (downN) {
+        r.done = true; r.stage = 2; st.flags.reorg20Done = true;
+        if (st.branch17) { st.branch17.shyOpen = false; st.branch17.ckgOpen = false; }
+        const text0 = "★主线①「安置分团成员」达成：分团成员已全部随团下放离团，分团剧场正式关停，月收入终止。";
+        this.addLog(st, st.month, text0, "main");
+        return { text: text0, tone: "main" };
+      }
       return { text: "当前没有待安置的 CKG48/SHY48 成员。", tone: "blocked" };
+    }
     r.stage = 1;
     return { text: "安置名单会议开始：每个人的去向，由总监逐人拍板。", tone: "pickReorg20" };
   },
@@ -5596,6 +5641,13 @@ const Game = {
       this.addLog(st, st.month, "赵韩倩 学业完成归队（Team SII）——旧档追补。", "good");
     }
 
+    // ⓪ 下放离团旧档追补（用户口径 2026-XX）：giveup 线已过序章的进行中旧档，
+    //    branchDown2019 名单仍挂分团在册的随撤资补离团（已进组阁池/IDFT 者不追改，幂等）。
+    if (st.era === "2019" && st.decisions.branch19Keep === "giveup") {
+      const dn19 = this.applyBranchDown19(st, "2019撤资 · 随分团下放离团");
+      if (dn19) this.addLog(st, st.month, dn19 + " 名 SHY48 成员随分团撤资下放离团（旧档追补）。", "bad");
+    }
+
     // ⓪" 限定团期满归队（修复 2026-XX：2018/2019 两届选秀限定团此前只有成团落地、
     //    无一年期满回收逻辑，成员会永远卡在暂休）。
     this.limitUnitReturnCheck(st);
@@ -7540,6 +7592,19 @@ const Game = {
       type: "vn", title: typeof ev.title === "function" ? ev.title(st) : ev.title,
       pages: pages.map(p => ({ ...p, t: this.fmt(p.t) })),
       after: (ev.after || []).map(p => ({ ...p, t: this.fmt(p.t) })),   // 选项结算后追加的公共剧情
+      /* 【来电模拟（2026-XX）】ev.call 配置时事件改为来电界面呈现：
+         mode phone=手机通话 / wechat=微信视频通话；caller 来电者；sub 来电说明；
+         complaint 累计拒接≥COMPLAIN_AT 次后接通时的抱怨台词；
+         pages 来电中的对话页（不填则全部 pages 进通话）；
+         choices=true 时选项在通话内拍板（结算文本作为通话页），否则挂断后走普通事件卡。 */
+      call: ev.call ? {
+        mode: ev.call.mode || "phone", caller: ev.call.caller || "", sub: ev.call.sub || "",
+        complaint: ev.call.complaint || "",
+        pages: ev.call.pages
+          ? (typeof ev.call.pages === "function" ? ev.call.pages(st) : ev.call.pages).map(p => ({ ...p, t: this.fmt(p.t) }))
+          : null,
+        choices: !!ev.call.choices,
+      } : null,
       choices: ev.choices ? ev.choices.map(c => ({
         label: c.label, hint: typeof c.hint === "function" ? c.hint(st) : (c.hint || ""),
         gate: c.gate ? c.gate(st) : true,

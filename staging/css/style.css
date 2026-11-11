@@ -686,8 +686,122 @@ body {
   text-align: center;
 }
 
+/* —— 拒接后的非阻塞回拨倒计时悬浮条 —— */
+.call-wait {
+  position: fixed;
+  left: 50%; top: 14px;
+  transform: translateX(-50%);
+  z-index: 55;
+  background: rgba(20, 23, 40, 0.95);
+  border: 1px solid rgba(255, 110, 152, 0.45);
+  color: var(--text-main);
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  box-shadow: var(--shadow);
+  animation: fadeIn 0.2s ease;
+  max-width: 92vw;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
 /* 窄屏微调 */
 @media (max-width: 360px) {
   .game-title { font-size: 34px; }
   .member-list, .pick-grid { grid-template-columns: 1fr; }
 }
+
+/* ---------- 来电模拟（手机通话 / 微信视频通话） ---------- */
+.modal-card.call-sim {
+  width: min(92vw, 400px);
+  color: #f4f6ff;
+  text-align: center;
+  border: none;
+  overflow: hidden;
+  position: relative;
+  padding: 34px 22px 30px;
+}
+.modal-card.call-sim.call-phone { background: linear-gradient(170deg, #232a4d 0%, #12162b 55%, #0a0d1a 100%); }
+.modal-card.call-sim.call-wechat { background: linear-gradient(170deg, #17323a 0%, #0e2127 55%, #081418 100%); }
+.call-tag {
+  display: inline-block;
+  font-size: 11.5px;
+  letter-spacing: 2px;
+  color: rgba(244, 246, 255, 0.55);
+  border: 1px solid rgba(244, 246, 255, 0.22);
+  border-radius: 999px;
+  padding: 3px 12px;
+  margin-bottom: 18px;
+}
+.call-avatar {
+  width: 86px; height: 86px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 38px; font-weight: 800; color: #fff;
+  background: linear-gradient(135deg, #ff6e98, #b365ff);
+  box-shadow: 0 0 0 0 rgba(255, 110, 152, 0.5);
+  animation: callring 1.6s ease-out infinite;
+}
+.call-wechat .call-avatar { background: linear-gradient(135deg, #35c98e, #0e7a5a); }
+.call-avatar-idle { animation: none; filter: grayscale(0.7); opacity: 0.75; }
+@keyframes callring {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 110, 152, 0.45); }
+  70%  { box-shadow: 0 0 0 22px rgba(255, 110, 152, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 110, 152, 0); }
+}
+.call-name { font-size: 22px; font-weight: 800; letter-spacing: 1px; }
+.call-sub { font-size: 12px; color: rgba(244, 246, 255, 0.55); margin-top: 4px; }
+.call-status { font-size: 13px; color: rgba(244, 246, 255, 0.75); margin-top: 14px; animation: callblink 1.4s ease-in-out infinite; }
+@keyframes callblink { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.call-btns { display: flex; justify-content: center; gap: 56px; margin-top: 30px; }
+.call-btn {
+  width: 66px; height: 66px;
+  border-radius: 50%;
+  border: none;
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  transition: transform 0.12s ease;
+}
+.call-btn:active { transform: scale(0.92); }
+.call-btn.call-refuse { background: linear-gradient(160deg, #f87171, #b91c1c); }
+.call-btn.call-answer { background: linear-gradient(160deg, #4ade80, #15803d); }
+/* —— 接通后 —— */
+.modal-card.call-sim.call-live { text-align: left; padding: 18px 16px 16px; }
+.call-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 2px 4px 10px;
+  border-bottom: 1px solid rgba(244, 246, 255, 0.14);
+  margin-bottom: 12px;
+}
+.call-head-name { font-size: 14.5px; font-weight: 800; letter-spacing: 1px; }
+.call-head-timer { font-size: 12px; color: #4ade80; font-variant-numeric: tabular-nums; }
+.call-body { min-height: 220px; max-height: 52vh; overflow-y: auto; padding: 2px 4px; }
+.call-line { margin-bottom: 14px; animation: fadeUp 0.3s ease; }
+.call-speaker {
+  display: inline-block;
+  font-size: 11.5px; font-weight: 800; letter-spacing: 1px;
+  color: #0b0e1c;
+  background: linear-gradient(135deg, #9fb4ff, #6f86ff);
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin-bottom: 6px;
+}
+.call-text { font-size: 14.5px; line-height: 1.75; white-space: pre-wrap; color: rgba(244, 246, 255, 0.92); }
+.call-line.call-nar .call-text { color: rgba(244, 246, 255, 0.62); }
+.call-hint { font-size: 11.5px; color: rgba(244, 246, 255, 0.4); text-align: center; margin-top: 6px; }
+.call-hint.call-end { letter-spacing: 3px; padding: 18px 0 4px; color: rgba(244, 246, 255, 0.55); }
+.call-choices { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.call-choices .vn-choice {
+  background: rgba(244, 246, 255, 0.08);
+  border: 1px solid rgba(244, 246, 255, 0.25);
+  color: #f4f6ff;
+}
+.call-choices .vn-choice:hover { background: rgba(244, 246, 255, 0.16); }
