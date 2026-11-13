@@ -47,11 +47,17 @@
    决策标签（st.decisions）：gePicked22 / geAutoPairs22 / geSingles22 / geSupPairs22 /
      geB22Dropped / geAutoFill22 / gePairs22（本年度拍档名单，组队机制镜像 2021 口径）/
      ge2022Top1 / ge2022Top1All（开榜登记，明年连霸判定基准）/
-     bp22Travel22 {members, used}（本年度第一名组合双人旅行综艺，待明年回收）。
+     bp22Travel22 {members, used}（本年度第一名组合双人旅行综艺，待明年回收）/
+     cjy22（3月陈佳莹私联风波处置：punish=加重处罚移籍 IDFT / grad=提前毕业 / dismiss=清退）/
+     hyn22（6月侯祎冉劝退处置：dismiss=按成员精简清退 / promote=上调本部预备生）/
+     qj22（7月祁静解约处置：release=放行收违约金 / noncompete=免违约金换竞业条款 /
+     keep=挽留（成功改写 stay / 失败改写 keepFail 并自动按 release 落地））。
    旗标（st.flags）：mv22Done / concert22Done / concert22Missed（错过10月定档）/
      rule22AllDone / rule22Teams /
      concert22Final {names, resident, film, invited, siba, staff, honor} /
-     b22Filled22 / bp22ClassicDone。
+     b22Filled22 / bp22ClassicDone /
+     qj22Sequel（7月祁静放行后后续剧情伏笔·粉丝法人公司舆情线，待用户口径回收）/
+     qj22Noncompete（7月祁静竞业期至·月精度 YYYY-MM）。
    ========================================================================== */
 
 "use strict";
@@ -76,6 +82,9 @@ STORY.CONCERT22_HEAT_PER = 1;          // 每位特邀返校者追加热度（�
 STORY.CONCERT22_INVITE12 = ["林忆宁", "成珏", "江真仪", "万丽娜", "张怡", "赵晔", "袁雨桢", "温晶婕", "任玥霖", "章泽婷", "徐子轩", "牛聪聪"];
 STORY.CONCERT22_AVATAR_FEE = 10;       // 虚拟形象出场费（万/人，Agent 拟定可调）
 STORY.RULE22_COST = 15;                // 主线⑤ 单队培训成本（万，同 dqTrain 口径）
+STORY.CJY22_PENALTY = 60;              // 3月陈佳莹私联风波·清退解约金（万，Agent 拟定可调）
+STORY.QJ22_PENALTY = 60;               // 7月祁静解约违约金（万，Agent 拟定可调）
+STORY.ZLW22_PENALTY = 100;             // 8月朱力维偷拍事件·解约违约金（万，同 zhx16/xsj20 追缴口径；Agent 拟定可调）
 
 /* ========================================================================
    一、序章：元宇宙（2022 年初年度决策会议）
@@ -322,6 +331,92 @@ STORY.monthly22 = {
       ],
     },
     {
+      /* 【2022·3月（用户口径）】陈佳莹（GNZ48）私联风波升级：去年末被曝私自在
+         未授权平台与粉丝连麦（已内部惩罚过），本月社媒进一步爆料当时私联的粉丝
+         实为其圈外男友——在团恋爱属严重违纪，叠加此前造成公司经济损失被处罚过，
+         理论上应予清退。三案拍板：加重处罚移籍 IDFT / 提前毕业 / 清退。
+         仅当 GNZ48 陈佳莹在籍（status=branch & branchTeam=GNZ48，非殿堂）时触发。
+         【同名双卡（用户口径）】GNZ48 陈佳莹与 SNH48 二期生陈佳莹（NII）为两个
+         不同的成员——事件与失格值修正只命中 branchTeam=GNZ48 的卡，
+         严禁波及本部同名卡（violationDqHit/dqCalmMark 传 match 消歧）。
+         【来电模拟（2026-XX 对话批次）】未兼任 GNZ48 → 周马（GNZ48 运营总监）来电；
+         兼任 GNZ48（f.concur17["GNZ48"]）→ 陈文泽（GNZ48 剧场发言人）来电。
+         ev.call 支持函数形态（engine.buildEventStep 同步支持，按 st 切换来电者）。
+         【同源陷阱①】登记权归选项（tag cjy22），effect 不得以 decisions.cjy22 作卫兵。
+         落地口径（用户拍板）：punish=移籍 IDFT——训练生池不计薪（engine 经济口径自动
+         停发工资）、promoBanUntil=2023-02 一年内不得升格（ge20Idft 登记/拍板/落地
+         三处过滤）；grad=提前毕业不付解约金（【用户口径更正】「毕业」仅为体面说法，
+         按普通离团落地、不挂荣誉毕业生 honorGrad）；dismiss=付解约金 STORY.CJY22_PENALTY。
+         【违规事件·失格值修正】在团恋爱属成员违纪：三案均调 violationDqHit
+         （同队队员 dq+2）；grad/dismiss 离团后 dqCalmMark 免涨窗；
+         punish 移籍 IDFT 非解约/暂休，不设免涨窗。
+         数值 Agent 拟定可调：punish 羁绊-6 士气-2 热度-2；grad 士气-1 热度-2；
+         dismiss 士气-2 热度-2。 */
+      id: "m3_22_cjy",
+      title: "3月 · 私联风波",
+      violation: "在团恋爱",   // 【违规事件类型 tag】同队队员失格值连带（violationDqHit）；grad/dismiss 离团后 dqCalmMark 免涨窗
+      call: st => ({
+        mode: "phone",
+        caller: (st.flags.concur17 && st.flags.concur17["GNZ48"]) ? "陈文泽" : "周马",
+        sub: "广州 · GNZ48 来电",
+        complaint: "（电话那头有点急）总监，可算接了——广州这边舆情组、人事组都围着这一通电话等您回话呢。",
+        choices: true,
+      }),
+      gate: st => !st.decisions.cjy22
+        && st.members.some(m => m.name === "陈佳莹" && m.status === "branch" && m.branchTeam === "GNZ48" && !m.hall),
+      pages: st => {
+        const boss = (st.flags.concur17 && st.flags.concur17["GNZ48"]) ? "陈文泽" : "周马";
+        return [
+          { nar: true, t: "三月的一个上午，一个广州方向的来电转进了总监办公室——屏幕上跳动着「GNZ48」。" },
+          { s: boss, t: "总监，去年年末那件事，您还有印象吧？陈佳莹——被曝私自在未授权平台上跟粉丝连麦的那位。当时我们按内部规定罚过了：公开道歉、罚停绩效，风头也压下去了，都以为翻篇了。" },
+          { s: boss, t: "可今天中午，营销号把当时的连麦记录又翻了出来——跟她连麦最勤的那个「粉丝」，被扒出是她圈外的男友。在团恋爱，实锤了，热搜挂了一晚上。" },
+          { s: boss, t: "在团恋爱是严重违纪，加上连麦事件已经给公司造成过经济损失、她也受过一轮处罚——按章程，这一次理论上应该清退。但人怎么处理，广州这边不敢定，得您拍板。" },
+        ];
+      },
+      choices: [
+        { label: "「加重处罚——停发工资一年，移籍 IDFT 训练生池。」", hint: "移籍 IDFT：训练生池不计薪，本年度薪资不再计算她（自动停发）；一年内不能升格；羁绊-6 士气-2 热度-2",
+          tag: "cjy22", value: "punish",
+          effect: st => {
+            const hitTail = Game.violationDqHit(st, "陈佳莹", { branchTeam: "GNZ48" });   // 违规事件·同队失格值连带（同名双卡消歧：只命中 GNZ48 卡；移籍前调用）
+            const m = st.members.find(x => x.name === "陈佳莹" && x.status === "branch" && x.branchTeam === "GNZ48");
+            if (m) {
+              m.status = "idft"; m.team = "IDFT"; m.branchTeam = null; m.branchLabel = null;
+              m.captain = false; m.vice = false; delete m.sub;
+              m.bond = Math.max(1, (m.bond || 0) - 6);
+              m.promoBanUntil = "2023-02";   // 一年内不能升格（2022-03 起算，月精度含当月）
+              m.note = (m.note ? m.note + "；" : "") + "2022-03 私联风波加重处罚：移籍 IDFT（停发工资一年·一年内不能升格）";
+            }
+            st.morale = Math.max(0, st.morale - 2);
+            st.heat = Math.max(0, st.heat - 2);
+            return "处罚公告当晚挂上了官网：「陈佳莹，在团期间严重违反公司纪律——即日起调回训练生池，停发工资一年，一年内不得参与升格评定。」广州剧场的群公告被刷了满屏的省略号，但没有人再多说一句。\n\nIDFT 训练生池不计薪——从本月起，工资册上少了一行名字；总选入榜升格的名单里，她的名字也会被划掉，直到明年开春。\n\n（决策已登记：cjy22=punish。陈佳莹移籍 IDFT；羻绊-6；士气-2 热度-2。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+        { label: "「安排她提前毕业——办一场体面的谢幕公演，解约金不出。」", hint: "提前离团（「毕业」仅为体面说法，不挂荣誉毕业生）：不支付解约金；士气-1 热度-2",
+          tag: "cjy22", value: "grad",
+          effect: st => {
+            const m = st.members.find(x => x.name === "陈佳莹" && x.status === "branch" && x.branchTeam === "GNZ48");
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2022-03 私联风波后安排「提前毕业」离团（体面说法·普通离团口径，公司不支付解约金，非荣誉毕业）"; }
+            const hitTail = Game.violationDqHit(st, "陈佳莹", { branchTeam: "GNZ48" });   // 违规事件·同队失格值连带（同名双卡消歧：只命中 GNZ48 卡）
+            Game.dqCalmMark(st, "陈佳莹", { branchTeam: "GNZ48" });   // 违规离团 → 原队伍其后 2 个月失格值不自然增长
+            st.morale = Math.max(0, st.morale - 1);
+            st.heat = Math.max(0, st.heat - 2);
+            return "毕业公演定在了下一场。公告里没有最难看的那个词，谢幕时她说：「对不起，也谢谢这条河。」台下的灯牌亮了一半，冷了一半——公司不用掏一分钱解约金，热搜也就在一周后凉了下去。公告末行的小字写着：按离团办理。\n\n（决策已登记：cjy22=grad。陈佳莹提前离团（「毕业」仅为体面说法，普通离团口径，不挂荣誉毕业生）；不支付解约金；士气-1 热度-2。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+        { label: "「按章程清退——解约金照付，划清界线。」", hint: st => "清退离团：支付解约金 " + (STORY.CJY22_PENALTY || 60) + " 万；士气-2 热度-2",
+          tag: "cjy22", value: "dismiss",
+          effect: st => {
+            const fee = STORY.CJY22_PENALTY || 60;
+            const m = st.members.find(x => x.name === "陈佳莹" && x.status === "branch" && x.branchTeam === "GNZ48");
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2022-03 私联风波后按章程清退离团（公司支付解约金 " + fee + " 万）"; }
+            const hitTail = Game.violationDqHit(st, "陈佳莹", { branchTeam: "GNZ48" });   // 违规事件·同队失格值连带（同名双卡消歧：只命中 GNZ48 卡）
+            Game.dqCalmMark(st, "陈佳莹", { branchTeam: "GNZ48" });   // 违规离团 → 原队伍其后 2 个月失格值不自然增长
+            st.money -= fee;
+            st.morale = Math.max(0, st.morale - 2);
+            st.heat = Math.max(0, st.heat - 2);
+            return "人事函当天发出，解约金 " + fee + " 万如约打进了她的账户。没有谢幕公演，没有告别微博——章程就是章程。广州剧场的灯牌第二天照常亮起，只是后台的名单上，又少了一个名字。\n\n（决策已登记：cjy22=dismiss。陈佳莹清退离团；资金-" + fee + " 万（解约金）；士气-2 热度-2。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+      ],
+    },
+    {
       id: "m3_22_bp_launch",
       title: "3月 · 《最佳拍档》启动",
       gate: st => !!st.decisions.geMode21 && !st.flags.b22Filled22,
@@ -366,6 +461,236 @@ STORY.monthly22 = {
           { nar: true, t: "（" + (partner ? "年度最佳拍档" : "青春盛典") + "筹备期开启：4~7 月筹备，8 月开榜。引擎接线：era 2022 总选窗口。" + (partner ? "组队见行动「最佳拍档 · 组队」。" : "《最佳拍档》第二季组队见行动「最佳拍档 · 组队」，6月底开榜。") + "）" },
         ];
       },
+    },
+  ],
+
+  /* ---------- 6月：侯祎冉劝退与外籍身份（用户口径） ---------- */
+  6: [
+    {
+      /* 【2022·6月（用户口径）】GNZ48 送来一纸解约合同：今年 5 月新入团的
+         GNZ48 十二期生（预备生）侯祎冉培训不合格予以劝退；总监发现其外籍出身，
+         对后续公司走向海外可能有帮助。两案拍板：①按广州意思清退（按成员精简
+         口径处理，复用 Game.applyLayoff21 标准机制：离团+补偿金 15 万）
+         ②上调本部作为预备生（实力低于同期生——branch 简卡 pop0/bond0，
+         prepStageCandidates 加权（pwr×2+人气+羻绊×0.5）自然排在同期生之后；
+         外籍出身登记成员卡备注，供后续海外线回收）。
+         仅当 GNZ48 侯祎冉在籍（branch & branchTeam=GNZ48，非殿堂）时触发。
+         【同源陷阱①】登记权归选项（tag hyn22），applyLayoff21 只写 layoff21 记录，
+         effect 不以 decisions.hyn22 作卫兵。士气+1 为 Agent 拟定可调。 */
+      id: "m6_22_hyn",
+      title: "6月 · 一纸解约合同",
+      gate: st => !st.decisions.hyn22
+        && st.members.some(m => m.name === "侯祎冉" && m.status === "branch" && m.branchTeam === "GNZ48" && !m.hall),
+      pages: st => [
+        { nar: true, t: "六月的一个下午，广州寄来的一份文件放上了你的办公桌——封面印着「解约合同」四个字，落款是 GNZ48 运营部。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "总监，今年五月刚入团的 GNZ48 十二期生侯祎冉——培训评定不合格，广州方面按章程走劝退流程，合同都拟好了，就等您签字。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（压低声音）不过我核对入职资料的时候，发现了一件事：她，是外籍出身。集团这两年一直喊着出海——往后真要走海外这条路，这样背景的成员，未必是坏事。" },
+        { nar: true, t: "（拍板：①按广州方面的意思予以清退（按成员精简口径处理） / ②上调到本部作为预备生（实力低于同期生）。）" },
+      ],
+      choices: [
+        { label: "「按广州方面的意思办——予以清退。」", hint: "按成员精简口径处理：离团+补偿金 15 万（复用 applyLayoff21 标准机制：士气+2 体面转身）",
+          tag: "hyn22", value: "dismiss",
+          effect: st => {
+            Game.applyLayoff21(["侯祎冉"], true);
+            return "你在解约合同的乙方栏签了字，又批了一笔补偿金——按成员精简的规矩，一视同仁。\n\n广州回传真函致谢，附了一句：「此类培训不合格的劝退，往后按同一口径办理。」人事档案合上的时候，那栏「外籍」，被一并装进了档案袋。\n\n（决策已登记：hyn22=dismiss。侯祎冉清退离团（成员精简口径：补偿金 15 万，士气+2）。）";
+          } },
+        { label: "「先别签——把她上调到本部，作为预备生。」", hint: "上调本部预备生（Team PREP）：培训不合格记录在案、实力低于同期生（加权排名自然靠后）；外籍出身登记备注（海外线素材）；士气+1",
+          tag: "hyn22", value: "promote",
+          effect: st => {
+            const m = st.members.find(x => x.name === "侯祎冉" && x.status === "branch" && x.branchTeam === "GNZ48");
+            if (m) {
+              m.status = "active"; m.team = "PREP"; m.branchTeam = null; m.branchLabel = null;
+              m.note = (m.note ? m.note + "；" : "") + "2022-06 培训不合格劝退改为上调本部预备生（外籍出身·培训不合格记录在案·实力低于同期生）";
+            }
+            st.morale = Math.min(100, st.morale + 1);
+            return "你把合同推回了信封：「人，我要走了——调令我来发。」\n\n调函当天发往广州。她在上海总部报到那天，训练服还是广州发的旧款——训练师的评语写得很直白：基础不牢，跟不上同期。但档案里那栏「外籍」，你用红笔圈了一下，夹进了一本厚厚的文件夹，封面上写着：海外。\n\n（决策已登记：hyn22=promote。侯祎冉上调本部预备生（Team PREP）；外籍出身已登记备注；士气+1。）";
+          } },
+      ],
+    },
+  ],
+
+  /* ---------- 7月：祁静解约与竞业条款（用户口径） ---------- */
+  7: [
+    {
+      /* 【2022·7月（用户口径）】祁静（X队七期生）携违约金要求解约加盟新经纪公司——
+         调查发现该公司新注册、法人是其粉丝；理论上无理由阻止，但深挖恐伤舆论。
+         三案：①放行（收违约金，离团，登记后续剧情旗标）②免违约金换竞业条款
+         （离团，一年内不得加盟其他经纪公司，无后续剧情）③挽留（基础 50% +
+         羁绊加成 ≥60 +6% / ≥70 +12% / ≥80 +20%，上限 90%；成功=留队羻绊+6
+         士气+3，改写 decisions.qj22=stay；失败=改写 keepFail 并自动按①落地）。
+         仅当祁静本部在籍（status=active，非殿堂）时触发（分团/暂休/离团不触发）。
+         【同源陷阱①】登记权归选项（tag qj22），挽留成败改写 decisions 的写法
+         同 xll21 convince 模式；不以 qj22 作 effect 卫兵。
+         数值 Agent 拟定可调：违约金 STORY.QJ22_PENALTY=60 万；release/keepFail
+         士气-1/-2。 */
+      id: "m7_22_qj",
+      title: "7月 · 一份违约金",
+      gate: st => !st.decisions.qj22 && st.members.some(m => m.name === "祁静" && m.status === "active" && !m.hall),
+      pages: st => [
+        { nar: true, t: "七月的午后，叶盛拿着一份解约申请敲开了办公室的门。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "总监，X 队的祁静——违约金已经备好了，要求解约，加盟另一家经纪公司。按合约她付钱走人，我们拦不住，流程上也挑不出毛病。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把一份调查报告放在合同旁边）但有点意思：她要去的这家公司，上个月才注册，法人是她的粉丝。这要是被深挖出来——「粉丝开公司签偶像」，热搜怎么写我们管不着，但舆论这一关，得您掂量。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "放行、设条件放行、还是挽留——三条路，您拍板。" },
+      ],
+      choices: [
+        { label: "「允许她追求更高的目标——违约金照收，祝她前程似锦。」", hint: st => "祁静离团（收违约金 " + (STORY.QJ22_PENALTY || 60) + " 万）；此事留有后续（舆情伏笔）",
+          tag: "qj22", value: "release",
+          effect: st => {
+            const fee = STORY.QJ22_PENALTY || 60;
+            const m = st.members.find(x => x.name === "祁静");
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2022-07 支付违约金解约离团，加盟新经纪公司"; }
+            st.money += fee;
+            st.morale = Math.max(0, st.morale - 1);
+            st.flags.qj22Sequel = true;   // 后续剧情伏笔（粉丝法人公司舆情线，待用户口径回收）
+            return "你在解约协议上盖了章。违约金 " + fee + " 万如数到账，手续办得干干净净——理论上，谁也挑不出错。\n\n只是叶盛临走前多说了一句：「调查报告我存档了。那家公司和那位法人，后面怕是还有得聊。」\n\n（决策已登记：qj22=release。祁静解约离团；资金+" + fee + " 万（违约金）；士气-1；后续剧情旗标 qj22Sequel 已登记。）";
+          } },
+        { label: "「允许解约——但以免收违约金为条件，加入竞业条款。」", hint: "祁静离团（不收违约金）；竞业条款：一年内不得加入其他经纪公司；无后续剧情",
+          tag: "qj22", value: "noncompete",
+          effect: st => {
+            const m = st.members.find(x => x.name === "祁静");
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2022-07 解约离团（免收违约金，附竞业条款：一年内不得加入其他经纪公司）"; }
+            st.morale = Math.max(0, st.morale - 1);
+            st.flags.qj22Noncompete = "2023-07";   // 竞业期至（月精度，后续对手/海外线可查验）
+            return "补充协议里多了一页：《竞业限制条款》——自离团之日起一年内，不得与任何经纪公司签约，以免收的 " + (STORY.QJ22_PENALTY || 60) + " 万违约金为对价。她看了很久，签了。\n\n「那家公司还在那儿。」叶盛收好存根，「但她一年内哪儿也去不了——热搜，也就烧不起来了。」\n\n（决策已登记：qj22=noncompete。祁静解约离团；不收违约金；竞业条款登记 qj22Noncompete=2023-07。）";
+          } },
+        { label: "「先别急着放人——我去跟她谈一次。」", hint: st => { const m = st.members.find(x => x.name === "祁静"); const b = m ? (m.bond || 0) : 0; const c = Math.min(90, 50 + (b >= 80 ? 20 : b >= 70 ? 12 : b >= 60 ? 6 : 0)); return "挽留（成功率 " + c + "%：基础 50% + 羁绊加成「当前 " + b + "」）；未成功则自动按「放行收违约金」落地"; },
+          tag: "qj22", value: "keep",
+          effect: st => {
+            const m = st.members.find(x => x.name === "祁静");
+            if (!m) return "（祁静已不在册。）";
+            const b = m.bond || 0;
+            const chance = Math.min(90, 50 + (b >= 80 ? 20 : b >= 70 ? 12 : b >= 60 ? 6 : 0));
+            const fee = STORY.QJ22_PENALTY || 60;
+            if (Game.rnd(0, 99) < chance) {
+              st.decisions.qj22 = "stay";
+              m.note = (m.note ? m.note + "；" : "") + "2022-07 解约风波后经总监挽留留队";
+              m.bond = Math.min(100, b + 6);
+              st.morale = Math.min(100, st.morale + 3);
+              return "你约她谈到了晚上。「新公司是你们的粉丝开的，」你把调查报告推过去，「你去那儿，是签公司，还是签他？」她盯着报告看了很久，把违约金的转账撤了回去。\n\n（挽留成功（成功率 " + chance + "%）。祁静留队：羁绊+6；士气+3。）";
+            }
+            st.decisions.qj22 = "keepFail";
+            m.status = "left";
+            m.note = (m.note ? m.note + "；" : "") + "2022-07 挽留未果，支付违约金解约离团，加盟新经纪公司";
+            st.money += fee;
+            st.morale = Math.max(0, st.morale - 2);
+            st.flags.qj22Sequel = true;
+            return "「总监，谢谢您挽留——但我已经决定了。」谈完的第二天，违约金还是打进了公司账户。叶盛把那份调查报告轻轻放在了待办栏的最上面：「说好的，有后续。」\n\n（挽留未成功（成功率 " + chance + "%），自动按放行落地：祁静解约离团；资金+" + fee + " 万（违约金）；士气-2；后续剧情旗标 qj22Sequel 已登记。）";
+          } },
+      ],
+    },
+    {
+      /* 【2022·7月（用户口径）】熊素君再犯：直播发表不利于团队团结的言论、言语攻击队友
+         （其所在队伍磨合度略微下降 st.chem-3）。多次违规在案（2018-02/2020-02）。
+         两案：①给予惩罚并邀请她谈话（下放为预备生）②给予开除。
+         gate：熊素君在籍（本部 active 或分团 branch，非殿堂；IDFT 训练生池不算在籍）
+         且未拍板时触发；离团/暂休不触发。
+         【违规事件·失格值修正】直播攻击队友属成员违纪（多犯）：两案均调
+         violationDqHit（同队 dq+2）；fire 离团后 dqCalmMark 免涨窗；
+         demote 下放非解约/暂休不设免涨窗。磨合度下降由事件直接落地（st.chem-3）。
+         【同源陷阱①】登记权归选项（tag xsj22），effect 不以 decisions.xsj22 作卫兵。
+         数值 Agent 拟定可调：磨合度-3；热度+4/+5、士气-2/-3。 */
+      id: "m7_22_xsj",
+      title: "7月 · 直播间的旧毛病",
+      violation: "直播攻击队友",   // 【违规事件类型 tag】同队队员失格值连带（violationDqHit）；fire 离团后 dqCalmMark 免涨窗
+      gate: st => !st.decisions.xsj22
+        && st.members.some(m => m.name === "熊素君" && (m.status === "active" || m.status === "branch") && !m.hall),
+      pages: st => [
+        { nar: true, t: "七月的深夜直播，熊素君又一次冲上了超话——这一次不是才艺，也不是道歉，而是对着连麦观众逐一点评队友：谁靠关系、谁没实力、谁「就会讨好粉丝」。录屏在天亮前传遍了每个粉丝群。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把打印好的时间线排在桌上）总监，2018 年剧场冲突、2020 年直播不当言论，加上这一次——档案已经三页了。她所在的队伍这两天排练都不说话，磨合肉眼可见地在掉。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "章程里已经没有更轻的选项了：要么惩罚加谈话、下放预备生；要么，直接开除。您拍板。" },
+      ],
+      choices: [
+        { label: "「下放预备生——另外，我要和她谈一次。」", hint: "下放预备生；队内磨合度-3；热度+4 士气-2",
+          tag: "xsj22", value: "demote",
+          effect: st => {
+            const hitTail = Game.violationDqHit(st, "熊素君");   // 违规事件·同队失格值连带（处置前调用，保留队伍归属）
+            const m = st.members.find(x => x.name === "熊素君" && (x.status === "active" || x.status === "branch"));
+            if (m) {
+              if (m.status === "branch") { m.branchLabel = "预备生"; m.captain = false; m.vice = false; }
+              else { m.team = "PREP"; }
+              m.note = (m.note ? m.note + "；" : "") + "2022-07 直播攻击队友（多犯）：下放预备生，总监诫勉谈话";
+            }
+            Game.syncTeams(st);   // 先同步队伍指纹/磨合（人员变动重算），随后直减避免被覆盖
+            const tk = m ? Game.teamKeyOf(m) : null;
+            if (tk) {
+              if (st.chem[tk] == null) { st.chem[tk] = Game.calcChem(st, tk); st.chemStable[tk] = st.chemStable[tk] || 0; }
+              st.chem[tk] = Math.max(0, st.chem[tk] - 3);
+            }
+            st.heat = Math.min(100, st.heat + 4);
+            st.morale = Math.max(0, st.morale - 2);
+            return "处罚公告与谈话通知同天发出：下放预备生，即刻生效。\n\n谈话室里你只问了一句：「三页档案了，还想留着第几页？」她没答上来。谈话记录归档时，叶盛在末页注了一行：观察期，下不为例。\n\n队伍那边，磨合度的曲线又往下掉了一截——有些人伤了感情，不是一纸公告能修复的。\n\n（决策已登记：xsj22=demote。下放预备生；队内磨合度-3；热度+4 士气-2。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+        { label: "「开除——三页档案，到此为止。」", hint: "解除合约离团；队内磨合度-3；热度+5 士气-3；原队伍 2 个月失格值免涨窗",
+          tag: "xsj22", value: "fire",
+          effect: st => {
+            const m = st.members.find(x => x.name === "熊素君" && (x.status === "active" || x.status === "branch"));
+            const tk = m ? Game.teamKeyOf(m) : null;   // 置 left 前捕获队伍 key（left 卡 teamKeyOf 为 null）
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2022-07 直播攻击队友（多犯），解除合约离团"; }
+            const hitTail = Game.violationDqHit(st, "熊素君");   // 违规事件·同队失格值连带（离团后调用，保留分团归属）
+            Game.dqCalmMark(st, "熊素君");   // 违规离团 → 原队伍其后 2 个月失格值不自然增长
+            Game.syncTeams(st);   // 先同步队伍指纹/磨合（纯退团保留磨合），随后直减避免被覆盖
+            if (tk) {
+              if (st.chem[tk] == null) { st.chem[tk] = Game.calcChem(st, tk); st.chemStable[tk] = st.chemStable[tk] || 0; }
+              st.chem[tk] = Math.max(0, st.chem[tk] - 3);
+            }
+            st.heat = Math.min(100, st.heat + 5);
+            st.morale = Math.max(0, st.morale - 3);
+            return "解约函当天生效。三页档案终于翻到了最后一页，比很多人预想的要晚，也比一些人预想的要快。\n\n公告没有引起太大水花——熟悉这条河的人都明白：走到这一步，是她自己一路选的。\n\n队伍里的空气轻了一些，也散了一些——磨合度的曲线跌下去的那一段，需要下个季度慢慢爬回来。\n\n（决策已登记：xsj22=fire。熊素君解除合约离团；队内磨合度-3；热度+5 士气-3。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+      ],
+    },
+  ],
+
+  /* ---------- 8月：朱力维偷拍事件（需在籍含分团） ---------- */
+  8: [
+    {
+      /* 【2022·8月（用户口径）】朱力维（BEJ48 十一期生）被曝偷拍室友洗澡并将照片视频
+         发送给男友——严重侵犯隐私，叶盛要求解约。两案：①收取违约金 ②不收取违约金
+         （两案均为解约离团，仅费用差异）。
+         gate：朱力维在籍（本部 active 或分团 branch，非殿堂；IDFT 不算在籍）且未拍板。
+         【违规事件·失格值修正】偷拍侵犯隐私属成员违纪（恶性）：两案均调
+         violationDqHit（同队 dq+2）+ 离团后 dqCalmMark 免涨窗。
+         【同源陷阱①】登记权归选项（tag zlw22），effect 不以 decisions.zlw22 作卫兵。
+         数值 Agent 拟定可调：违约金 STORY.ZLW22_PENALTY=100 万（同 zhx16/xsj20
+         追缴口径）；热度+8、士气-4（恶性隐私事件）。 */
+      id: "m8_22_zlw",
+      title: "8月 · 无法收回的照片",
+      violation: "偷拍侵犯隐私",   // 【违规事件类型 tag】同队队员失格值连带（violationDqHit）；离团后 dqCalmMark 免涨窗
+      gate: st => !st.decisions.zlw22
+        && st.members.some(m => m.name === "朱力维" && (m.status === "active" || m.status === "branch") && !m.hall),
+      pages: st => [
+        { nar: true, t: "八月的凌晨，一组截图在各粉丝群疯传：朱力维偷拍室友洗澡的照片与视频，被发给了她的男友——而聊天记录，连同截图，一起被曝光了。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把平板反扣在桌上，声音压得很低）总监，被偷拍的是她的室友，同队的孩子。视频已经流出，我们法务连夜取证，但传播量……收不回来了。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "这种事没有第二种处理——解约。剩下的只是违约金收不收的问题：章程站在公司这边，但舆论站在那个孩子那边。收，还是不收，您定。" },
+      ],
+      choices: [
+        { label: "「按合约办——违约金照收。」", hint: st => "朱力维解约离团（收取违约金 " + (STORY.ZLW22_PENALTY || 100) + " 万）；热度+8 士气-4；原队伍 2 个月失格值免涨窗",
+          tag: "zlw22", value: "fee",
+          effect: st => {
+            const fee = STORY.ZLW22_PENALTY || 100;
+            const m = st.members.find(x => x.name === "朱力维" && (x.status === "active" || x.status === "branch"));
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2022-08 偷拍侵犯室友隐私并外传，解除合约离团（收取违约金 " + fee + " 万）"; }
+            const hitTail = Game.violationDqHit(st, "朱力维");   // 违规事件·同队失格值连带（离团后调用，保留分团归属）
+            Game.dqCalmMark(st, "朱力维");   // 违规离团 → 原队伍其后 2 个月失格值不自然增长
+            Game.syncTeams(st);
+            st.money += fee;
+            st.heat = Math.min(100, st.heat + 8);
+            st.morale = Math.max(0, st.morale - 4);
+            return "解约公告只有三行字。违约金 " + fee + " 万按条款追缴入账——账面上，公司一分不亏；可被偷拍的那个孩子，接下来很长一段路都要慢慢走。\n\n心理疏逗的安排当天就落到了人头上。叶盛把热搜词条截了图存档：「这种事，一次都不该有第二次。」\n\n（决策已登记：zlw22=fee。朱力维解约离团；资金+" + fee + " 万（违约金）；热度+8 士气-4。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+        { label: "「不收了——这个节骨眼上，别再往伤口上撒盐。」", hint: "朱力维解约离团（免收违约金）；热度+8 士气-4；原队伍 2 个月失格值免涨窗",
+          tag: "zlw22", value: "nofee",
+          effect: st => {
+            const m = st.members.find(x => x.name === "朱力维" && (x.status === "active" || x.status === "branch"));
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2022-08 偷拍侵犯室友隐私并外传，解除合约离团（免收违约金）"; }
+            const hitTail = Game.violationDqHit(st, "朱力维");   // 违规事件·同队失格值连带（离团后调用，保留分团归属）
+            Game.dqCalmMark(st, "朱力维");   // 违规离团 → 原队伍其后 2 个月失格值不自然增长
+            Game.syncTeams(st);
+            st.heat = Math.min(100, st.heat + 8);
+            st.morale = Math.max(0, st.morale - 4);
+            return "解约函当天生效，违约金那一栏写着：免予追缴。\n\n评论区的风向微妙地转了一度——从「公司包庇」到「至少人被处理了」。被偷拍的孩子休养去了，公司承担了全部疗养费用；这些不会出现在公告里，但会留在每个人的账本外。\n\n（决策已登记：zlw22=nofee。朱力维解约离团；免收违约金；热度+8 士气-4。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+      ],
     },
   ],
 

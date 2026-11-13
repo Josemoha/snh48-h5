@@ -394,6 +394,75 @@ STORY.monthly18 = {
       ],
     },
     {
+      /* 【2018·2月（用户口径）】熊素君剧场与粉丝爆发冲突、直播中诋毁部分粉丝，
+         事态严重，三案拍板：①封禁直播+停薪 3 月（2~4 月）②下放预备生+封禁直播+
+         停薪 3 月 ③解除合约。
+         gate：仅当熊素君在本部（active）或玩家兼任其所在分团（concur17）时触发
+         （分团在册且未兼任 → 广州/北京方面自理，不触发）。
+         【违规事件·失格值修正】剧场冲突+直播诋毁属成员违纪：三案均调
+         violationDqHit；解除合约（离团）后 dqCalmMark 免涨窗；
+         停薪用通用机制 flags.wageWaiveList（settle 自动扣减，本部 0.5/分团 0.35）。
+         【同源陷阱①】登记权归选项（tag xsj18），effect 不以 decisions.xsj18 作卫兵。
+         数值 Agent 拟定可调：热度+4、士气-2/-3、下放羻绊-4。 */
+      id: "m2_18_xsj",
+      title: "2月 · 剧场冲突与直播风波",
+      violation: "直播诋毁粉丝",   // 【违规事件类型 tag】同队队员失格值连带（violationDqHit）；解除合约离团后 dqCalmMark 免涨窗
+      gate: st => {
+        if (st.decisions.xsj18) return false;
+        const m = st.members.find(x => x.name === "熊素君" && (x.status === "active" || x.status === "branch") && !x.hall);
+        if (!m) return false;
+        if (m.status === "active") return true;   // 本部在籍
+        return !!(st.flags.concur17 && st.flags.concur17[m.branchTeam || m.team]);   // 兼任其分团
+      },
+      pages: st => [
+        { nar: true, t: "二月的一个傍晚，剧场监控室的一段视频先在小范围传开：熊素君在散场后与一名粉丝爆发了激烈冲突，双方隔着围栏互相推操，被工作人员拉开。当晚，她在自己的直播间里再次开炮，对部分粉丝冷嘲热讽。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把平板递过来）总监，两个视频都上了超话。剧场的投诉函、品牌方的问询函，还有粉丝站的联名声明，都在收件箱里了。这件事压不住了，必须处理。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "直接说我的建议：直播必须封，工资必须停——至于人怎么处置，从严还是留余地，您定。但今天必须有个说法，拖到明天，热搜就替我们定了。" },
+      ],
+      choices: [
+        { label: "「封禁直播，暂停工资发放三个月。」", hint: "留队察看：封禁直播；停薪 3 月（本月起，工资册自动扣减）；热度+4 士气-2",
+          tag: "xsj18", value: "ban",
+          effect: st => {
+            const hitTail = Game.violationDqHit(st, "熊素君");   // 违规事件·同队失格值连带
+            const m = st.members.find(x => x.name === "熊素君" && (x.status === "active" || x.status === "branch"));
+            if (m) {
+              m.note = (m.note ? m.note + "；" : "") + "2018-02 剧场冲突与直播诋毁粉丝：封禁直播、停薪 3 个月（" + st.era + " 年 " + st.month + "~" + (st.month + 2) + " 月）";
+            }
+            st.flags.wageWaiveList = (st.flags.wageWaiveList || []).concat([{ name: "熊素君", era: st.era, start: st.month, months: 3 }]);
+            st.heat = Math.min(100, st.heat + 4);
+            st.morale = Math.max(0, st.morale - 2);
+            return "处理公告当晚发出：熊素君即日封禁直播权限，停发三个月工资，向当亊粉丝及剧场工作人员赔礼道歉。公函措辞很硬，评论区分成了两派吵到后半夜——但至少，主动权回到了公司手里。\n\n工资册上，她的名字后面被财务标了三个灰色的「0」——连续三个月，一分不少地停发。\n\n（决策已登记：xsj18=ban。封禁直播；停薪 3 个月；热度+4 士气-2。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+        { label: "「下放为预备生，封禁直播，暂停工资发放三个月。」", hint: "下放预备生+封禁直播+停薪 3 月；热度+4 士气-3 羻绊-4",
+          tag: "xsj18", value: "demote",
+          effect: st => {
+            const hitTail = Game.violationDqHit(st, "熊素君");   // 违规事件·同队失格值连带
+            const m = st.members.find(x => x.name === "熊素君" && (x.status === "active" || x.status === "branch"));
+            if (m) {
+              if (m.status === "branch") { m.branchLabel = "预备生"; m.captain = false; m.vice = false; }
+              else { m.team = "PREP"; }
+              m.note = (m.note ? m.note + "；" : "") + "2018-02 剧场冲突与直播诋毁粉丝：下放预备生、封禁直播、停薪 3 个月（" + st.era + " 年 " + st.month + "~" + (st.month + 2) + " 月）";
+            }
+            st.flags.wageWaiveList = (st.flags.wageWaiveList || []).concat([{ name: "熊素君", era: st.era, start: st.month, months: 3 }]);
+            st.heat = Math.min(100, st.heat + 4);
+            st.morale = Math.max(0, st.morale - 3);
+            if (m) m.bond = Math.max(0, (m.bond || 0) - 4);
+            return "双份处罚同天下达：下放预备生、封禁直播、停薪三个月。公告下面有人替她说话，也有人贴出冲突视频的截图——处罚重不重，每个人心里都有一杆秤。\n\n训练师把她的名字从正式阵容的白板上擦掉，写到了最下面一行。工资册上同样多了三个灰色的「0」。\n\n（决策已登记：xsj18=demote。下放预备生；封禁直播；停薪 3 个月；热度+4 士气-3 羻绊-4。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+        { label: "「解除合约——这个口子不能留。」", hint: "解除合约离团（不追缴/不支付费用，口径待定）；热度+5 士气-3；原队伍 2 个月失格值免涨窗",
+          tag: "xsj18", value: "fire",
+          effect: st => {
+            const m = st.members.find(x => x.name === "熊素君" && (x.status === "active" || x.status === "branch"));
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2018-02 剧场冲突与直播诋毁粉丝，解除合约离团"; }
+            const hitTail = Game.violationDqHit(st, "熊素君");   // 违规事件·同队失格值连带（离团后调用，保留分团归属）
+            Game.dqCalmMark(st, "熊素君");   // 违规离团 → 原队伍其后 2 个月失格值不自然增长
+            st.heat = Math.min(100, st.heat + 5);
+            st.morale = Math.max(0, st.morale - 3);
+            return "解约函当天就发了出去。没有体面的告别公演，也没有官方祝福——公告只有干巴巴的一行：「经协商，熊素君合约解除。」\n\n超话炸了整晚。有人拍手叫好，也有人翻出她入队时的旧照感叹一句「可惜」。叶盛把舆情简报钉在白板上，重重画了个框：「后续所有采访请求，一律不接。」\n\n（决策已登记：xsj18=fire。熊素君解除合约离团；热度+5 士气-3。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+      ],
+    },
+    {
       /* 【2018 通用·小分队】7SENSES 的成功 → 公司决定继续小分队模式：HO2（2人）+ BlueV（5人）。
          tag units18：vote（粉丝打投——热度+4，HO2/BlueV 按史实名单成军）/
                       pick（公司选取——链式解锁两个点将窗，成员由玩家指定）。
@@ -466,6 +535,43 @@ STORY.monthly18 = {
 
   /* ---------- 3月：组阁编制会 + 新体制首演季（FT 新体制锚点） ---------- */
   3: [
+    {
+      /* 【2018·3月（用户口径）】前成员张菡筱自杀未遂爆料——仅 2016-08 张菡筱事件
+         选择 fire（追缴违约金 100 万开除）时触发（decisions.zhx16==="fire"）。
+         舆论风向不利：「偶像失格」「公司超额收取违约金」消息漫天飞。
+         两案：①公开声明（正面回应：全团失格值-5（规范追偿与成员关怀口径，
+         同 suYuan21 statement 口径）、热度-6）②冷处理（热度+6 士气-3）。
+         张菡筱已离团，非在册成员违纪 → 不挂 violation tag、无 violationDqHit
+         连带；声明含主动 dq 修正（同 suYuan21 模式）。数值 Agent 拟定可调。 */
+      id: "m3_18_zhx_after",
+      title: "3月 · 前成员的坏消息",
+      gate: st => !st.decisions.zhxAfter18 && st.decisions.zhx16 === "fire",
+      pages: st => [
+        { nar: true, t: "三月的一个深夜，一条爆料帖被顶上了热搜：前成员张菡筱，自杀未遂，目前正在医院救治。发帖人自称是其好友，配图打了码，但字里行间的细节都对得上。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把手机屏幕扣在桌上）总监，风向很不对。「偶像失格」的词条下面，全在提去年八月那笔违约金——一百万人人都查得到，现在每一个字都在往「公司逼死人」上引。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "集团公关部给了两套预案：一，公开声明，把当时的违纪事实、处理依据和我们后续做的安抚工作摊开说；二，冷处理——不回应，让热搜自己凉下去。但他们也提醒：赌冷处理，就是在赌她的消息不再更新。" },
+      ],
+      choices: [
+        { label: "「发声明——把事实讲清楚，也把该担的责任担起来。」", hint: "正面回应：全团失格值-5（规范追偿与成员关怀口径）；热度-6",
+          tag: "zhxAfter18", value: "statement",
+          effect: st => {
+            let n = 0;
+            for (const m of st.members) {
+              if (!(m.status === "active" || m.status === "branch") || m.hall) continue;
+              if (m.dq) { m.dq = Math.max(0, m.dq - 5); n++; }
+            }
+            st.heat = Math.max(0, st.heat - 6);
+            return "声明分三段：张菡筱在团期间的违纪事实与处理依据、解约流程的合规审查结论、以及公司为她提供的后续援助与心理支持安排。末段没有卸责：「对违约金追偿方式引发的争议，我们照单全收，并已修订相关条款。」\n\n热搜换了词条——从「逼死人」换成了「修订条款」。第二天的恶性爆料没有再更新。队伍里没人再提这件事，但各队队长都收到了同一份邮件：成员关怀细则，即日试行。\n\n（决策已登记：zhxAfter18=statement。全团失格值-5（涉 " + n + " 人）；热度-6。）";
+          } },
+        { label: "「不回应——让热搜自己凉下去。」", hint: "冷处理：热度+6（持续发酵）；士气-3",
+          tag: "zhxAfter18", value: "silence",
+          effect: st => {
+            st.heat = Math.min(100, st.heat + 6);
+            st.morale = Math.max(0, st.morale - 3);
+            return "公司官微照常营业：演出预告、周边上新、生日会应援——唯独那件事，一个字没有。评论区从质问到刷屏，再到有人开始人肉当时的处理流程，热度烧了整整两周才慢慢滑出榜单。\n\n排练室里倒是出奇地安静。没有人讨论，但每个人都在等——等一个说法，或者等下一爆料。\n\n（决策已登记：zhxAfter18=silence。冷处理：热度+6 士气-3。）";
+          } },
+      ],
+    },
     {
       /* 【主线①】组阁编制会（筹备完毕 reorg18.ready 后于 3 月末召开——九期生 2 月
          入队，全员一并编排；pickMode="reorg18" 转交 UI 两阶段弹窗，落地在

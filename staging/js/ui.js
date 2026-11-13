@@ -2798,7 +2798,8 @@ const UI = {
   showGe20IdftPicker(onDone) {
     const st = Game.st;
     const targets = (st.flags.ge20Idft || [])
-      .map(n => st.members.find(m => m.name === n && m.status === "idft")).filter(Boolean);
+      .map(n => st.members.find(m => m.name === n && m.status === "idft"))
+      .filter(m => m && !Game.promoBanActive(m, st));   // 升格禁令期内不进拍板窗（2022-03 陈佳莹处罚口径）
     const teams = Game.headTeams(st).map(t => ({ key: t, label: "升格 Team " + t, cls: "on-" + t.toLowerCase() }));
     for (const b of ["BEJ48", "GNZ48", "SHY48", "CKG48"].concat(st.teb19 && st.teb19.open ? ["TEB48"] : []))
       teams.push({ key: b, label: "移籍 分团 " + b + "（挂分团名）", cls: "" });

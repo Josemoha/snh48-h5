@@ -174,13 +174,25 @@ const Game = {
     if (m.pwr != null) m.pwr = this.clamp(m.pwr + n, 0, 100);
   },
 
+  /* 同名双卡消歧（用户口径：GNZ48 陈佳莹与 SNH48 二期生陈佳莹为不同成员，
+     同孟玥 CKG48/本部双卡口径）：match = { branchTeam/status/team… } 字段全等
+     过滤；不传 match 则取首个同名卡（旧口径不变，存量调用方不受影响）。 */
+  cardMatch(x, match) {
+    if (!match) return true;
+    for (const k of Object.keys(match)) {
+      if ((x[k] || null) !== (match[k] || null)) return false;
+    }
+    return true;
+  },
+
   /* 【违规事件·失格值连带（用户口径 2026-XX）】剧情月度事件中的违规事件（事件对象
      带 violation 类型 tag，如 社媒违纪/社媒攻击前辈/恋爱风波）发生时调用：
      · 事件主人公同队在册队员失格值 +2（略微上升）；主人公为队长/队副时连带更重（+4）；
      · 事后由剧情 effect 视处置结果调用 dqCalmMark：主人公因违规被解约/暂休时，
-       其原队伍其后 2 个月失格值不自然增长（dqCalmActive 免涨窗）。 */
-  violationDqHit(st, name) {
-    const m = st.members.find(x => x.name === name);
+       其原队伍其后 2 个月失格值不自然增长（dqCalmActive 免涨窗）；
+     · 同名双卡时传 match（如 { branchTeam: "GNZ48" }）消歧，避免误命中同名本部卡。 */
+  violationDqHit(st, name, match) {
+    const m = st.members.find(x => x.name === name && this.cardMatch(x, match));
     if (!m) return "";
     /* 队伍归属：分团在册/刚离团者按 branchTeam（剧情 effect 常在置 left 后才算连带，
        保留分团归属判定，避免回退到旧本部队） */
@@ -197,9 +209,10 @@ const Game = {
       : "";
   },
 
-  /* 免涨窗登记：主人公因违规被解约/暂休后，原队伍其后 2 个月失格值不自然增长 */
-  dqCalmMark(st, name) {
-    const m = st.members.find(x => x.name === name);
+  /* 免涨窗登记：主人公因违规被解约/暂休后，原队伍其后 2 个月失格值不自然增长
+     （同名双卡传 match 消歧，同 violationDqHit） */
+  dqCalmMark(st, name, match) {
+    const m = st.members.find(x => x.name === name && this.cardMatch(x, match));
     if (!m) return;
     const teamKey = (m.status === "branch" || m.status === "left") && m.branchTeam ? m.branchTeam : m.team;
     st.flags.dqCalm = (st.flags.dqCalm || []).filter(c => c.team !== teamKey);
@@ -350,7 +363,7 @@ const Game = {
         }
         members.push({
           id: "br17_" + r.name, name: r.name, team: bt, gen: r.gen || "",
-          pop: 0, bond: 0, status: "branch", branchTeam: bt, branchLabel: r.branchLabel || "",
+          pop: this.branchJoinPop({ era: "2017" }, bt), bond: 0, status: "branch", branchTeam: bt, branchLabel: r.branchLabel || "",
           captain: !!r.captain, vice: !!r.vice,
         });
       }
@@ -426,7 +439,7 @@ const Game = {
         if (st.members.some(x => x.name === r.name && x.status !== "left")) continue;
         st.members.push({
           id: "bf17_" + r.name, name: r.name, team: post, gen: r.gen || "",
-          pop: 0, bond: 0, status: "branch", branchTeam: post, branchLabel: r.branchLabel || "",
+          pop: this.branchJoinPop(st, post), bond: 0, status: "branch", branchTeam: post, branchLabel: r.branchLabel || "",
           since: { y: parseInt(st.era, 10), m: st.month },
         });
         n++;
@@ -1155,7 +1168,8 @@ const Game = {
   },
 
   /* 【快速通道】整年人员变动快进（与 endMonth 同口径的简化版）：
-     入队建卡（pop/bond 按年代随机基数，2017+ 含 pwr；分团 branchTeam 建简卡）；
+     入队建卡（pop/bond 按年代随机基数，2017+ 含 pwr；分团 branchTeam 建简卡，
+     初始人气按分团梯度 branchJoinPop 低于同期本部新成员）；
      离团按类型生效（毕业/离团/退团→left，暂休→rest，移籍→branch，兼任→仅备注）；
      跳过已离团/暂休/殿堂成员与赵嘉敏（完全由决策线驱动）。 */
   fastSimJoinLeave(st, era) {
@@ -1173,11 +1187,15 @@ const Game = {
     for (let month = 1; month <= 12; month++) {
       for (const j of joinSrc) {
         if (j.month !== month) continue;
-        if (st.members.some(x => x.name === j.name)) continue;
+        /* 同名去重（同名双卡口径）：分团条目只拦「同名且同分团归属」的卡
+           （left 卡保留 branchTeam，重建成卡防护不变）；本部条目维持同名即拦 */
+        if (j.branchTeam
+          ? st.members.some(x => x.name === j.name && (x.branchTeam || null) === j.branchTeam)
+          : st.members.some(x => x.name === j.name)) continue;
         if (j.branchTeam) {
           st.members.push({
             id: "ft" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
-            pop: 0, bond: 0, status: "branch", branchTeam: j.branchTeam,
+            pop: this.branchJoinPop(st, j.branchTeam), bond: 0, status: "branch", branchTeam: j.branchTeam,
             branchLabel: j.branchLabel || "预备生", note: j.note,
             since: { y: +era, m: j.month },
           });
@@ -3649,7 +3667,7 @@ const Game = {
      名单 GEN2_21（二期生十人）+ 赵嘉敏（仅学业线，约定延期一年后今年到期）；
      在册口径同 gen1（active/rest，殿堂除外）；去向同四项：续约（丝芭传媒）/ 影视约
      （需演技达标，转入影视部）/ 毕业（荣誉毕业生）/ 转任工作人员（丝芭传媒）。 */
-  GEN2_21: ["万丽娜", "唐安琪", "孙芮", "陆婷", "林思意", "鞠婧祎", "冯薪朵", "陈佳莹", "李艺彤", "黄婷婷"],   // 陈佳莹=SNH48 二期生（数据内无同名分团卡）
+  GEN2_21: ["万丽娜", "唐安琪", "孙芮", "陆婷", "林思意", "鞠婧祎", "冯薪朵", "陈佳莹", "李艺彤", "黄婷婷"],   // 陈佳莹=SNH48 二期生；同名分团卡（GNZ48 二期生陈佳莹，2017-04 入）由 gen2Pool21 等按 gen≠"GNZ48二期生" 过滤排除
   /* 【二期生安置·延迟口径（用户口径 2026-XX；修订：延迟仅限选秀限定团）】
      名单中「成团未回归」「曾经成团」的成员（均仅指选秀限定团 unit19/unit20），
      去向延迟一年决定：
@@ -3678,6 +3696,7 @@ const Game = {
     st = st || this.st;
     return st.members.filter(m =>
       (this.GEN2_21.indexOf(m.name) >= 0 || (m.name === "赵嘉敏" && this.zjmStudyRoute(st)))
+      && m.gen !== "GNZ48二期生"   // 同名双卡消歧：GNZ48 二期生陈佳莹不入延迟名单（其余成员不受 gen 限制）
       && (m.status === "active" || m.status === "rest") && !m.hall
       && (this.gen2UnitNow(st, m) || this.gen2ShowEver(st, m))).map(m => m.name);
   },
@@ -3685,6 +3704,7 @@ const Game = {
     st = st || this.st;
     return st.members.filter(m =>
       (this.GEN2_21.indexOf(m.name) >= 0 || (m.name === "赵嘉敏" && this.zjmStudyRoute(st)))
+      && m.gen !== "GNZ48二期生"   // 同名双卡消歧：分团同名卡（GNZ48 二期生陈佳莹）不入安置池，其余成员不受 gen 限制
       && (m.status === "active" || m.status === "rest") && !m.hall
       && !this.gen2UnitNow(st, m) && !this.gen2ShowEver(st, m));   // 成团未回归/选秀成团既往：去向延迟一年（用户口径 2026-XX）
   },
@@ -4078,12 +4098,13 @@ const Game = {
 
   buildRoster(st) {
     if (st.era === "2026") {
-      /* 2026：本部各队完整建卡；分团成员为简卡（status='branch'，无人气/羁绊，
+      /* 2026：本部各队完整建卡；分团成员为简卡（status='branch'，羻绊 0、
+         初始人气按分团梯度 branchJoinPop（CGT48→第三档，低于同期本部新成员），
          仅在成员页对应分团标签页展示「姓名+队伍」） */
       st.members = DATA2026.members.map(m => m.team === "branch"
         ? {
             id: m.id, name: m.name, team: m.branchTeam, gen: m.gen,
-            pop: 0, bond: 0, status: "branch", branchTeam: m.branchTeam, branchLabel: m.branchLabel || "",
+            pop: this.branchJoinPop({ era: "2026" }, m.branchTeam), bond: 0, status: "branch", branchTeam: m.branchTeam, branchLabel: m.branchLabel || "",
           }
         : {
             id: m.id, name: m.name, team: m.team, gen: m.gen,
@@ -5347,6 +5368,18 @@ const Game = {
     return { text: done.map(s => s.split("→")[0]).join("、") + " 以分团 TOP1 的身份兼任本部队伍（" + done.map(s => s.replace("→", " → ")).join("、") + "）——两地的灯牌，第一次照在同一些人身上。\n\n（兼任不调动：保留分团在册；兼任者人气+4 羁绊+4。）", tone: "main" };
   },
 
+  /* 【2022-03 陈佳莹私联风波处罚（用户口径）】一年内不能升格：成员卡 promoBanUntil
+     = "YYYY-MM"（月精度，含当月）。过期自动失效；总选入榜升格（ge20Idft 登记/拍板）
+     与 applyGe20Idft 均按此拦截。 */
+  promoBanActive(m, st) {
+    st = st || this.st;
+    if (!m || !m.promoBanUntil) return false;
+    const parts = m.promoBanUntil.split("-");
+    const y = parseInt(parts[0], 10), mo = parseInt(parts[1], 10);
+    const ey = parseInt(st.era, 10);
+    return ey < y || (ey === y && st.month <= mo);
+  },
+
   /* 【2020 总选新机制·用户口径】入榜 IDFT 成员升格移籍（9月事件安排，UI.showGe20IdftPicker）：
      assign = { 成员id → 本部队|分团名|"stay" }。升格本部=入编现役；升格分团=移籍挂分团名（无队伍编制）；
      stay=留任 IDFT。升格红利：人气+8~14 羁绊+10；旗标 ge20IdftDone，名单 decisions.ge20IdftUp。 */
@@ -5354,7 +5387,8 @@ const Game = {
     const st = this.st;
     if (st.flags.ge20IdftDone) return { text: "入榜 IDFT 成员的去向已经落定。", tone: "blocked" };
     const names = st.flags.ge20Idft || [];
-    const pool = names.map(n => st.members.find(m => m.name === n && m.status === "idft")).filter(Boolean);
+    const pool = names.map(n => st.members.find(m => m.name === n && m.status === "idft"))
+      .filter(m => m && !this.promoBanActive(m, st));   // 升格禁令期内不得升格（2022-03 陈佳莹处罚口径）
     if (!pool.length) return { text: "入榜的 IDFT 成员均已不在池中。", tone: "blocked" };
     const TEAMS = this.headTeams(st);
     const BR = ["BEJ48", "GNZ48", "SHY48", "CKG48"].concat(st.teb19 && st.teb19.open ? ["TEB48"] : []);
@@ -5555,6 +5589,26 @@ const Game = {
      找不到卡而不触发。官宣/开业落地后调用本方法按口径追补：j.month ≤ 当前月、
      同名在册去重、卡片形状与 monthStart 入队同口径；分团主线失败（未官宣/未开业）
      仍不入册。 */
+  /* 【分团简卡初始人气（用户口径）】分团新成员卡初始人气低于同时期本部新成员
+     （本部口径：2016 16~30 / 2017 10~18 / 2018 起 8~14），分部之间梯度：
+     BEJ48=GNZ48 > CKG48=TEB48 > 其他分团（SHY48/CGT48 等归第三档）。
+     适用于全部引擎建卡路径（monthStart / catchupBranchJoins / fastSim /
+     carryTo2017 名册兑底 / deployBranch）；TEB48 事件卡与 CGT48 数据卡为
+     既有史实口径，不在本梯度内。 */
+  BRANCH_POP_TIER: { BEJ48: 1, GNZ48: 1, CKG48: 2, TEB48: 2 },
+  BRANCH_POP_RANGE: {
+    "2016": [[8, 14], [5, 9], [2, 5]],   // 本部同期 16~30
+    "2017": [[5, 9], [3, 6], [1, 4]],    // 本部同期 10~18
+    DEFAULT: [[4, 7], [2, 5], [1, 3]],   // 2018 起本部同期 8~14
+  },
+  branchJoinPop(st, team) {
+    const era = st && st.era ? String(st.era) : "2018";
+    const tiers = this.BRANCH_POP_RANGE[era] || this.BRANCH_POP_RANGE.DEFAULT;
+    const tier = this.BRANCH_POP_TIER[team] || 3;
+    const r = tiers[tier - 1];
+    return this.rnd(r[0], r[1]);
+  },
+
   catchupBranchJoins(st, era, team) {
     const joinSrc = era === "2016" ? DATA.joining2016
       : era === "2017" ? DATA.joining2017
@@ -5565,16 +5619,19 @@ const Game = {
       if (!j.branchTeam) continue;
       if (team && j.branchTeam !== team) continue;
       if (j.month > st.month) continue;
-      /* 同名已建卡即跳过（含 left——同 monthStart 去重口径，防解约成员被追补重建成卡） */
-      if (st.members.some(x => x.name === j.name)) continue;
+      /* 同名已建卡即跳过（含 left——同 monthStart 去重口径，防解约成员被追补重建成卡；
+         分团条目按「同名且同分团归属」拦，同名双卡不互拦） */
+      if (j.branchTeam
+        ? st.members.some(x => x.name === j.name && (x.branchTeam || null) === j.branchTeam)
+        : st.members.some(x => x.name === j.name)) continue;
       st.members.push(era === "2016" ? {
         id: "j" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
-        pop: this.rnd(10, 20), bond: 12, status: "branch", branchTeam: j.branchTeam,
+        pop: this.branchJoinPop(st, j.branchTeam), bond: 12, status: "branch", branchTeam: j.branchTeam,
         branchLabel: j.branchLabel || "预备生", note: j.note,
         since: { y: parseInt(st.era, 10), m: st.month },
       } : {
         id: "j" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
-        pop: 0, bond: 0, status: "branch", branchTeam: j.branchTeam, branchLabel: "预备生",
+        pop: this.branchJoinPop(st, j.branchTeam), bond: 0, status: "branch", branchTeam: j.branchTeam, branchLabel: "预备生",
         note: j.note,
         since: { y: parseInt(st.era, 10), m: st.month },
       });
@@ -5582,6 +5639,19 @@ const Game = {
       n++;
     }
     return n;
+  },
+
+  /* 【2021·10月·熊素君归队（用户口径 2026-XX 对话批次）】CKG48 公开招募归队：
+     复用原离团卡并继承离团前数值（pop/bond/pwr），以 CKG48 预备生身份入册；
+     事件 effect 与 monthStart 默认落地共用本方法（防两处漂移）。 */
+  rejoinXsj21(st) {
+    const m = st.members.find(x => x.name === "熊素君" && x.status === "left");
+    if (!m) return null;
+    m.status = "branch"; m.team = "CKG48"; m.branchTeam = "CKG48"; m.branchLabel = "预备生";
+    m.captain = false; m.vice = false;
+    m.note = (m.note ? m.note + "；" : "") + "2021-10 CKG48 公开招募归队（预备生·继承离团前数值）";
+    this.addLog(st, st.month, "熊素君 CKG48 公开招募归队（预备生，继承离团前数值）。", "main");
+    return m;
   },
 
   /* ============================ 月初 ============================ */
@@ -5679,8 +5749,11 @@ const Game = {
         /* 【去重】同名成员已建卡则跳过（含已离团 left——修复 bug：2016·5 月社媒事件解约的
            胡怡莹/周倩玉曾在 6 月被重新建卡入队；旧条件 status!=='left' 把已解约的卡当成
            「不存在」）。月末流程重复跑同一月（旧档 monthStarted 缺失重入等）
-           也不再生成第二张卡。 */
-        if (st.members.some(x => x.name === j.name)) continue;
+           也不再生成第二张卡。同名双卡口径：分团条目按「同名且同分团归属」拦
+           （如 GNZ48 二期生陈佳莹与本部二期生陈佳莹互不拦截）。 */
+        if (j.branchTeam
+          ? st.members.some(x => x.name === j.name && (x.branchTeam || null) === j.branchTeam)
+          : st.members.some(x => x.name === j.name)) continue;
         /* 【2016】分团方向直落成员（用户口径 2026-10-25：王馨悦 4·20 直落 GNZ48
            Team G）：分团官宣后方入册（官宣晚于史实月份则顺延到官宣当月落地，
            由 endMonth 官宣判定处 catchupBranchJoins 追补——本处检查时当月官宣
@@ -5690,7 +5763,7 @@ const Game = {
           if (!(st.branch && st.branch.announce)) continue;
           st.members.push({
             id: "j" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
-            pop: this.rnd(10, 20), bond: 12, status: "branch", branchTeam: j.branchTeam,
+            pop: this.branchJoinPop(st, j.branchTeam), bond: 12, status: "branch", branchTeam: j.branchTeam,
             branchLabel: j.branchLabel || "预备生",
             note: j.note,
             since: { y: parseInt(st.era, 10), m: st.month },
@@ -5704,10 +5777,11 @@ const Game = {
             const bOpen = j.branchTeam === "SHY48" ? st.branch17.shyOpen : j.branchTeam === "CKG48" ? st.branch17.ckgOpen : true;
             if (!bOpen) continue;
           }
-          /* 【2018】分团新期生：分团预备生简卡（无人气/羁绊，分团标签页展示） */
+          /* 【2018】分团新期生：分团预备生简卡（羻绊 0；初始人气按分团梯度
+             branchJoinPop，低于同期本部新成员，分团标签页展示） */
           st.members.push({
             id: "j" + j.name, name: j.name, team: j.branchTeam, gen: j.gen,
-            pop: 0, bond: 0, status: "branch", branchTeam: j.branchTeam, branchLabel: "预备生",
+            pop: this.branchJoinPop(st, j.branchTeam), bond: 0, status: "branch", branchTeam: j.branchTeam, branchLabel: "预备生",
             note: j.note,
             since: { y: parseInt(st.era, 10), m: st.month },
           });
@@ -5906,6 +5980,19 @@ const Game = {
         st.money += penalty;
         st.decisions.xll21 = "releaseAuto";
         this.addLog(st, st.month, "谢蕾蕾 协商解约离团（收取违约金 " + penalty + " 万）。", "bad");
+      }
+    }
+
+    /* 【2021·10月·熊素君归队（用户口径 2026-XX 对话批次）】CKG48 公开招募名单含熊素君：
+       仅当其为离团状态时触发；玩家兼任 CKG48 时由月度事件 m10_21_xsj 拍板是否归队；
+       未兼任 CKG48 → 默认归队（加入 CKG48，继承离团前数值，登记 xsj21=rejoinAuto，
+       同 xll21 releaseAuto 默认口径模式）。 */
+    if (st.era === "2021" && st.month === 10 && !st.decisions.xsj21
+        && !(st.flags.concur17 && st.flags.concur17["CKG48"])) {
+      const xsjLeft = st.members.find(m => m.name === "熊素君" && m.status === "left");
+      if (xsjLeft) {
+        this.rejoinXsj21(st);
+        st.decisions.xsj21 = "rejoinAuto";
       }
     }
 
@@ -7306,6 +7393,16 @@ const Game = {
         if (m) wageWaive += (m.status === "branch" ? this.BRANCH_UPKEEP_UNIT : this.SALARY_UNIT);
       }
     }
+    /* 【通用停薪（用户口径 2018-02 熊素君事件起）】flags.wageWaiveList =
+       [{ name, era, start, months }]：命中月份该成员不计工资（本部 0.5 / 分团 0.35，
+       同 wageWaive16 口径；left 不计——离团后工资册本就无此人）。 */
+    if (Array.isArray(st.flags.wageWaiveList)) {
+      for (const wv of st.flags.wageWaiveList) {
+        if (wv.era !== st.era || st.month < wv.start || st.month >= wv.start + (wv.months || 3)) continue;
+        const m = st.members.find(x => x.name === wv.name && (x.status === "active" || x.status === "branch"));
+        if (m) wageWaive += (m.status === "branch" ? this.BRANCH_UPKEEP_UNIT : this.SALARY_UNIT);
+      }
+    }
     wageWaive = Math.round(wageWaive * 10) / 10;
     income = Math.round(income);
     /* 【日本模式（用户口径 2026-XX）】复刻线进行中：月度成本上浮（日方授权/分成）——
@@ -7596,15 +7693,21 @@ const Game = {
          mode phone=手机通话 / wechat=微信视频通话；caller 来电者；sub 来电说明；
          complaint 累计拒接≥COMPLAIN_AT 次后接通时的抱怨台词；
          pages 来电中的对话页（不填则全部 pages 进通话）；
-         choices=true 时选项在通话内拍板（结算文本作为通话页），否则挂断后走普通事件卡。 */
-      call: ev.call ? {
-        mode: ev.call.mode || "phone", caller: ev.call.caller || "", sub: ev.call.sub || "",
-        complaint: ev.call.complaint || "",
-        pages: ev.call.pages
-          ? (typeof ev.call.pages === "function" ? ev.call.pages(st) : ev.call.pages).map(p => ({ ...p, t: this.fmt(p.t) }))
-          : null,
-        choices: !!ev.call.choices,
-      } : null,
+         choices=true 时选项在通话内拍板（结算文本作为通话页），否则挂断后走普通事件卡。
+         【2022-03 陈佳莹事件】ev.call 与 ev.call.caller 均支持函数形态（参数 st），
+         同一事件按兼任口径切换来电者（未兼任→周马 / 兼任 GNZ48→陈文泽）。 */
+      call: ev.call ? (() => {
+        const c = typeof ev.call === "function" ? ev.call(st) : ev.call;
+        const caller = typeof c.caller === "function" ? c.caller(st) : c.caller;
+        return {
+          mode: c.mode || "phone", caller: caller || "", sub: c.sub || "",
+          complaint: c.complaint || "",
+          pages: c.pages
+            ? (typeof c.pages === "function" ? c.pages(st) : c.pages).map(p => ({ ...p, t: this.fmt(p.t) }))
+            : null,
+          choices: !!c.choices,
+        };
+      })() : null,
       choices: ev.choices ? ev.choices.map(c => ({
         label: c.label, hint: typeof c.hint === "function" ? c.hint(st) : (c.hint || ""),
         gate: c.gate ? c.gate(st) : true,
@@ -8285,7 +8388,11 @@ const Game = {
         b1List.push(r.m.name);
       }
       st.flags.ge20BranchTop1 = b1List;
-      st.flags.ge20Idft = ranked.filter(r => r.m.status === "idft" && top48.some(t => t.name === r.m.name)).map(r => r.m.name);
+      /* 升格禁令期内（promoBanUntil，如 2022-03 陈佳莹处罚）不入榜登记，
+         从源头排除升格可能（拍板窗/落地处另有二次过滤兑底） */
+      st.flags.ge20Idft = ranked
+        .filter(r => r.m.status === "idft" && top48.some(t => t.name === r.m.name) && !this.promoBanActive(r.m, st))
+        .map(r => r.m.name);
       /* 【2022 延续·Agent 判断】分团 TOP1 兼任本部、IDFT 入榜升格两项机制自 2020 年起逐年延续，
          本年照旧登记同套 flags，拍板行动 ge20branch1 / ge20idft 沿用（见 listActionsCore 2022 线）。 */
     }

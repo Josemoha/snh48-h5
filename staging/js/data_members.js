@@ -15,7 +15,8 @@
    数据结构：
      DATA.teams        各队元信息（成立日期、队徽色）
      DATA.members      2016-01-01 在籍 116 人（id/name/team/gen/join/pop/captain/note）
-     DATA.joining2016  2016 年内新入团成员（按月加入：六期生 3 月、七期生 9/10 月）
+     DATA.joining2016  2016 年内新入团成员（六期生 3 月、六期分团方向 4 月、
+                       七期生 9/10 月、BEJ48/GNZ48 一期生 10 月）
      DATA.leaving2016  2016 年内离团/暂休/移籍事件（引擎按月触发剧情）
      DATA.leaving2019  2019 年内离团事件（2019「双岸」线，引擎按月触发）
      DATA.leaving2020  2020 年内离团事件（2020「共渡」线，引擎按月触发）
@@ -180,8 +181,12 @@ const DATA = {
 
   /* ---------------- 2016 年内新加入（引擎按月加入名单） ----------------
      六期生 2016-03-26 直接入队；七期生 2016-09-15 入队；10-28 七期补充 1 人。
-     另有「六期生·分团方向 47 人」2016-01-18 以培训生身份入团，
-     属分团剧情素材（用 DATA.branchTrainees 概括，不逐人建卡）。 */
+     【补挂建卡（用户口径 2026-XX 对话批次）】六期生·分团方向 47 人与 BEJ48/GNZ48
+     一期生 43 人已全部逐人补挂（分团方向 2016-04-20 直落各队，含前批王馨悦/
+     胡怡莹/周倩玉；一期生 2016-10 入团，用户口径月份精度）——原「不逐人建卡」
+     口径废止。原名称疑点经用户查证（2026-XX 对话批次）确认同一卡：
+     「顼渐炀」系「顼凘炀」笔误（库内口径不变）；「戴欣侁」系旧考据笔误，
+     已按用户口径更正为「戴欣佚」（branchRoster2017 卡名同步更正）。 */
   joining2016: [
     { month: 3, name: "成珏",     team: "SII", gen: "六期生", join: "2016-03-26" },
     { month: 3, name: "邓艳秋菲", team: "NII", gen: "六期生", join: "2016-03-26" },
@@ -199,6 +204,55 @@ const DATA = {
        4·20 分团成立移籍 GNZ48 Team G——同胡怡莹/王馨悦直落口径；
        5 月社媒事件（m5_hyy16）处罚对象，需要独立卡位。 */
     { month: 4, name: "周倩玉",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team G", note: "2016-03 六期生同批招募，4·20 分团成立移籍 GNZ48 Team G" },
+    /* 【补挂建卡（用户口径 2026-XX 对话批次）】六期生·分团方向逐人补挂（原仅
+       branchRoster2017 于 2017.1 兜底补卡，2016 年内无入团卡）：2016-04-20 分团
+       成立当日直落各队（分团正式成员，非预备生）；分团官宣后方入册，主线失败
+       则不入册（同王馨悦直落口径）。「顼渐炀」经用户查证系「顼凘炀」笔误，
+       按库内口径挂载（2026-XX 对话批次确认）。 */
+    { month: 4, name: "胡博文",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team B" },
+    { month: 4, name: "林溪荷",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team B" },
+    { month: 4, name: "刘姝贤",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team B" },
+    { month: 4, name: "牛聪聪",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team B" },
+    { month: 4, name: "青钰雯",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team B" },
+    { month: 4, name: "孙姗",     team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team B" },
+    { month: 4, name: "文妍",     team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team B" },
+    { month: 4, name: "夏越",     team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team B" },
+    { month: 4, name: "张梦慧",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team B" },
+    { month: 4, name: "毕梦媛",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "陈姣荷",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "陈倩楠",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "冯思佳",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "李诗彦",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "李想",     team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "李媛媛",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "李梓",     team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "林堃",     team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "刘胜男",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "罗雪丽",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "马玉灵",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "苏杉杉",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "顼凘炀",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },   // 用户口径确认：「顼渐炀」系笔误（2026-XX 对话批次）
+    { month: 4, name: "易妍倩",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "张笑盈",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "郑一凡",   team: "BEJ48", gen: "六期生", join: "2016-04-20", branchTeam: "BEJ48", branchLabel: "Team E" },
+    { month: 4, name: "罗寒月",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team G" },
+    { month: 4, name: "张琼予",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team G" },
+    { month: 4, name: "陈慧婧",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "陈楠茜",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "陈欣妤",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "冯嘉希",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "洪静雯",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "刘力菲",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "刘倩倩",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "卢静",     team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "孙馨",     team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "唐莉佳",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "肖文铃",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "冼燊楠",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "熊心瑶",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "郑丹妮",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "左嘉欣",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
+    { month: 4, name: "左婧媛",   team: "GNZ48", gen: "六期生", join: "2016-04-20", branchTeam: "GNZ48", branchLabel: "Team NIII" },
     { month: 3, name: "孙珍妮",   team: "HII", gen: "六期生", join: "2016-03-26" },
     { month: 3, name: "王金铭",   team: "HII", gen: "六期生", join: "2016-03-26" },
     { month: 3, name: "林忆宁",   team: "X",   gen: "六期生", join: "2016-03-26" },
@@ -220,6 +274,53 @@ const DATA = {
     { month: 9, name: "徐诗琪",   team: "XII", gen: "七期生", join: "2016-09-15" },
     { month: 9, name: "曾晓雯",   team: "XII", gen: "七期生", join: "2016-09-15" },
     { month: 10, name: "姚祎纯",  team: "X",   gen: "七期生", join: "2016-10-28" },
+    /* 【补挂建卡（用户口径 2026-XX 对话批次）】BEJ48/GNZ48 一期生逐人补挂：2016-10
+       入团（用户口径月份精度，随分团自主招募入册为预备生）；分团 4·20 已官宣，
+       当月月初直接入册。「戴欣侁」经用户查证系旧考据笔误，按用户口径更正为
+       「戴欣佚」（branchRoster2017 卡名同步更正，2026-XX 对话批次确认）。 */
+    { month: 10, name: "黄黎蓉", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "向芸",   team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "戴欣佚", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },   // 原考据作戴欣侁系笔误，按用户口径 2026-XX 对话批次更正
+    { month: 10, name: "李伊虹", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "陈桂君", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "陈梓荧", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "代玲",   team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "杜秋霖", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "刘嘉怡", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "龙亦瑞", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "农燕萍", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "王翠菲", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生", note: "用户口径：亦作王芊诺" },
+    { month: 10, name: "王炯义", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "王偲越", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "王盈",   team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "王秭歆", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "杨可璐", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "杨媛媛", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "于珊珊", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "张心雨", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "赵欣雨", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "赵翊民", team: "GNZ48", gen: "GNZ48一期生", join: "2016-10", branchTeam: "GNZ48", branchLabel: "预备生" },
+    { month: 10, name: "陈逸菲", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "吴月黎", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "大李娜", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "杨一帆", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "陈雅钰", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "房蕾",   team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "葛司琪", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "黄恩茹", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "李泓瑶", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "刘闲",   team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "任心怡", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "任玥霖", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "单习文", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "石羽莎", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "孙语姗", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "王雨煊", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "叶苗苗", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "杨晔",   team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "张怀瑾", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "张韩紫陌", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
+    { month: 10, name: "许婉玉", team: "BEJ48", gen: "BEJ48一期生", join: "2016-10", branchTeam: "BEJ48", branchLabel: "预备生" },
   ],
 
   /* ---------------- 2016 年内离团 / 暂休 / 兼任变动 ----------------
@@ -258,7 +359,9 @@ const DATA = {
   /* ---------------- 2016-04-20 分团移籍名单（分团剧情核心素材） ----------------
      史实：BEJ48/GNZ48 于 2016-04-20 宣布成立，68 人组成四队。
      游戏中：若分团主线成功，这 20 名五期生从 SNH48 名单移入分团名单；
-            另有六期生·分团方向培训生 47 人同日入队（作人数处理）。 */
+            另有六期生·分团方向 47 人同日入队直落各队，47 人已逐人建卡
+            （见 joining2016，用户口径 2026-XX 对话批次；「顼渐炀」经查证系
+            「顼凘炀」笔误）。 */
   branchMovers: {
     BEJ: ["陈美君", "段艺璇", "冯雪莹", "胡晓慧", "宋思娴", "田姝丽", "熊素君", "徐佳丽", "张菡筱"],
     GNZ: ["陈珂", "陈雨琪", "高源婧", "李沁洁", "林嘉佩", "刘梦雅", "刘筱筱", "阳青颖", "曾艾佳", "张凯祺", "谢蕾蕾"],
@@ -274,7 +377,11 @@ const DATA = {
      · GNZ48：Team G（队长 曾艾佳 / 副队长 高源婧，2016-10-01 任命）+
               Team NIII（队长 刘力菲 / 副队长 刘倩倩，2016-10-02 任命）。
      · GNZ48 Team Z（2016年10月结成·广州本地招募）生涯快照缺失，不逐人建卡。
-     carryTo2017 按本表补建缺失的分团成员卡；已在籍的移籍成员卡（含人气/羁绊）保留不动。 */
+     carryTo2017 按本表补建缺失的分团成员卡；已在籍的移籍成员卡（含人气/羁绊）保留不动。
+     【2026-XX 对话批次】六期生·分团方向与两分团一期生已全部于 joining2016 逐人
+     补挂（2016 年内入团），2017.1 走到此处时同名在籍卡自动跳过——本表保留作
+     分团主线失败时的兜底与队长/副队任命同步（原「戴欣侁」已按用户口径更正为
+     「戴欣佚」）。 */
    branchRoster2017: {
      BEJ48: [
        { name: "陈美君", branchLabel: "Team B", gen: "五期生" },
@@ -374,7 +481,7 @@ const DATA = {
           2017.1 时点为预备生，未升格（具体升格档案后续按需调研） */
        { name: "黄黎蓉", branchLabel: "预备生", gen: "GNZ48一期生" },
        { name: "向芸",   branchLabel: "预备生", gen: "GNZ48一期生" },
-       { name: "戴欣侁", branchLabel: "预备生", gen: "GNZ48一期生" },
+       { name: "戴欣佚", branchLabel: "预备生", gen: "GNZ48一期生" },   // 原卡名戴欣侁系笔误，按用户口径 2026-XX 对话批次更正
        { name: "李伊虹", branchLabel: "预备生", gen: "GNZ48一期生" },
        { name: "陈桂君", branchLabel: "预备生", gen: "GNZ48一期生" },
        { name: "陈梓荧", branchLabel: "预备生", gen: "GNZ48一期生" },
@@ -463,6 +570,7 @@ const DATA = {
     { month: 4, name: "陈乐添", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
     { month: 4, name: "刘小末", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
     { month: 4, name: "张秋怡", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04", note: "GNZ48二期生" },   // 用户口径 2026-10-24 补挂
+    { month: 4, name: "陈佳莹", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04", note: "GNZ48二期生（与 SNH48 二期生陈佳莹同名双卡、非同一人——用户口径 2026-XX 对话批次）" },   // 用户口径 2026-XX 补挂（同名双卡：引擎去重/二期生安置/兼职出演事件均已按 branchTeam/gen 消歧）
     { month: 4, name: "陈奕君", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04", note: "SHY48二期生" },
     { month: 4, name: "逯芳竹", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04", note: "SHY48二期生" },
     { month: 4, name: "张羽涵", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },   // 2020-01 退团（leaving2020 挂载）
@@ -486,8 +594,8 @@ const DATA = {
   /* ---------------- 2017 年内离团 / 移籍 / 兼任变动（2017「本部新章」线用） ----------------
      【重要】本表在「2016 年末游戏内成员卡实际状态」的基础上生效：
      2016 年已因玩家决策离团/暂休的成员（引擎会自动跳过），不再重复处理。
-     六期生·分团方向 47 人已随 2016 年 4·20 划入 BEJ48/GNZ48（分团简卡），
-     其后续变动随分团名册处理，不逐人建卡。
+     六期生·分团方向 47 人（47 人已逐人建卡，见 joining2016）已随 2016 年 4·20
+     划入 BEJ48/GNZ48，其后续变动随分团名册处理，不逐人挂离团表。
      史实锚点（snh48wiki.top 离团时间线/成员履历快照 tmp/research/leave2.json、careers3.json）：
      · 2017-01/02 SHY48 一期生两批公布（18+16 人）、1·12 沈阳星梦剧院首演；
      · 2017-04-07 7SENSES 小分队成立（孔肖吟/张语格/戴萌/许佳琪/许杨玉琢/赵粤/陈琳）；
