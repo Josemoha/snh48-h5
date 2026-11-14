@@ -51,12 +51,17 @@
      cjy22（3月陈佳莹私联风波处置：punish=加重处罚移籍 IDFT / grad=提前毕业 / dismiss=清退）/
      hyn22（6月侯祎冉劝退处置：dismiss=按成员精简清退 / promote=上调本部预备生）/
      qj22（7月祁静解约处置：release=放行收违约金 / noncompete=免违约金换竞业条款 /
-     keep=挽留（成功改写 stay / 失败改写 keepFail 并自动按 release 落地））。
+     keep=挽留（成功改写 stay / 失败改写 keepFail 并自动按 release 落地））/
+     unit21（5月海外选秀限定团成团拍板：form=签字送行——成团一人暂休一年）/
+     qj22Seq（8月祁静暴雷舆情处置：cut=公开切割声明 / silent=不发表切割声明）。
    旗标（st.flags）：mv22Done / concert22Done / concert22Missed（错过10月定档）/
      rule22AllDone / rule22Teams /
      concert22Final {names, resident, film, invited, siba, staff, honor} /
      b22Filled22 / bp22ClassicDone /
-     qj22Sequel（7月祁静放行后后续剧情伏笔·粉丝法人公司舆情线，待用户口径回收）/
+     unit21Formed（5月海外限定团成团——成团名单登记 st.unit21 {formed, members, returned}，
+     2023-05 起期满归队；carryTo2023 需携带，见交接-2022线待补.md）/
+     qj22Sequel（7月祁静放行后后续剧情伏笔·粉丝法人公司舆情线，已按用户口径
+     于2022-08回收为暴雷爆料后续事件 m8_22_qj_seq）/
      qj22Noncompete（7月祁静竞业期至·月精度 YYYY-MM）。
    ========================================================================== */
 
@@ -509,6 +514,39 @@ STORY.monthly22 = {
     },
   ],
 
+  /* ---------- 5月：海外选秀限定团成团（2021 主线③回收，用户口径） ---------- */
+  5: [
+    {
+      /* 【2022·5月（用户口径）】2021 海外选秀（主线③出征五人 gp21Squad）节目成团夜：
+         我司成团一人，随海外限定团活动一年（暂休，不参加本年总选；2023-05 起期满归队）。
+         确定性选择器 Game.unit21Selection（出征在籍者人气降序取一人），
+         落地 Game.formUnit21（tag unit21=form）。
+         gate：未成团（flags.unit21Formed）且出征名单存在且有人可出道；快速通道档
+         fastSim2021 已预填 gp21Squad（人气前五），同样可触发。
+         【同源陷阱①】登记权归选项（tag unit21），effect 走 Game.formUnit21（内部以
+         flags.unit21Formed 作幂等卫兵，不以 decisions.unit21 作卫兵）。
+         数值 Agent 拟定可调：热度+8 士气+2（同 formUnit20 口径）。 */
+      id: "m5_22_unit",
+      title: "5月 · 海外限定团 · 成团宣布",
+      gate: st => !st.flags.unit21Formed
+        && Array.isArray(st.decisions.gp21Squad) && st.decisions.gp21Squad.length > 0
+        && Game.unit21Selection(st).debut.length > 0,
+      pages: st => {
+        const sel = Game.unit21Selection(st);
+        const name = sel.debut[0] ? sel.debut[0].name : "";
+        return [
+          { nar: true, t: "五月的深夜，海外那档选秀的成团夜终于落幕。出道位的名字被念到时，直播间里刷的是中文的应援色——" + name + "，去年夏天从这条河出发的五个孩子之一。\n\n海外限定团，期限一年。这一年里，她将随团活动、暂别剧场与总选；一年之后，随时欢迎回家。" },
+          { s: "叶盛", cls: "speaker-yesheng", t: "（把新合同放到桌上，声音有点复杂）五个名额送出去，站上出道位的只有一个——这是她自己挣来的位置。总监，签了字，她就去海外报到；留守的孩子们，八月还有青春盛典要走。（成团成员暂休一年，不参加本年总选）" },
+        ];
+      },
+      choices: [
+        { label: "签字——送她成团出征", hint: "海外选秀成团一人（暂休一年，随团活动）；热度+8 士气+2；2023-05 起期满归队",
+          tag: "unit21", value: "form",
+          effect: st => Game.formUnit21(st).text },
+      ],
+    },
+  ],
+
   /* ---------- 7月：祁静解约与竞业条款（用户口径） ---------- */
   7: [
     {
@@ -689,6 +727,41 @@ STORY.monthly22 = {
             st.heat = Math.min(100, st.heat + 8);
             st.morale = Math.max(0, st.morale - 4);
             return "解约函当天生效，违约金那一栏写着：免予追缴。\n\n评论区的风向微妙地转了一度——从「公司包庇」到「至少人被处理了」。被偷拍的孩子休养去了，公司承担了全部疗养费用；这些不会出现在公告里，但会留在每个人的账本外。\n\n（决策已登记：zlw22=nofee。朱力维解约离团；免收违约金；热度+8 士气-4。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+      ],
+    },
+    {
+      /* 【2022·8月（用户口径）】祁静事件后续（需 7 月放行解约，即 flags.qj22Sequel——
+         release / keepFail 两路均触发；noncompete / stay 无后续不触发）：祁静果然暴雷——
+         那家新公司（法人是其粉丝）的法人亲自下场，公开爆料其各种「捞女」行径；
+         由于时间太过接近（上月才解约、转身进那家公司），公司的舆论也受到了影响。
+         两案：①公开切割（宣称祁静已解约与本司无关：热度-4 舆情降温）
+         ②不发表切割声明（不回应任其发酵：热度+5 士气-2）。
+         祁静已离团，非在册成员违纪 → 不挂 violation tag、无 violationDqHit 连带
+         （同 m3_18_zhx_after 前成员爆料口径）。
+         【同源陷阱①】登记权归选项（tag qj22Seq），effect 不以 decisions.qj22Seq 作卫兵。
+         数值 Agent 拟定可调。 */
+      id: "m8_22_qj_seq",
+      title: "8月 · 迟到的雷声",
+      gate: st => !!st.flags.qj22Sequel && !st.decisions.qj22Seq,
+      pages: st => [
+        { nar: true, t: "八月的第三个星期，热搜换了新词条。这次爆料的不是营销号——是那家新公司的法人本人：祁静的粉丝，她现在的老板。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "总监，祁静果然暴雷了。那位法人亲自下场，把聊天记录和转账流水一并挂了出来——借着恋爱关系从粉丝那儿收礼物、收钱，一挂几十页。他自己就是当事人之一，这波是分手后的鱼死网破。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把手机屏幕扣在桌上）要命的是时间。她上个月才从我们这儿解约，转身就进了那家公司——网友不会替我们捋时间线，词条底下已经有人在带节奏了：「前东家教出来的货色」。我们官微的评论翻不了页。公关给了两套预案：切割声明，还是不发？您定。" },
+      ],
+      choices: [
+        { label: "「发切割声明——祁静已经解约，与本司无关。」", hint: "舆情降温：热度-4",
+          tag: "qj22Seq", value: "cut",
+          effect: st => {
+            st.heat = Math.max(0, st.heat - 4);
+            return "声明只有两段：祁静已于上月正式解约、手续齐全，解约在先、爆料在后，与本司再无任何关系。附解约协议关键页的截图，时间戳清清楚楚。\n\n词条烧了一晚上，第二天就换成了别家的瓜——时间线摆在那里，带节奏的人没了抓手。排练室里有人小声嘀咕了一句「早就看出来不对」，然后各回各位，该练的照练。\n\n（决策已登记：qj22Seq=cut。切割声明已发：热度-4。）";
+          } },
+        { label: "「不发表切割声明——不回应，任它烧。」", hint: "舆论发酵：热度+5 士气-2",
+          tag: "qj22Seq", value: "silent",
+          effect: st => {
+            st.heat = Math.min(100, st.heat + 5);
+            st.morale = Math.max(0, st.morale - 2);
+            return "官微照常营业：公演预告、周边上新、十周年倒计时——唯独那件事，一个字没有。可时间太近了，评论区不依不饶：「前员工出事就装死？」热度烧了整整一周才慢慢滑出榜单。\n\n队伍里倒没人议论祁静，但每个人都在看公司——看它出了事，到底是先撇清，还是先装作没看见。叶盛把那页评论截图存了档，什么也没说。\n\n（决策已登记：qj22Seq=silent。不发表切割声明：热度+5 士气-2。）";
           } },
       ],
     },

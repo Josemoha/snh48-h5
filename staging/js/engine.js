@@ -565,7 +565,7 @@ const Game = {
   /* ========================================================================
      快速通道开局（主界面·中途年份直入，v0.11.1）
      --------------------------------------------------------------------------
-     用途：作者实测与已通关前几年剧情的玩家，直接从 2017/2018/2027 开局。
+     用途：作者实测与已通关前几年剧情的玩家，直接从 2017/2018/2022 等中途年份开局。
      原理：伪造「前一年年末」的游戏状态（史实默认 + 玩家在开局前补选的关键决策），
            然后走真实的跨线交接函数（carryTo2017 / carryTo2018 / carryTo2027），
            保证与正常通关进入的年份状态同构。
@@ -661,6 +661,34 @@ const Game = {
       this.carryTo2020();
       this.fastSim2020(choices);
       this.carryTo2021();
+      return this.st;
+    }
+    if (era === "2022") {
+      /* 快速通道 2022：伪造 2021 全年 → carryTo2022。
+         补选：2020 一期生合约安置（gen1，默认续约）+ 2021 序章年度活动方案
+         （geMode21，默认 classic 传统总选——2022 自动沿用）+
+         2021 二期生长约安置（gen2，默认全员丝芭传媒续约）；
+         AW9 电商常态化（aw9Shop21Done，2022 月收入判定）、2021 连霸基准
+         ge2021Top1（/All）、partner 线 gePairs21 与 bp21Travel21 双人旅行伏笔
+         均在 fastSim2021 内落定。 */
+      this.fastState2016(playerName, choices);
+      this.carryTo2017();
+      this.fastSim2017(choices);
+      this.carryTo2018();
+      const stF = this.st;
+      const xk22 = choices.xiiKeep18 === "keep" ? "keep" : "dissolve";
+      stF.decisions.xiiKeep18 = xk22;
+      stF.flags.xiiKept18 = xk22 === "keep";
+      if (xk22 === "keep") stF.morale = this.clamp(stF.morale + 4, 0, 100);
+      else stF.money += 20;
+      this.fastSim2018(choices);
+      this.carryTo2019();
+      this.fastSim2019(choices);
+      this.carryTo2020();
+      this.fastSim2020(choices);
+      this.carryTo2021();
+      this.fastSim2021(choices);
+      this.carryTo2022();
       return this.st;
     }
     return this.newGame(playerName, null, era);
@@ -1108,6 +1136,91 @@ const Game = {
     return st;
   },
 
+  /* 【快速通道·2021 全年】在 fastState2016 → … → fastSim2020 → carryTo2021 的
+     状态上快进 2021 一年（2022 快速通道专用）。
+     · 人员变动：fastSimJoinLeave("2021")（joining2021 建卡 / leaving2021 离团——
+       成员精简条目快速通道直接落地离团，不走 layoff21 补偿拍板，同 2020 疫情裁撤简化口径）；
+     · 年度活动方案（2021 序章·邓森林两案拍板）：geMode21 补选（默认 classic 传统总选，
+       2022 线自动沿用该拍板）；
+     · AW9 电商直播常态化（2021 主线①）：flags.aw9Shop21Done 落地（2022 月收入 +15 判定）；
+     · 二期生长约安置（2021 主线）：gen2 补选（默认 renew=全员丝芭传媒续约；grad=全员谢幕
+       毕业；绕过 applyGen221 的 Math.random 确定性落地）；成团未回归/选秀成团既往者照常
+       延入 2022 池（gen2Defer22，carryTo2022 年末兜底重算同口径）；
+     · 年度总选：ge2021Top1 / ge2021Top1All 按人气预填（2022 applyHallReign 连霸判定基准；
+       partner=第一名队伍全员口径）；partner 模式补齐 gePairs21（2022《最佳拍档》第二季
+       「不重复去年组队」基准，人气降序两两配对简化口径，实跑为好感度团内优先自动配对）
+       与 bp21Travel21 双人旅行伏笔（2022-02 回收事件）；
+     · 年末：unit20 期满归队扫描（2021-08 起）+ geBoost 清账 + 经营盘面中位值。 */
+  fastSim2021(choices) {
+    const st = this.st;
+    this.fastSimJoinLeave(st, "2021");
+
+    /* —— 年度活动方案（2021 序章拍板；2022 自动沿用）—— */
+    st.decisions.geMode21 = choices.geMode21 === "partner" ? "partner" : "classic";
+
+    /* —— 海外选秀出征名单（2021 主线③快速默认：在册非殿堂人气前五；
+       2022-05 海外限定团成团事件依 unit21Selection 由此名单出道一人）—— */
+    if (!Array.isArray(st.decisions.gp21Squad) || !st.decisions.gp21Squad.length) {
+      st.decisions.gp21Squad = st.members
+        .filter(m => (m.status === "active" || m.status === "branch") && !m.hall)
+        .sort((a, b) => (b.pop || 0) - (a.pop || 0) || (a.name < b.name ? -1 : 1))
+        .slice(0, 5).map(m => m.name);
+    }
+
+    /* —— AW9 电商直播常态化（2021 主线①快速默认）—— */
+    st.flags.aw9Shop21Done = true;
+    if (st.aw9shop21) st.aw9shop21.done = true;
+
+    /* —— 二期生长约安置（2021 主线；快速默认 renew，确定性落地）—— */
+    const gen2Choice = choices.gen2 === "grad" ? "grad" : "renew";
+    for (const m of this.gen2Pool21(st)) {
+      const isZhao = m.name === "赵嘉敏";
+      const tagY = (isZhao ? "2021 · 学业线约定到期安置" : "2021 · 二期生长约到期安置") + "（快速通道默认）";
+      m.captain = false; m.vice = false; delete m.sub;
+      m.status = "left";
+      if (gen2Choice === "grad") {
+        m.honorGrad = true;
+        m.note = (m.note ? m.note + "；" : "") + tagY + "（荣誉毕业生）";
+      } else {
+        m.siba = true;
+        m.note = (m.note ? m.note + "；" : "") + tagY + "（丝芭传媒签约艺人，剧场在籍名册除名）";
+      }
+    }
+    st.flags.gen2Done21 = true;
+    /* 延迟名单延入 2022 池（carryTo2022 年末兜底重算同口径；归队扫描前先登记一次） */
+    st.flags.gen2Defer22 = this.gen2DeferList21(st);
+
+    /* —— 年度总选：连霸基准按人气预填（2022 applyHallReign 判定基准）—— */
+    const ranked = st.members.filter(m => m.status === "active" && !m.hall)
+      .sort((a, b) => (b.pop || 0) - (a.pop || 0) || (a.name < b.name ? -1 : 1));
+    if (st.decisions.geMode21 === "partner") {
+      /* 拍档组队简化口径：人气降序两两一组（实跑为好感度团内优先自动配对） */
+      const pairs = [];
+      for (let i = 0; i + 1 < ranked.length; i += 2) pairs.push([ranked[i].name, ranked[i + 1].name]);
+      st.decisions.gePairs21 = pairs;
+      const champ = pairs[0] || null;
+      st.decisions.ge2021Top1 = champ ? champ.join(" & ") : null;      // 同 resolveGEPartner21 champLabel 口径
+      st.decisions.ge2021Top1All = champ ? [champ[0], champ[1]] : [];   // 第一名队伍全员（连霸判定）
+      st.decisions.bp21Travel21 = { members: champ ? [champ[0], champ[1]] : [], used: false };   // 双人旅行伏笔（2022-02 回收）
+    } else {
+      st.decisions.ge2021Top1 = ranked[0] ? ranked[0].name : null;
+      st.decisions.ge2021Top1All = ranked[0] ? [ranked[0].name] : [];
+    }
+
+    /* 年末经营盘面（回暖年合理中位值）——月份先落 12 月，供下方期满归队扫描 */
+    st.money = 820;
+    st.heat = 55; st.morale = 72; st.train = 46; st.burden = 45;
+    st.month = 12;
+
+    /* —— 期满归队结算（快速通道无 monthStart）：unit20（2021-08 起）在此归队—— */
+    this.limitUnitReturnCheck(st);
+
+    /* 快速通道不跑 2021 总选结算，未兑现的加成（geBoost）在此清账 */
+    for (const m of st.members) delete m.geBoost;
+
+    return st;
+  },
+
   /* 【快速通道·2018】首次大组阁自动编制：
      预备生留任、分团候选留任；XII 去留按补选（解散时成员默认落编）；
      其余本部正式成员按人气降序轮替填入各队（下限13、上限20，溢出落编）。
@@ -1178,12 +1291,15 @@ const Game = {
       : era === "2018" ? DATA.joining2018
       : era === "2019" ? (DATA.joining2019 || [])   // 【2019】补挂的十二期生刘丽千（fast 通道同步）
       : era === "2020" ? (DATA.joining2020 || [])   // 【2020】疫情年史实入团（分团简卡）
+      : era === "2021" ? (DATA.joining2021 || [])   // 【2021】史实入团表（十五/十六期本部 PREP 卡 + GNZ/CKG/BEJ 分团新期生简卡）
       : era === "2026" ? DATA2026.joining2026 : [];
     const leaveSrc = era === "2016" ? DATA.leaving2016
       : era === "2017" ? DATA.leaving2017
       : era === "2018" ? DATA.leaving2018
       : era === "2019" ? (DATA.leaving2019 || [])
-      : era === "2020" ? (DATA.leaving2020 || []) : [];
+      : era === "2020" ? (DATA.leaving2020 || [])
+      : era === "2021" ? (DATA.leaving2021 || [])   // 【2021】史实离团表（成员精简条目快速通道直接落地，不走 layoff21 拍板）
+      : [];
     for (let month = 1; month <= 12; month++) {
       for (const j of joinSrc) {
         if (j.month !== month) continue;
@@ -2012,13 +2128,59 @@ const Game = {
     };
   },
 
+  /* 【2022·海外选秀限定团】确定性选择器：2021 海外选秀出征五人（decisions.gp21Squad）
+     中在籍（active/branch，非殿堂）者按人气降序取一人（人气同分按姓名序）——
+     「成团一人」口径（海外团出道位单一）。无可出道者时返回空（事件 gate 拦截）。 */
+  unit21Selection(st) {
+    st = st || this.st;
+    const squad = (st.decisions && st.decisions.gp21Squad) || [];
+    const pool = squad
+      .map(n => st.members.find(x => x.name === n && (x.status === "active" || x.status === "branch") && !x.hall))
+      .filter(Boolean)
+      .sort((a, b) => (b.pop || 0) - (a.pop || 0) || (a.name < b.name ? -1 : 1));
+    return { debut: pool.slice(0, 1), rest: [] };
+  },
+
+  /* 【2022·海外选秀限定团成团】（2022-05 事件同口径，实跑同构落地）：
+     2021 海外选秀（主线③出征五人）成团夜——我司成团一人（出征在籍者人气最高者），
+     随海外限定团活动一年（暂休，不参加本年总选），2023-05 起期满归队
+     （limitUnitReturnCheck unit21 分支；归队加成同 unit19/20：人气+8 实力+5）。
+     成团名单登记 st.unit21 {formed, members, returned}——【跨年】需随 carryTo2023 携带
+     （2023 线待建，见交接-2022线待补.md）；flags.unit21Formed 保留防 gate 重开。
+     热度+8 士气+2（Agent 拟定可调，同 formUnit20 口径）。 */
+  formUnit21(st) {
+    st = st || this.st;
+    if (st.flags.unit21Formed) return { text: "海外限定团已经成团。", tone: "blocked" };
+    const sel = this.unit21Selection(st);
+    if (!sel.debut.length) return { text: "海外选秀没有可供成团的出征成员。", tone: "blocked" };
+    st.unit21 = st.unit21 || { formed: false, members: [] };
+    for (const m of sel.debut) {
+      m.status = "rest";
+      /* 归队扫描按备注「跟随限定团活动」命中（limitUnitReturnCheck 幂等谓词），措辞勿改 */
+      m.note = (m.note ? m.note + "；" : "") + "跟随限定团活动（海外团，暂休一年，不参加本年总选）";
+      st.unit21.members.push(m.name);
+    }
+    st.unit21.formed = true;
+    st.flags.unit21Formed = true;
+    st.heat = this.clamp(st.heat + 8, 0, 100);
+    st.morale = this.clamp(st.morale + 2, 0, 100);
+    this.addLog(st, st.month, "★海外限定团成团：" + sel.debut.map(m => m.name).join("、") + "（暂休一年，随团活动）。", "main");
+    this.save();
+    return {
+      text: "海外限定团成团名单公布：" + sel.debut.map(m => m.name).join("、") + "——暂休一年，随团活动；一年之后，随时欢迎回家。（热度+8 士气+2）",
+      tone: "main",
+    };
+  },
+
   /* 【限定团期满归队】（月初结算，修复 2026-XX）。
      成团事件口径均为「暂休一年，随团活动；一年之后，随时欢迎回家」：
      · unit19（2018 选秀限定团，2019-06 成团）→ 2020-06 起期满归队；
-     · unit20（2019 双选秀限定团，2020-08 成团）→ 2021-08 起期满归队。
+     · unit20（2019 双选秀限定团，2020-08 成团）→ 2021-08 起期满归队；
+     · unit21（2021 海外选秀限定团，2022-05 成团）→ 2023-05 起期满归队（2023 线待建，
+       carryTo2023 需携带 st.unit21 与 flags.unit21Formed；2026/2027 保留追补口径）。
      幂等：只恢复 status="rest" 且备注含「跟随限定团活动」的成员（即本成团事件划入者）；
      已因其他事件离团/毕业/升堂者跳过，不虚构在籍。归队后保留原队伍归属（暂休期间
-     不清队），flags.unit19Formed/unit20Formed 保留（防止成团事件 gate 重开），
+     不清队），flags.unit19Formed/unit20Formed/unit21Formed 保留（防止成团事件 gate 重开），
      仅清空 members 并登记 returned，供 UI 展示与回归断言。
      归队加成（Agent 拟定口径，可调）：限定团一年的外部镜头与舞台历练，
      人气+8、实力+5（pwr 无上限封顶，不 clamp；人气按 0~100 clamp）。
@@ -2032,6 +2194,9 @@ const Game = {
     if (st.flags.unit20Formed && st.unit20 && Array.isArray(st.unit20.members) && st.unit20.members.length &&
         !st.unit20.returned &&
         ((st.era === "2021" && st.month >= 8) || st.era === "2022" || st.era === "2026" || st.era === "2027")) jobs.push("unit20");
+    if (st.flags.unit21Formed && st.unit21 && Array.isArray(st.unit21.members) && st.unit21.members.length &&
+        !st.unit21.returned &&
+        ((st.era === "2023" && st.month >= 5) || st.era === "2026" || st.era === "2027")) jobs.push("unit21");
     for (const key of jobs) {
       const unit = st[key];
       const back = [];
@@ -4555,6 +4720,45 @@ const Game = {
 
   hasSave() { return !!localStorage.getItem(this.SAVE_KEY); },
   clearSave() { localStorage.removeItem(this.SAVE_KEY); },
+
+  /* 【快速通道·存档直读（用户口径 2026-XX）】快速通道开局时可直接读取前一年年末存档：
+     跳过 fastState2016/fastSim* 模拟与补选窗，从存档继承决策旗标、数值、成员卡等
+     全量实况，再走真实的跨线交接函数（carryTo{era}），与正常通关进入下一年完全同构——
+     规避快速通道模拟带来的花名册偏差，也省去多周目想改决策时逐年重玩。
+     约束：①存档版本一致；②存档 era 必须为目标年份的前一年；③须为 12 月年末档
+     （年末结算画面/结局界面「导出存档」下载的即为此档）。
+     队长名按开局界面输入覆盖（决策旗标/成员卡/数值均不动）；月首标记不带入
+     （新年 1 月 monthStart 正常触发）。 */
+  loadFastFromSave(playerName, era, text) {
+    let st;
+    try { st = JSON.parse(text); }
+    catch (e) { return { ok: false, msg: "存档文件无法解析（可能选错了文件）。" }; }
+    if (!st || st.saveVersion !== this.SAVE_VERSION)
+      return { ok: false, msg: "存档文件版本与当前游戏不匹配。" };
+    if (String(st.era) !== String(parseInt(era, 10) - 1))
+      return { ok: false, msg: "存档年份不符：进入 " + era + " 年需读取 " + (parseInt(era, 10) - 1) + " 年的存档（当前为 " + (st.era || "?") + " 年档）。" };
+    if (st.month !== 12)
+      return { ok: false, msg: "请使用年末存档（12 月）：请在年末结算画面导出后重试（当前为 " + st.month + " 月档）。" };
+    if (typeof this["carryTo" + era] !== "function")
+      return { ok: false, msg: "该年份暂不支持存档直读开局。" };
+    this.st = this._normalize(st);
+    if (playerName) this.st.playerName = playerName;
+    delete this.st.flags.monthStarted;   // 新年 1 月月首重开（旧档月首标记不带入）
+    this["carryTo" + era]();
+    this.save();
+    return { ok: true, msg: "已读取 " + st.era + " 年年末存档，" + era + " 年开局就绪（决策旗标/成员卡/数值全量继承）。", st: this.st };
+  },
+
+  /* 【快速通道·存档导出】导出当前内存盘面（不依赖 localStorage 最近一次自动存档——
+     结局界面会 clearSave，故年末结算画面/结局界面的导出按钮一律取 this.st 实况）。 */
+  exportCurrentSaveFile() {
+    try {
+      if (!this.st) return null;
+      const raw = JSON.stringify(this.st);
+      const name = "塞纳河打工人生_存档_" + this.st.era + "年" + this.st.month + "月.sg48save";
+      return { name: name, text: raw };
+    } catch (e) { return null; }
+  },
 
   /* ============================ 工具 ============================ */
 
@@ -7619,6 +7823,7 @@ const Game = {
        （如 5月：下一站选 SHY48/CKG48 → 解锁开拓者点将）。 */
     const monthlySrc = st.era === "2027" ? STORY.monthly27
       : st.era === "2026" ? STORY.monthly26
+      : st.era === "2022" ? STORY.monthly22   /* 【修复】2022 线月度表此前漏接，穿透 fallback 到 2016 STORY.monthly（月度事件误落盘） */
       : st.era === "2021" ? STORY.monthly21
       : st.era === "2020" ? STORY.monthly20
       : st.era === "2019" ? STORY.monthly19
@@ -7628,6 +7833,7 @@ const Game = {
     if (st.era === "2027") randomSrc = STORY.randomPool26.concat(STORY.randomPool27 || []);
     else if (st.era === "2026") randomSrc = STORY.randomPool26;
     else if (st.era === "2021") randomSrc = STORY.randomPool21 || [];   // 2021：随机池占位（月度表覆盖为主）
+    else if (st.era === "2022") randomSrc = STORY.randomPool22 || [];   // 2022：随机池占位（同 2021 口径，月度表覆盖为主；【修复】此前误落 2016 随机池）
     else if (st.era === "2020") randomSrc = [];   // 疫情年：月度表覆盖全年，不挂 2016 随机池
     else if (st.era === "2019") randomSrc = STORY.randomPool.concat(STORY.randomPool19 || []);
     else if (st.era === "2018") randomSrc = STORY.randomPool.concat(STORY.randomPool18 || []);

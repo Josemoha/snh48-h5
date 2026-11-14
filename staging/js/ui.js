@@ -566,6 +566,30 @@ const UI = {
     } catch (e) { this.toast("下载失败，请改用「导出存档码」"); }
   },
 
+  /* 【快速通道·存档直读】导出当前内存盘面存档（年末结算画面/结局界面按钮用） */
+  downloadCurrentSaveFile() {
+    const f = Game.exportCurrentSaveFile();
+    if (!f) { this.toast("当前无盘面可导出"); return; }
+    try {
+      const blob = new Blob([f.text], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = f.name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      this.toast("已下载存档文件：" + f.name + "（请勿改名后缀）");
+    } catch (e) { this.toast("下载失败"); }
+  },
+
+  /* 结算画面·导出存档按钮 + 快速通道提示（showEnding 年度结算画面挂载） */
+  appendSaveExportButtons(container) {
+    container.appendChild(this.el("p", "modal-text",
+      "💡 可先「导出存档」保存本年年末实况：下一年走快速通道开局时，可直接读取本档（跳过模拟与补选，继承决策旗标、数值与成员卡——避免快速通道模拟带来的花名册偏差）。"));
+    const btnExport = this.el("button", "btn btn-ghost", "导出存档（下一年快速通道可读取）");
+    btnExport.onclick = () => this.downloadCurrentSaveFile();
+    container.appendChild(btnExport);
+  },
+
   /* 弹出文件选择器并读回存档文件；done 在成功后回调 */
   pickSaveFile(done) {
     const input = this.$("save-file-input");
@@ -593,7 +617,7 @@ const UI = {
     this.$("input-name").value = "";
     /* 三个开局入口：2016/2026 为完整线；「快速通道」为二级菜单（并入 2017/2018/2019/2027，v0.13.11） */
     const MAIN = ["2016", "2026"];
-    const FAST_YEARS = ["2017", "2018", "2019", "2020", "2021", "2027"];
+    const FAST_YEARS = ["2017", "2018", "2019", "2020", "2021", "2022", "2027"];
     const cards = {};
     for (const e of MAIN) {
       cards[e] = this.$("era-card-" + e);
@@ -623,6 +647,7 @@ const UI = {
       "2019": { name: "双岸", desc: "TEB48 跨海筹建、二次组阁、限定团成团。跳过 2016–2018 的剧情。" },
       "2020": { name: "共渡", desc: "疫情停摆、分团安置、云公演、BEJ48 编号谢幕。跳过 2016–2019 的剧情。" },
       "2021": { name: "春潮", desc: "电商直播、疫苗接种、海外选秀、最佳拍档。跳过 2016–2020 的剧情。" },
+      "2022": { name: "元宇宙", desc: "元宇宙概念、十周年演唱会、青春盛典/最佳拍档第二季。跳过 2016–2021 的剧情。" },
       "2027": { name: "大河新篇", desc: "WHN48 武汉落地、影视部焕新。跳过 2026「革新征程」的剧情。" },
     };
     const c = this.card("快速通道 · 选择开局年份",
@@ -651,14 +676,14 @@ const UI = {
   startPrologue() {
     const name = this.$("input-name").value.trim();
     if (!name) { this.toast("先写下你的名字吧"); return; }
-    const FAST = ["2017", "2018", "2019", "2020", "2021", "2027"];
+    const FAST = ["2017", "2018", "2019", "2020", "2021", "2022", "2027"];
     if (this._pickedEra !== "2016" && this._pickedEra !== "2026" && FAST.indexOf(this._pickedEra) < 0) {
       this.toast("请选择一个开局年代"); return;
     }
     /* 快速通道：开局前补选影响当年的关键决策（缺失决策按史实默认），再伪造年末实况交接 */
     if (FAST.indexOf(this._pickedEra) >= 0) {
       const era = this._pickedEra;
-      this.showFastTrackChoices(era, choices => {
+      this.showFastTrackChoices(era, name, choices => {
         Game.newGameFast(name, era, choices);
         this.showPrologue();
       });
@@ -670,7 +695,7 @@ const UI = {
 
   /* 【快速通道】中途年份开局的决策补选窗：按年代列出影响当年的关键决策组，
      每组单选、按史实默认预选；确认后交 Game.newGameFast 伪造年末实况并走真实交接。 */
-  showFastTrackChoices(era, onDone) {
+  showFastTrackChoices(era, name, onDone) {
     const GROUPS = {
       "2017": [
         { key: "branchPost", title: "2016 年末 · 你的下一站（分团兼任）", def: "none", opts: [
@@ -855,6 +880,18 @@ const UI = {
         ] },
       ],
     };
+    /* 【2022】快速通道补选组：继承 2021 组全部历史决策 + 2021 年内两案
+       （年度活动方案 geMode21——2022 序章自动沿用；二期生长约安置 gen2）。 */
+    GROUPS["2022"] = (GROUPS["2021"] || []).concat([
+      { key: "geMode21", title: "2021 年 1 月 · 年度活动方案（邓森林两案，2022 自动沿用）", def: "classic", opts: [
+        { v: "classic", label: "传统总选（对外改称「投票给作品」）", d: "快速通道默认：2022 为「青春盛典」＋《最佳拍档》第二季（6月开榜）" },
+        { v: "partner", label: "《最佳拍档》改造为本年度总选", d: "2022 继续组合模式「年度最佳拍档」（8月开榜）；双人旅行伏笔同步登记（2022-02 回收）" },
+      ] },
+      { key: "gen2", title: "2021 主线 · 二期生长约安置（快速默认）", def: "renew", opts: [
+        { v: "renew", label: "全员续约丝芭传媒", d: "快速通道默认：二期生全部丝芭签约（剧场名册除名）；成团未回归者延入 2022 池" },
+        { v: "grad", label: "全员谢幕毕业", d: "二期生全员荣誉毕业生" },
+      ] },
+    ]);
     const groups = GROUPS[era] || [];
     const state = {};
     for (const g of groups) state[g.key] = g.def;
@@ -862,7 +899,32 @@ const UI = {
       "从中间年份开局将跳过此前年份的剧情——以下是影响 " + era + " 年剧情走向的关键决策，已按史实默认预选，可自行调整后开工。");
     c.appendChild(this.el("div", "fast-warn",
       "⚠ 使用快速通道可能导致花名册错乱、未知 bug 增加等情况——推荐玩家从头开始经营。"));
+    /* 【快速通道·存档直读（用户口径 2026-XX）】不模拟的替代开局：直接读取前一年年末
+       存档（年末结算画面/结局界面导出的 .sg48save 文件），继承决策旗标、数值、成员卡
+       后走真实交接 carryTo{era}，跳过下方全部补选——避免模拟花名册偏差 / 多周目改决策
+       不必逐年重玩。 */
+    c.appendChild(this.el("div", "fast-warn",
+      "📂 也可以不模拟：直接读取前一年（" + (parseInt(era, 10) - 1) + " 年末）导出的存档开局，继承决策旗标、数值与成员卡，跳过下方全部补选。"));
+    const btnSave = this.el("button", "btn btn-ghost", "📂 读取前一年年末存档开局（跳过模拟与补选）");
+    btnSave.onclick = () => {
+      const input = document.createElement("input");
+      input.type = "file"; input.accept = ".sg48save,.json,application/json";
+      input.onchange = () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const r = Game.loadFastFromSave(name, era, String(reader.result));
+          this.toast(r.msg);
+          if (r.ok) { this.closeModal(); this.showPrologue(); }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    };
+    c.appendChild(btnSave);
     const wrap = this.el("div", "");
+    wrap.appendChild(this.el("div", "ft-group-title", "—— 或继续下方补选，模拟开局 ——"));
     for (const g of groups) {
       const title = this.el("div", "ft-group-title", g.title);
       wrap.appendChild(title);
@@ -5175,6 +5237,18 @@ const UI = {
       r.appendChild(this.el("span", "", k));
       r.appendChild(this.el("span", "sr-val", v));
       stats.appendChild(r);
+    }
+    /* 【快速通道·存档直读（用户口径 2026-XX）】年度结算画面追加导出存档：
+       下载本年年末实况存档文件（结局界面已 clearSave，导出一律取内存盘面），
+       下一年快速通道开局可直接读取——跳过模拟与补选，避免花名册偏差。 */
+    {
+      const oldExp = document.getElementById("btn-ending-export");
+      if (oldExp) oldExp.remove();   // 防重复：残留按钮先移除
+      const wrapExp = this.el("div", "");
+      wrapExp.id = "btn-ending-export";
+      this.appendSaveExportButtons(wrapExp);
+      const btnRestartEl = this.$("btn-ending-restart");
+      btnRestartEl.parentElement.insertBefore(wrapExp, btnRestartEl);
     }
     this.showScreen("screen-ending");
     this.$("btn-ending-restart").onclick = () => this.showStart();
