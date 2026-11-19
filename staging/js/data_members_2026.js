@@ -321,9 +321,40 @@ const DATA2026 = {
   ],
 
   /* ---------------- 2026 年内新入团（引擎按月加入名单） ----------------
-     史实：二十四期生 9 人于 2026-05-01 公布（snh48wiki.top 期生时间线），
-     游戏内压缩为 5 月「春季招新」事件，全部以预备生身份加入本部。 */
+     【按用户口径挂载（2026-XX 对话批次，精确到日）】二十四期生为既有挂载；本批补全：
+     GNZ48 二十期生 6 人（2月）/ BEJ48 十八期生 6 人（4月）/ CGT48 六期生 4 人（5月）/
+     CGT48 七期生 12 人（9月）/ GNZ48 二十一期生 11 人（9月）/ BEJ48 十九期生 8 人（9月）。
+     【CGT48 批次特殊处理（用户口径）】CGT48 六/七期生不在 monthStart ① 常规落地，
+     由 engine.mountCgt26Join 统一收口：重建线（st.cgt.open 重启首演后）按批次月序
+     追补建 CGT48 分团预备生简卡；解散线（st.cgt.closed，用户口径「CGT48成员落GNZ48」）
+     按批次月落 GNZ48 分团预备生简卡（note「CGT48解散转挂」）；重建进行中不入册，
+     年末仍未重启则转 GNZ48 委培（同 2023 年口径）。
+     【BEJ48 十九期生批次人数存疑】用户口径标 9 人但仅列 8 名（范小天、刘雨硕、
+     刘卓尔、李祉瑶、武佳凝、王馨怡、张旭、张怡璐）——按 8 人挂载，
+     缺失第 9 人待用户补充（宁缺毋滥）。
+     【重名核查】47 个新名字与 2026 名册（data_members_2026.js）查无重名；
+     二十四期生李沁洁备注「与GNZ48李沁洁同名的另一人」为预防性说明，
+     2026 名册查无 GNZ48 李沁洁卡，去重不会误拦。
+     【汇总】全年 56 人：GNZ48 二十期 6 + BEJ48 十八期 6 + 本部二十四期 9 +
+     CGT48 六期 4（特殊处理）+ CGT48 七期 12（特殊处理）+ GNZ48 二十一期 11 +
+     BEJ48 十九期 8。 */
   joining2026: [
+    /* —— 2月：GNZ48 二十期生（2026-02-08，6 人） —— */
+    { month: 2, name: "赵子涵", branchTeam: "GNZ48", gen: "GNZ48 二十期生", join: "2026-02-08" },
+    { month: 2, name: "张臻",   branchTeam: "GNZ48", gen: "GNZ48 二十期生", join: "2026-02-08" },
+    { month: 2, name: "李想",   branchTeam: "GNZ48", gen: "GNZ48 二十期生", join: "2026-02-08" },
+    { month: 2, name: "孔美迪", branchTeam: "GNZ48", gen: "GNZ48 二十期生", join: "2026-02-08" },
+    { month: 2, name: "韩鑫缘", branchTeam: "GNZ48", gen: "GNZ48 二十期生", join: "2026-02-08" },
+    { month: 2, name: "冯玉雯", branchTeam: "GNZ48", gen: "GNZ48 二十期生", join: "2026-02-08" },
+    /* —— 4月：BEJ48 十八期生（2026-04-04，6 人） —— */
+    { month: 4, name: "郑依依", branchTeam: "BEJ48", gen: "BEJ48 十八期生", join: "2026-04-04" },
+    { month: 4, name: "张宸",   branchTeam: "BEJ48", gen: "BEJ48 十八期生", join: "2026-04-04" },
+    { month: 4, name: "应立婷", branchTeam: "BEJ48", gen: "BEJ48 十八期生", join: "2026-04-04" },
+    { month: 4, name: "王天娇", branchTeam: "BEJ48", gen: "BEJ48 十八期生", join: "2026-04-04" },
+    { month: 4, name: "温舒涵", branchTeam: "BEJ48", gen: "BEJ48 十八期生", join: "2026-04-04" },
+    { month: 4, name: "郭庆恩", branchTeam: "BEJ48", gen: "BEJ48 十八期生", join: "2026-04-04" },
+    /* —— 5月：SNH48 二十四期生（2026-05-01，9 人，既有挂载）+ CGT48 六期生
+       （2026-05-03，4 人，特殊处理） —— */
     { month: 5, name: "秦箐忆", team: "PREP", gen: "二十四期生", join: "2026-05-01" },
     { month: 5, name: "臧文萱", team: "PREP", gen: "二十四期生", join: "2026-05-01" },
     { month: 5, name: "刘钇霏", team: "PREP", gen: "二十四期生", join: "2026-05-01" },
@@ -333,6 +364,44 @@ const DATA2026 = {
     { month: 5, name: "李沁洁", team: "PREP", gen: "二十四期生", join: "2026-05-01", note: "与GNZ48李沁洁同名的另一人" },
     { month: 5, name: "吉雅楠", team: "PREP", gen: "二十四期生", join: "2026-05-01" },
     { month: 5, name: "何绮多", team: "PREP", gen: "二十四期生", join: "2026-05-01" },
+    /* CGT48 六期生：重启线 cgt.open 后入册 / 解散线落 GNZ48（见表头注释） */
+    { month: 5, name: "张雁婷", branchTeam: "CGT48", gen: "CGT48 六期生", join: "2026-05-03" },
+    { month: 5, name: "赵汇妤", branchTeam: "CGT48", gen: "CGT48 六期生", join: "2026-05-03" },
+    { month: 5, name: "张慈柔", branchTeam: "CGT48", gen: "CGT48 六期生", join: "2026-05-03" },
+    { month: 5, name: "吴曦芮", branchTeam: "CGT48", gen: "CGT48 六期生", join: "2026-05-03" },
+    /* —— 9月：CGT48 七期生（2026-09-12，12 人，特殊处理）+ GNZ48 二十一期生
+       （2026-09-18，11 人）+ BEJ48 十九期生（2026-09-26，8 人，口径标 9 人缺 1 待补） —— */
+    { month: 9, name: "蔡佩宸", branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "陈雪妍", branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "高昕睿", branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "李佳毅", branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "李璇",   branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "李玉晴", branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "梁雲朝", branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "孟祥祥", branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "谭慕灵", branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "王梓琰", branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "张林雪", branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "张婷",   branchTeam: "CGT48", gen: "CGT48 七期生", join: "2026-09-12" },
+    { month: 9, name: "陈柯睿", branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "贺宇晨", branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "何颖莹", branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "贾佳慧", branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "罗晶",   branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "李若竹", branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "刘媛媛", branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "陶佳妮", branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "王唯祎", branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "向吴怡轩", branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "周文迪", branchTeam: "GNZ48", gen: "GNZ48 二十一期生", join: "2026-09-18" },
+    { month: 9, name: "范小天", branchTeam: "BEJ48", gen: "BEJ48 十九期生", join: "2026-09-26" },
+    { month: 9, name: "刘雨硕", branchTeam: "BEJ48", gen: "BEJ48 十九期生", join: "2026-09-26" },
+    { month: 9, name: "刘卓尔", branchTeam: "BEJ48", gen: "BEJ48 十九期生", join: "2026-09-26" },
+    { month: 9, name: "李祉瑶", branchTeam: "BEJ48", gen: "BEJ48 十九期生", join: "2026-09-26" },
+    { month: 9, name: "武佳凝", branchTeam: "BEJ48", gen: "BEJ48 十九期生", join: "2026-09-26" },
+    { month: 9, name: "王馨怡", branchTeam: "BEJ48", gen: "BEJ48 十九期生", join: "2026-09-26" },
+    { month: 9, name: "张旭",   branchTeam: "BEJ48", gen: "BEJ48 十九期生", join: "2026-09-26" },
+    { month: 9, name: "张怡璐", branchTeam: "BEJ48", gen: "BEJ48 十九期生", join: "2026-09-26" },
   ],
 
   /* ---------------- 2027 年人员变动（2027「大河新篇」线） ----------------

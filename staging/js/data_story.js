@@ -769,7 +769,8 @@ const STORY = {
               const zqy = st.members.find(x => x.name === "周倩玉" && x.status === "branch");
               if (zqy) {
                 zqy.branchLabel = "预备生"; zqy.captain = false; zqy.vice = false;
-                zqy.note = (zqy.note ? zqy.note + "；" : "") + "2016-05 社媒事件下放预备生，罚停 7~12 月工资";
+                zqy.promoBanUntil = st.era + "-12";   // 处罚类下放：当年内不得参与升格评定（汇报公演 promoBanActive 过滤）
+                zqy.note = (zqy.note ? zqy.note + "；" : "") + "2016-05 社媒事件下放预备生，罚停 7~12 月工资；当年内不得参与升格评定";
               }
               st.flags.wageWaive16 = ["周倩玉"];
               st.morale = Math.max(0, st.morale - 4); st.heat = Math.min(100, st.heat + 4);
@@ -844,7 +845,8 @@ const STORY = {
                 const m = st.members.find(x => x.name === nm && x.status === "branch");
                 if (!m) continue;
                 m.branchLabel = "预备生"; m.captain = false; m.vice = false;
-                m.note = (m.note ? m.note + "；" : "") + "2016-05 社媒事件下放预备生，罚停 7~12 月工资";
+                m.promoBanUntil = st.era + "-12";   // 处罚类下放：当年内不得参与升格评定（汇报公演 promoBanActive 过滤）
+                m.note = (m.note ? m.note + "；" : "") + "2016-05 社媒事件下放预备生，罚停 7~12 月工资；当年内不得参与升格评定";
                 n++;
               }
               st.flags.wageWaive16 = ["胡怡莹", "周倩玉"];
@@ -1146,7 +1148,7 @@ const STORY = {
               Game.dqCalmMark(st, "张菡筱");   // 解约离团 → 原队伍其后 2 个月失格值不自然增长
               return "解约函当天就发了出去。违约金 100 万如数到账，王婧在报表上描了个红圈，难得没提预算。\n\n但热搜上「SNH48 开除成员」挂了整整一周；分队孩子们排练时气氛低得像下雨——处分是杀一做百，可百人会想：下一个会不会是自己。\n\n（决策已登记：zhx16=fire。张菡筱已开除离团，违约金已追缴。）" + (hitTail ? "\n\n" + hitTail : "");
             } },
-          { label: "「先不下死手。下放预备生，以观后效。」", hint: "张菡筱下放预备生：其人气-6，士气-4（观察期，未离团）",
+          { label: "「先不下死手。下放预备生，以观后效。」", hint: "张菡筱下放预备生+当年内不得升格：其人气-6，士气-4（观察期，未离团）",
             tag: "zhx16", value: "prep",
             effect: st => {
               const m = st.members.find(x => x.id === "zhanghanxiao");
@@ -1154,13 +1156,14 @@ const STORY = {
               if (!m || m.status === "left" || m.status === "rest") return "处分决定还没宣布，人事那边先递来了消息——张菡筱已经不在在册名单上了。（未生效）";
               if (m.status === "branch") {
                 m.branchLabel = "预备生";
-                m.note = "2016-08 社媒违纪下放预备生，以观后效";
+                m.note = "2016-08 社媒违纪下放预备生，以观后效；当年内不得参与升格评定";
                 Game.addLog(st, st.month, "张菡筱 下放 BEJ48 预备生，以观后效。", "normal");
               } else {
                 m.team = "PREP";
-                m.note = "2016-08 社媒违纪下放预备生，以观后效";
+                m.note = "2016-08 社媒违纪下放预备生，以观后效；当年内不得参与升格评定";
                 Game.addLog(st, st.month, "张菡筱 下放预备生，以观后效。", "normal");
               }
+              m.promoBanUntil = st.era + "-12";   // 处罚类下放：当年内不得参与升格评定（汇报公演 promoBanActive 过滤）
               m.pop = Math.max(0, m.pop - 6);
               st.morale = Math.max(0, st.morale - 4);
               const hitTail = Game.violationDqHit(st, "张菡筱");   // 违规事件·同队失格值连带
@@ -1211,8 +1214,52 @@ const STORY = {
       },
     ],
 
-    /* ---------- 11月：陈怡馨学业抉择 + 金曲大赏预热 ---------- */
+    /* ---------- 11月：廖捷频来电·朱瑞龙人事拍板 + 陈怡馨学业抉择 + 金曲大赏预热 ---------- */
     11: [
+      {
+        /* 【2016·11月新增（用户口径 2026-XX）】廖捷频来电：BEJ48 剧场经理朱瑞龙
+           私自额外向粉丝赠送积分，造成公司财产损失，拟解聘，需总部盖章拍板：
+           ①不算过失调来上海任职，北京损失由总部资金填补（资金-20）
+           ②同意解聘。决策 zrl16。
+           【通话模拟（2026-XX 协作规范）】「廖捷频来电」开场 → 手机通话界面：
+           通话内报告+通话内拍板（结算文本作为通话页播完挂断，无后续事件卡）；
+           第三方补充（王婧耳语）写成 nar 页。
+           注：朱瑞龙为 NPC 员工（非成员卡），不涉成员失格值/离团表/fastSim。 */
+        id: "m11_zrl16",
+        title: "11月 · 悠唐的一通电话",
+        call: {
+          mode: "phone", caller: "廖捷频", sub: "北京 · BEJ48 来电",
+          complaint: "（电话那头透着几分干练的不耐）总监，可算接了——解聘令压在我手里一整天了，悠唐的章等您的章。",
+          choices: true,
+        },
+        gate: st => !st.decisions.zrl16,
+        pages: st => [
+          { nar: true, t: "十一月的午后，一个北京方向的来电转进了总监办公室。你按下接听键——北京总经理廖捷频的声音传来，一如既往地先报数字。" },
+          { s: "廖捷频", cls: "speaker-liao", t: "总监，北京总经理廖捷频，先报数：悠唐剧场经理朱瑞龙，近三个月私自向粉丝额外赠送积分，累计折合二十万——账是我逐笔核出来的，他本人已签字确认。" },
+          { s: "廖捷频", cls: "speaker-liao", t: "按章程，拟解聘。解聘令要走总部流程，需总部盖章拍板——这枚章，落不落，总监，您定。" },
+          { nar: true, t: "（听筒外，王婧放下报表压低声音：粉丝倒是叫好——悠唐的应援群都在夸朱经理「大方」，就是苦了账本。留，还是辞，您拍板。）" },
+        ],
+        choices: [
+          { label: "「为粉丝谋福利，不算过失——调来上海任职吧。」", hint: "朱瑞龙调任上海总部：资金-20万（填补北京损失）热度+2 士气+1",
+            tag: "zrl16", value: "transfer",
+            effect: st => {
+              st.decisions.zrl16 = "transfer";
+              st.money -= 20;
+              st.heat = Math.min(100, st.heat + 2);
+              st.morale = Math.min(100, st.morale + 1);
+              Game.addLog(st, st.month, "朱瑞龙（BEJ48剧场经理）私赠积分案：从宽处理，调任上海总部；北京损失20万由总部资金填补。", "normal");
+              return "你在人事令上批了「调任」两个字。\n\n总部通报写得客气：朱瑞龙热衷粉丝服务、方法欠妥，即日起调任上海星梦剧院运营组——上海粉圈听说「悠唐那位大方经理」要来，居然欢呼了一片。北京账面上短掉的二十万，由总部资金如数填补，廖捷频在电话那头沉默了两秒：「收到。下月的报表，这笔我单独列支。」\n\n北京的员工们看懂了：总监的章，盖的是人情。纪律的弦松了一扣，但剧场里的气氛，确实热了几分。\n\n（决策已登记：zrl16=transfer。朱瑞龙调任上海，资金-20万。）";
+            } },
+          { label: "「同意解聘。」", hint: "朱瑞龙解聘：士气-1（人事立威，各线员工自省）",
+            tag: "zrl16", value: "dismiss",
+            effect: st => {
+              st.decisions.zrl16 = "dismiss";
+              st.morale = Math.max(0, st.morale - 1);
+              Game.addLog(st, st.month, "朱瑞龙（BEJ48剧场经理）私赠积分案：批准解聘。", "normal");
+              return "你在解聘令上盖了章。\n\n通报当天贴上悠唐公告栏：剧场经理朱瑞龙私自赠送积分、造成公司财产损失，经总部核准予以解聘。廖捷频随即把《积分发放管理办法》钉在办公室墙上，逐条念给全体员工听——「从今天起，一分一毫，都走审批。」\n\n各线经理群里安静了一整天，有人连夜自查了自己手里的审批权限。规矩立住了，人心也紧了一分。\n\n（决策已登记：zrl16=dismiss。朱瑞龙解聘。）";
+            } },
+        ],
+      },
       {
         /* 【2016·11月新增（用户口径 2026-10-25）】陈怡馨表示要专注学业：
            选项同赵嘉敏学业选项（6月 m6_zhaomin）——①协商解除合约（解约→

@@ -307,6 +307,8 @@ STORY.scenes20 = {
   },
 };
 
+STORY.XSJ20_PENALTY = 100;   // 2020-02 熊素君二犯·追缴违约金（万，同 zhx16 追缴口径；Agent 拟定可调）
+
 /* ========================================================================
    三、月度脚本事件（monthly20）
    ======================================================================== */
@@ -402,6 +404,65 @@ STORY.monthly20 = {
       pages: st => [
         { nar: true, t: "返程的孩子们按政策分批隔离。酒店房间里，有人对着镜子练手势舞，有人开了直播教粉丝做操——隔离的日子，被过成了另一种集训。" },
         { s: "叶盛", cls: "speaker-yesheng", t: "（转发了一条成员的隔离vlog链接）您看，这条播放量快破百万了。封锁挡得住人，挡不住内容——线上的账，咱们得快点算。" },
+      ],
+    },
+    {
+      /* 【2020·2月（用户口径）】熊素君直播不良言论+炫耀出格行为——已非首次违规
+         （2018-02 剧场冲突/直播诋毁已在案），顶格处置。两案：①顶格处罚：停薪+
+         停播半年+移籍 IDFT（一年内不能升格）+公开道歉 ②解除合约并追缴违约金。
+         gate：仅当熊素君在本部（active）或玩家兼任其所在分团（concur17）时触发
+         （若 2018-02 已 fire 则已离团自然不触发）。
+         【违规事件·失格值修正】直播不良言论属成员违纪（二犯）：两案均调
+         violationDqHit；fire 离团后 dqCalmMark 免涨窗；移籍 IDFT 非解约/暂休
+         不设免涨窗。停薪：移籍 IDFT 后训练生池不计薪自动停发（口径即含停薪）。
+         【同源陷阱①】登记权归选项（tag xsj20），effect 不以 decisions.xsj20 作卫兵。
+         数值 Agent 拟定可调：违约金 STORY.XSJ20_PENALTY=100 万；热度+5/+6、
+         士气-3、羻绊-6（同 IDFT 移籍口径）。 */
+      id: "m2_20_xsj",
+      title: "2月 · 二犯顶格",
+      violation: "直播不良言论",   // 【违规事件类型 tag】同队队员失格值连带（violationDqHit）；fire 离团后 dqCalmMark 免涨窗
+      gate: st => {
+        if (st.decisions.xsj20) return false;
+        const m = st.members.find(x => x.name === "熊素君" && (x.status === "active" || x.status === "branch") && !x.hall);
+        if (!m) return false;
+        if (m.status === "active") return true;   // 本部在籍
+        return !!(st.flags.concur17 && st.flags.concur17[m.branchTeam || m.team]);   // 兼任其分团
+      },
+      pages: st => [
+        { nar: true, t: "二月的深夜，熊素君的直播间又冲上了超话——这一次不是才艺，而是连线的酗酒爆料、对队规的嘲讽，以及一段主动炫耀的出格经历。录屏在天亮前传遍了各个粉丝群。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把录屏进度条拖到最后，合上平板）总监，这不是初犯——2018 年剧场那件事，公司已经给过机会了。这次的录屏全网都在传，品牌方的解约函在路上。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "章程里写得明白：再犯即顶格。我的意见是按上限来——停薪停播、调回训练生池、公开道歉，一步都不能少。要么，就把合约解了，违约金照章追缴。今天必须二选一。" },
+      ],
+      choices: [
+        { label: "「顶格处罚：停薪停播半年，移籍 IDFT，公开道歉。」", hint: "移籍 IDFT（训练生池不计薪即停薪，一年内不能升格）；封禁直播半年；公开道歉；热度+5 士气-3 羻绊-6",
+          tag: "xsj20", value: "punish",
+          effect: st => {
+            const hitTail = Game.violationDqHit(st, "熊素君");   // 违规事件·同队失格值连带（移籍前调用，保留分团归属）
+            const m = st.members.find(x => x.name === "熊素君" && (x.status === "active" || x.status === "branch"));
+            if (m) {
+              m.status = "idft"; m.team = "IDFT"; m.branchTeam = null; m.branchLabel = null;
+              m.captain = false; m.vice = false; delete m.sub;
+              m.bond = Math.max(1, (m.bond || 0) - 6);
+              m.promoBanUntil = "2021-01";   // 一年内不能升格（2020-02 起算，月精度含当月）
+              m.note = (m.note ? m.note + "；" : "") + "2020-02 二犯顶格处罚：停薪停播半年（2020 年 2~7 月）、移籍 IDFT、公开道歉（一年内不能升格）";
+            }
+            st.heat = Math.min(100, st.heat + 5);
+            st.morale = Math.max(0, st.morale - 3);
+            return "处罚公告当天挂出：即日调回训练生池，停薪停播半年，向全体粉丝及工作人员公开道歉。道歉视频里她哭了，但评论区没有人打算原谅第二次。\n\n训练生池不计薪——工资册上从本月起再无她的名字；总选升格名单里，她的名字也会被系统划掉，直到明年开春。\n\n（决策已登记：xsj20=punish。熊素君移籍 IDFT（停薪停播半年·一年内不能升格）；羻绊-6；热度+5 士气-3。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
+        { label: "「解除合约——违约金照章追缴，这一次没有第二次。」", hint: st => "解约离团并追缴违约金 " + (STORY.XSJ20_PENALTY || 100) + " 万；热度+6 士气-3；原队伍 2 个月失格值免涨窗",
+          tag: "xsj20", value: "fire",
+          effect: st => {
+            const fee = STORY.XSJ20_PENALTY || 100;
+            const m = st.members.find(x => x.name === "熊素君" && (x.status === "active" || x.status === "branch"));
+            if (m) { m.status = "left"; m.note = (m.note ? m.note + "；" : "") + "2020-02 直播不良言论（二犯），解除合约离团（追缴违约金 " + fee + " 万）"; }
+            const hitTail = Game.violationDqHit(st, "熊素君");   // 违规事件·同队失格值连带（离团后调用，保留分团归属）
+            Game.dqCalmMark(st, "熊素君");   // 违规离团 → 原队伍其后 2 个月失格值不自然增长
+            st.money += fee;
+            st.heat = Math.min(100, st.heat + 6);
+            st.morale = Math.max(0, st.morale - 3);
+            return "解约函当天发出，违约金 " + fee + " 万同步追缴入账。公告下面骂声一片——骂她的，也骂公司的：「早干什么去了。」\n\n叶盛把 2018 年那份处罚决定书打印出来，订在了这一份的前面：「档案连着看，才看得懂什么叫顶格。」\n\n（决策已登记：xsj20=fire。熊素君解除合约离团；资金+" + fee + " 万（追缴违约金）；热度+6 士气-3。）" + (hitTail ? "\n\n" + hitTail : "");
+          } },
       ],
     },
   ],
@@ -759,13 +820,15 @@ STORY.monthly20 = {
     {
       /* 【2020·10月事件】陈佳莹兼职出演（按用户口径挂载，2020-10 史实锚点）：
          仅当陈佳莹（SNH48 二期生）本部在籍（status="active"）时触发。
+         【同名双卡消歧（用户口径）】GNZ48 二期生陈佳莹（2017-04 入，gen="GNZ48二期生"）
+         为另一名成员——gate/effect 均按 gen="二期生" 限定，分团同名卡不触发、不波及。
          口径：2018 年后重心不在剧场演出，兼职出演；职业特殊性使其今年疫情背景下
          更加繁忙，兼职时间更少——但工资支出一份没少。
          决策标签 chenjy20：release=安排解约（离团）/ keep=维持现状
          （引擎选项 tag/value 自动登记）。 */
       id: "m10_20_chenjy",
       title: "10月 · 一份没少的工资单",
-      gate: st => !st.decisions.chenjy20 && st.members.some(m => m.name === "陈佳莹" && m.status === "active"),
+      gate: st => !st.decisions.chenjy20 && st.members.some(m => m.name === "陈佳莹" && m.gen === "二期生" && m.status === "active"),
       pages: st => [
         { s: "叶盛", cls: "speaker-yesheng", t: "（把工资册和出勤表并排放在你桌上）总监，财务对账的时候翻出一笔账：陈佳莹，二期生。2018 年之后，她的重心就不在剧场了——按兼职出演的路子在挂名。今年疫情，她本职那边更忙，兼职的时间只会更少。" },
         { s: "叶盛", cls: "speaker-yesheng", t: "（顿了顿）可我们这边的工资支出，是一份没少。出勤表上她大半年没几场公演，账上却月月照发。这钱怎么处置，人事怎么谈，总监，您拍板。" },
@@ -774,7 +837,7 @@ STORY.monthly20 = {
         { label: "「安排解约——把账算清楚，好聚好散。」", hint: "陈佳莹解约离团（工资册自动少一人）；士气-1 热度-1",
           tag: "chenjy20", value: "release",
           effect: st => {
-            const m = st.members.find(x => x.name === "陈佳莹");
+            const m = st.members.find(x => x.name === "陈佳莹" && x.gen === "二期生");
             if (m) {
               m.status = "left";
               m.note = (m.note ? m.note + "；" : "") + "2020-10 解约离团（2018 年后兼职出演，疫情年兼职时间锐减，总监拍板安排解约·同人演绎）";
@@ -787,7 +850,7 @@ STORY.monthly20 = {
         { label: "「不解约——她的情况特殊，工资照发。」", hint: "维持现状：兼职出演、工资一份不少；叶盛负担+3 士气-1",
           tag: "chenjy20", value: "keep",
           effect: st => {
-            const m = st.members.find(x => x.name === "陈佳莹");
+            const m = st.members.find(x => x.name === "陈佳莹" && x.gen === "二期生");
             if (m) {
               m.note = (m.note ? m.note + "；" : "") + "2020-10 兼职出演维持现状：疫情年工资照发（总监拍板·同人演绎）";
             }

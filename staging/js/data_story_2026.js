@@ -591,6 +591,49 @@ STORY.monthly26 = {
         { nar: true, t: "散场后，叶盛数着签下的续约单：不多，但每一单都签了两年起。\n\n「两年，」他说，「够我们干很多事了。」" },
       ],
     },
+    {
+      /* 【2026·11月新增（用户口径 2026-XX）】刘增艳毕业公演——限 2019 辞职信留团线
+         （f.lzy19Stay）且本人仍在籍（active/branch，非殿堂）时触发：叶盛上台赠送
+         特别的礼物——当年那封辞职信，「它已经没有保留的必要了」。
+         毕业落地：荣誉毕业生（honorGrad，left，单确认选项落地）；
+         【队伍失格值下降】坚持的美好结局感染全队——刘增艳所在队伍在册成员
+         （含本人）dq-5（Agent 拟定可调）；热度+3 士气+2。毕业属荣誉告别非违纪，
+         不挂 violation/dqCalmMark；gate 以毕业状态自然关闭（无 decisions）。 */
+      id: "m11_26_lzy",
+      title: "11月 · 迟到七年的答复",
+      gate: st => !!st.flags.lzy19Stay
+        && st.members.some(m => m.name === "刘增艳" && (m.status === "active" || m.status === "branch") && !m.hall),
+      pages: st => [
+        { nar: true, t: "十一月的毕业公演。这一次的告别属于一个名字——刘增艳。从 XV 的编制表到分团的队牌，从那封锁在档案柜最下层的辞职信，到今晚台下的满堂灯海——她把「坚持」两个字写满了七年。" },
+        { s: "刘增艳", cls: "", t: "（拿着话筒，声音有点抖）2019 年，我递交过一封辞职信。后来总监把它留下了，也把我留下了。今天站在这里回头看——幸好，当时没有人放开我的手。" },
+        { nar: true, t: "安可声里，叶盛上了台。他没有拿奖杯，也没有拿花束——只递过来一个旧信封，边角磨得发白。正是 2019 年那封辞职信。全场屏息，只听见他说——" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "「这封信，公司替你保管了七年。现在，它已经没有保留的必要了——毕业快乐。这条河记得每一个坚持到最后的人。」" },
+        { nar: true, t: "台下安静了一拍，然后灯海亮得比这一年的任何一次都凶。排练室里看直播的孩子们把「坚持真的有用」刷满了弹幕——有些东西，比任何一次特训都更能压住心里的那块石头。" },
+      ],
+      choices: [
+        { label: "致辞送别——把辞职信还给她", hint: "刘增艳毕业离团（荣誉毕业生）；所在队伍成员失格值-5；热度+3 士气+2",
+          effect: st => {
+            const m = st.members.find(x => x.name === "刘增艳" && (x.status === "active" || x.status === "branch") && !x.hall);
+            if (!m) return "（刘增艳已不在在册名单上。）";
+            const tk = Game.teamKeyOf(m);
+            const hit = [];
+            if (tk) {
+              for (const x of st.members) {
+                if (x.dq == null || (x.dq || 0) <= 0) continue;
+                if (!((x.status === "active" || x.status === "branch") && !x.hall)) continue;
+                const xk = x.status === "branch" ? (x.branchTeam || x.team) : x.team;
+                if (xk === tk) { x.dq = Math.max(0, x.dq - 5); hit.push(x.name); }
+              }
+            }
+            m.status = "left"; m.honorGrad = true;
+            m.note = (m.note ? m.note + "；" : "") + "2026-11 毕业公演毕业离团（荣誉毕业生）——当年的辞职信由公司奉还";
+            st.heat = Math.min(100, st.heat + 3);
+            st.morale = Math.min(100, st.morale + 2);
+            Game.addLog(st, st.month, "刘增艳 毕业公演毕业离团（荣誉毕业生）" + (tk ? "；" + tk + " 队失格值-5（坚持的美好结局感染全队）" : "") + "。", "good");
+            return "散场后，那封奉还的辞职信被她抱在怀里，像抱着一张迟到了七年的回程票。\n\n（刘增艳毕业离团——荣誉毕业生；热度+3 士气+2。" + (tk ? "坚持的美好结局感染全队：" + tk + " 队 " + hit.length + " 名成员失格值-5。）" : "）");
+          } },
+      ],
+    },
   ],
 
   /* ---------- 12月：年末氛围（大赏/总结会由引擎判定） ---------- */

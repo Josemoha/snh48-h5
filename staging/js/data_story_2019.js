@@ -423,8 +423,57 @@ STORY.monthly19 = {
     prepEv19,
   ],
 
-  /* ---------- 2月：组阁专班 + DEMOON 成军 + 危机余波 ---------- */
+  /* ---------- 2月：组阁专班 + DEMOON 成军 + 危机余波（含 XII 解散次月辞职信） ---------- */
   2: [
+    {
+      /* 【2019·XII 解散次月新增（用户口径 2026-XX）】限 XII 编制不保留（xiiKept18 不真）
+         路线：二次组阁落地（reorg19Done）后的第一个月末，刘增艳递来辞职信。两案：
+         ①同意离团（收取违约金 40 万，Agent 拟定可调）②暂时留下辞职信，让其留团
+         （羁绊+4 士气+1；信存档 flags.lzy19Stay，后续剧情可查验）。
+         挂载：monthly19[2] 主挂 + [3]/[4] 兑底（文件末尾同对象复用）——chain 惰性 gate
+         下组阁延后也在落地次月触发、先到先触发不重复；辞职属个人意愿非成员违纪，
+         不挂 violation/dq 修正；reorg19 由玩家局内完成，fastSim 无需同步。 */
+      id: "m2_19_lzy",
+      title: "2月 · 一封辞职信",
+      gate: st => !st.decisions.lzy19 && !st.flags.xiiKept18 && st.flags.reorg19Done
+        && st.members.some(m => m.id === "liuzengyan" && m.status !== "left"),
+      pages: st => [
+        { nar: true, t: "XII 的队牌从编制表上摘下去的第二天，一份辞职信摆上了你的办公桌——信封上的字迹端正，落款：刘增艳。" },
+        { s: "刘增艳", cls: "", t: "总监，队伍没有了，我觉得自己的舞台也到头了。这封信我想了很久——不是赌气，是想给自己一个交代。走或留，我都听公司的安排。" },
+        { s: "叶盛", cls: "speaker-yesheng", t: "（把信推回来一点）五期生的老人了，公演从来没缺过一场。她的去留，您亲自定——章程里违约金的条款我标好了，但签不签，在您。" },
+      ],
+      choices: [
+        { label: "「同意她离团——违约金按章程收取。」", hint: "刘增艳解约离团：违约金+40万 士气-1",
+          tag: "lzy19", value: "release",
+          effect: st => {
+            st.decisions.lzy19 = "release";
+            const m = st.members.find(x => x.id === "liuzengyan");
+            if (m && m.status !== "left") {
+              m.status = "left";
+              m.note = (m.note ? m.note + "；" : "") + "2019-02 XII解散后递交辞职信，协商解约离团（收取违约金 40 万）";
+            }
+            st.money += 40;
+            st.morale = Math.max(0, st.morale - 1);
+            Game.addLog(st, st.month, "刘增艳 辞职信获批，解约离团（收取违约金40万）。", "normal");
+            return "你在辞职信上签了字，违约金四十万按章程收讫。\n\n她的告别很平静：收拾好的行李箱、一封手写的感谢信、和群里最后一句「大家加油」。XII 的旧队友们送她到剧场门口——队伍没有了，人还在，散伙饭吃得比想象中热闹。\n\n（决策已登记：lzy19=release。刘增艳解约离团；资金+40 万（违约金）；士气-1。）";
+          } },
+        { label: "「信先留下吧——人留在团里。」", hint: "辞职信存档，刘增艳留团：羁绊+4 士气+1",
+          tag: "lzy19", value: "stay",
+          effect: st => {
+            st.decisions.lzy19 = "stay";
+            st.flags.lzy19Stay = true;   // 辞职信存档（后续剧情可查验）
+            const m = st.members.find(x => x.id === "liuzengyan");
+            if (m && m.status !== "left") {
+              m.bond = Math.min(100, (m.bond || 0) + 4);
+              m.note = (m.note ? m.note + "；" : "") + "2019-02 XII解散后递交辞职信，经恳谈暂留（辞职信存档）";
+            }
+            st.morale = Math.min(100, st.morale + 1);
+            Game.addLog(st, st.month, "刘增艳 辞职信暂留，留团（羁绊+4 士气+1）。", "normal");
+            return "你把信推回给她：「队伍可以是编制，也可以是人。XII 没了，但你的舞台还在——先留下，什么时候想走，这封信随时生效。」\n\n她提着信封站了很久，眼圈有点红：「……那我再试试。」\n\n消息传开，重组后的队伍里有人悄悄松了口气——老人还在，队伍的魂就还在一半。那封辞职信被叶盛锁进了档案柜最下层，没有归档日期。\n\n（决策已登记：lzy19=stay。刘增艳留团；羁绊+4；士气+1；辞职信存档 flags.lzy19Stay。）";
+          } },
+      ],
+    },
+
     {
       id: "m2_19_reorg_kick",
       title: "2月 · 组阁专班",
@@ -1037,6 +1086,19 @@ STORY.rtNarrative19 = {
     { nar: true, t: "舞台灯光落下的瞬间，你在观演席轻轻呼出一口气——组阁、招新、总选、大赏：2019年，就这样唱到了最后。" },
   ],
 };
+
+/*
+ * ========================================================================
+ * 五·五、XII 解散次月兑底挂载（用户口径 2026-XX）
+ * ------------------------------------------------------------------------
+ * m2_19_lzy（刘增艳辞职信）主挂 2 月；3/4 月兑底同对象复用——组阁（reorg19）
+ * 延后落地的路线在落地后的第一个月末触发（chain 惰性 gate：已决策/XII 保留/
+ * 组阁未落地均不触发，先到先触发不重复下发）。
+ * ======================================================================== */
+if (STORY.monthly19[2] && STORY.monthly19[3] && STORY.monthly19[4]) {
+  const lzyEv19 = STORY.monthly19[2].find(e => e.id === "m2_19_lzy");
+  if (lzyEv19) { STORY.monthly19[3].push(lzyEv19); STORY.monthly19[4].push(lzyEv19); }
+}
 
 /* ========================================================================
    六、结局文本（评级由 engine.computeGrade19 计算）

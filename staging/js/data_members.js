@@ -507,43 +507,59 @@ const DATA = {
   /* ---------------- SHY48 / CKG48 成立名单（2017「本部新章」线，开业时建卡） ----------------
      考据：branch_gen_timeline.txt（snh48wiki.top 各期生公布时间线）——
      · SHY48 一期生：2017-01-07 公布首批 18 人；次批 02-19 公布 16 人（原不建卡）——
-       【用户口径 2026-XX 补挂】次批 15 人按口径补挂建卡（均为 SHY48 一期生，
-       2017.2 入 SHY48，随开业建卡）：董思佳、高志娴、李晴、刘静晗、曲悦萌、任雨情、
+       【用户口径 2026-XX 补挂】次批按口径补挂建卡（均为 SHY48 一期生，
+       2017-02-19 入 SHY48，随开业建卡）：董思佳、高志娴、李晴、刘静晗、曲悦萌、任雨情、
        徐斐然、杨肖、张爱静、张儒轶、张幼柠、张云梦、郑洁丽、李熙凝、寇承希
        （其中杨肖/李熙凝/寇承希/张爱静此前按 2016-10 入口径补挂，现统一更正为
-       2017.2 入；南琻璞系南翎璞笔误，一并改正）。次批共 16 人，另 1 人入团当月
-       即离团，游戏内无意义不建卡（用户口径 2026-XX 确认）；杨肖离团月份按 8 月
-       名册精简口径挂载（用户口径 2026-XX 确认）；
+       2017.2 入；南琻璞系南翎璞笔误，一并改正）。次批共 16 人，另 1 人张雨晴
+       不建卡（用户口径 2026-XX 对话批次确认；此前「对话批次全量补挂」口径废止）；
+       杨肖离团月份按 8 月名册精简口径挂载（用户口径 2026-XX 确认）；
      · CKG48 一期生：2017-10-27 公布 33 人（与游戏内「首批三十三人集训」锚点一致），
        全量建卡；其中孟玥与 2016 年已毕业的 SNH48 NII 一期生孟玥重名——
        按用户口径（2026 补）同样建卡（id 前缀 bf17_ 区分，同名去重只挡非离团在册成员）。
+       【用户口径 2026-XX 对话批次】邓倩（刘弋菡）系同一人（33 人口径含此一人）——
+       卡名从刘弋菡（2021 离团挂载沿用该卡名），开业名册不再单列邓倩；
+       joining2017 原单独刘弋菡补挂条目相应撤销。
      engine.deployPioneers 在对应分团开业时按本表建卡（branchLabel 预备生）。 */
    branchFoundingRoster: {
      SHY48: [
        "陈婧文", "冯译莹", "付紫琪", "关思雨", "韩家乐", "赖梓惜", "李慧", "刘娇", "刘娜",
        "卢天惠", "南翎璞", "秦玺", "孙敏", "王诗蒙", "徐静妍", "杨允涵", "赵佳蕊", "朱燕",
        /* —— 一期生次批（2017-02-19 公布）补挂 15 人（用户口径 2026-XX：均为 SHY48 一期生，
-          2017.2 入 SHY48，随开业建卡；含此前按 2016-10 入口径补挂的 4 人，现统一更正）—— */
+          2017-02-19 入 SHY48，随开业建卡；含此前按 2016-10 入口径补挂的 4 人，现统一更正；
+          张雨晴不建卡——用户口径 2026-XX 对话批次确认）—— */
        "董思佳", "高志娴", "李晴", "刘静晗", "曲悦萌", "任雨情", "徐斐然",
        "张儒轶", "张幼柠", "张云梦", "郑洁丽",
        "杨肖", "李熙凝", "寇承希", "张爱静",
      ].map(n => ({ name: n, branchLabel: "预备生", gen: "SHY48一期生" })),
      CKG48: [
        "柏欣妤", "李恩锐", "李姗姗", "李泽亚", "雷宇霄", "毛译晗", "谯玉珍", "冉蔚", "田倩兰",
-       "陶菀瑞", "伍寒琪", "王梦竹", "王娱博", "曾佳", "周源", "左欣", "艾芷亦", "邓倩",
+       "陶菀瑞", "伍寒琪", "王梦竹", "王娱博", "曾佳", "周源", "左欣", "艾芷亦",
        "樊曦月", "郝婧怡", "韩林芹", "黄琬璎", "林舒晴", "李瑜璇", "孟玥", "石勤", "田祯臻", "吴晶晶",
-       "吴学雨", "夏文倩", "章宇阳", "郑阳莹", "赵泽慧",
+       /* 刘弋菡：报名名邓倩——邓倩（刘弋菡）系同一人（用户口径 2026-XX 对话批次），
+          卡名从刘弋菡（2021 离团挂载沿用该卡名），原 joining2017 单独补挂条目撤销 */
+       "吴学雨", "夏文倩", "章宇阳", "郑阳莹", "赵泽慧", "刘弋菡",
      ].map(n => ({ name: n, branchLabel: "预备生", gen: "CKG48一期生" })),
    },
 
   /* ---------------- 2017 年内新加入（2017「本部新章」线用） ----------------
-     史实：八期生 2017 年分批入团（4/28 首批 5 人，此后 5、6、9、10 月陆续追加，全年 13 人）。
+     【用户口径 2026-XX 对话批次·2017 入团批次总表】
+       01-07 SHY48 一期生 18 人 / 02-19 SHY48 一期生次批 16 人（15 人开业名册建卡，
+       张雨晴不建卡——用户口径 2026-XX 对话批次确认）；
+       04-20 BEJ48 二期生 15 人 / 04-28 SNH48 八期生 5 人 / 04-29 GNZ48 二期生 14 人 +
+       SHY48 二期生 12 人 / 05-30 BEJ48 二期生沈小爱 / 10-01 GNZ48 三期生 13 人 /
+       10-14 SHY48 三期生 4 人 / 10-27 CKG48 一期生 33 人（开业名册建卡，邓倩（刘弋菡）同一人）/
+       11-10 BEJ48 三期生金鑫 / 11-11 SHY48 三期生 3 人 / 11-23 GNZ48 四期生 6 人 /
+       11-25 BEJ48 三期生李宗颐、小李娜 / 11-26 BEJ48 三期生何阳青青；
+       八期生：04-28 五人 / 05-28 金莹玥 / 06-07 林歆源 / 09-06 许嘉怡（贺苏堃同批，不建卡）/
+       09-08 三人 / 09-10 葛佳慧。
+     史实：八期生 2017 年分批入团，游戏内建卡 12 人 + 马凡（既有口径保留，未在本批口径中）。
      游戏内：team 暂挂 PREP（预备生），gen「八期生」，pop 由引擎按新人生成。
      【分团挂载】张羽涵：SHY48 二期生（2017-04-29 公布）——挂 branchTeam="SHY48"，
      引擎在 SHY48 已开业时建分团预备生简卡（与 2018 分团新期生同口径）。
-     【考据注】贺苏堃同为八期生（2017.09.06 公布），出于对逝者的尊重，
+     【考据注】贺苏堃同为八期生（2017-09-06 批次），出于对逝者的尊重，
      游戏内不建卡、不涉及任何相关事件。
-     【考据来源】snh48wiki.top 期生时间线快照（tmp/research/timeline.txt）。 */
+     【考据来源】snh48wiki.top 期生时间线快照（tmp/research/timeline.txt）+ 用户口径。 */
   joining2017: [
     { month: 4, name: "郭倩芸", team: "PREP", gen: "八期生", join: "2017-04-28" },
     { month: 4, name: "文文",   team: "PREP", gen: "八期生", join: "2017-04-28" },
@@ -558,37 +574,108 @@ const DATA = {
     { month: 9, name: "熊沁娴", team: "PREP", gen: "八期生", join: "2017-09-08" },
     { month: 9, name: "葛佳慧", team: "PREP", gen: "八期生", join: "2017-09-10" },
     { month: 10, name: "马凡", team: "PREP", gen: "八期生", join: "2017-10" },   // 2020-01 离团（leaving2020 挂载）
-    /* 【分团补挂（用户口径 2026-10-26）】BEJ48二期生李烨/郑心雨/郑依灵/李沐遥（2017-03-11 入）、
+    /* 【分团补挂（用户口径 2026-10-26）】BEJ48二期生李烨/郑心雨/郑依灵/李沐遥、
        GNZ48二期生陈乐添/刘小末（2017-04-29 入）——BEJ/GNZ 年初在册，按月建分团预备生简卡；
-       SHY48二期生陈奕君/逯芳竹（2017-04 入）——SHY48 已开业时建卡（同张羽涵口径）。 */
-    /* 【分团补挂（用户口径 2026-10-24，2020 离团批次配套）】GNZ48二期生张秋怡（2017-04 入）、
-       SHY48三期生司珀琳（2017-10 入）、GNZ48四期生徐佳音（2017-11 入）——同上口径建分团预备生简卡。 */
-    { month: 3, name: "李烨",   branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
-    { month: 3, name: "郑心雨", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
-    { month: 3, name: "郑依灵", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
-    { month: 3, name: "李沐遥", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03-11", note: "BEJ48二期生" },
+       SHY48二期生陈奕君/逯芳竹——SHY48 已开业时建卡（同张羽涵口径）。
+       【日期更正（用户口径 2026-XX 对话批次）】BEJ48 二期生整批入团日为 2017-04-20
+       （原挂 2017-03-11/2017-03，统一更正，month 3→4）。 */
+    /* 【分团补挂（用户口径 2026-10-24，2020 离团批次配套）】GNZ48二期生张秋怡、
+       SHY48三期生司珀琳（2017-10-14 入）、GNZ48四期生徐佳音（2017-11-23 入）——同上口径建分团预备生简卡。 */
+    { month: 4, name: "李烨",   branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },   // 日期按用户口径 2026-XX 对话批次更正（原 2017-03-11）
+    { month: 4, name: "郑心雨", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },   // 同上更正
+    { month: 4, name: "郑依灵", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },   // 同上更正
+    { month: 4, name: "李沐遥", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },   // 同上更正
     { month: 4, name: "陈乐添", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
     { month: 4, name: "刘小末", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
-    { month: 4, name: "张秋怡", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04", note: "GNZ48二期生" },   // 用户口径 2026-10-24 补挂
-    { month: 4, name: "陈佳莹", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04", note: "GNZ48二期生（与 SNH48 二期生陈佳莹同名双卡、非同一人——用户口径 2026-XX 对话批次）" },   // 用户口径 2026-XX 补挂（同名双卡：引擎去重/二期生安置/兼职出演事件均已按 branchTeam/gen 消歧）
-    { month: 4, name: "陈奕君", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04", note: "SHY48二期生" },
-    { month: 4, name: "逯芳竹", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04", note: "SHY48二期生" },
+    { month: 4, name: "张秋怡", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },   // 用户口径 2026-10-24 补挂（日期按 2026-XX 对话批次更正）
+    { month: 4, name: "陈佳莹", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生（与 SNH48 二期生陈佳莹同名双卡、非同一人——用户口径 2026-XX 对话批次）" },   // 用户口径 2026-XX 补挂（同名双卡：引擎去重/二期生安置/兼职出演事件均已按 branchTeam/gen 消歧；日期按 2026-XX 对话批次更正）
+    { month: 4, name: "陈奕君", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },   // 日期按用户口径 2026-XX 对话批次更正
+    { month: 4, name: "逯芳竹", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },   // 同上更正
     { month: 4, name: "张羽涵", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },   // 2020-01 退团（leaving2020 挂载）
-    { month: 10, name: "司珀琳", branchTeam: "SHY48", gen: "SHY48三期生", join: "2017-10", note: "SHY48三期生" },   // 用户口径 2026-10-24 补挂（SHY48 已开业时建卡）
-    { month: 11, name: "徐佳音", branchTeam: "GNZ48", gen: "GNZ48四期生", join: "2017-11", note: "GNZ48四期生" },   // 用户口径 2026-10-24 补挂
-    /* 【分团补挂（用户口径 2026-XX，2021 离团批次配套）】BEJ48二期生刘一菲/金锣赛（2017-03 入）、
-       CKG48一期生刘弋菡（2017-10 入）、SHY48三期生唐霖（2017-11 入）、
-       BEJ48三期生小李娜（2017-11 入；报名名李娜，与同队一期生「大李娜」区分，卡名从大小前缀惯例）——同上口径建分团预备生简卡。 */
-    { month: 3,  name: "刘一菲", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03", note: "BEJ48二期生" },   // 用户口径 2026-XX 补挂
-    { month: 3,  name: "金锣赛", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-03", note: "BEJ48二期生" },   // 用户口径 2026-XX 补挂
-    { month: 10, name: "刘弋菡", branchTeam: "CKG48", gen: "CKG48一期生", join: "2017-10", note: "CKG48一期生" },   // 用户口径 2026-XX 补挂
-    { month: 11, name: "唐霖",   branchTeam: "SHY48", gen: "SHY48三期生", join: "2017-11", note: "SHY48三期生" },   // 用户口径 2026-XX 补挂
-    { month: 11, name: "小李娜", branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2017-11", note: "BEJ48三期生；报名名李娜（与大李娜区分）" },   // 用户口径 2026-XX 补挂
-    /* 【分团补挂（用户口径 2026-XX，2022 离团批次配套）】GNZ48二期生赖俊亦/谢艾琳（2017-04 入）、
-       GNZ48三期生梁婉琳（2017-10 入）——GNZ48 年初在册，按月建分团预备生简卡。 */
-    { month: 4,  name: "赖俊亦", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04", note: "GNZ48二期生" },   // 用户口径 2026-XX 补挂
-    { month: 4,  name: "谢艾琳", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04", note: "GNZ48二期生" },   // 用户口径 2026-XX 补挂
-    { month: 10, name: "梁婉琳", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10", note: "GNZ48三期生" },   // 用户口径 2026-XX 补挂
+    { month: 10, name: "司珀琳", branchTeam: "SHY48", gen: "SHY48三期生", join: "2017-10-14", note: "SHY48三期生" },   // 用户口径 2026-10-24 补挂（日期按 2026-XX 对话批次更正；SHY48 已开业时建卡）
+    { month: 11, name: "徐佳音", branchTeam: "GNZ48", gen: "GNZ48四期生", join: "2017-11-23", note: "GNZ48四期生" },   // 用户口径 2026-10-24 补挂（日期按 2026-XX 对话批次更正）
+    /* 【分团补挂（用户口径 2026-XX，2021 离团批次配套）】SHY48三期生唐霖（2017-11-11 入）、
+       BEJ48三期生小李娜（2017-11-25 入；报名名李娜，与同队一期生「大李娜」区分，卡名从大小前缀惯例）——同上口径建分团预备生简卡。
+       （CKG48一期生刘弋菡原在本表补挂——邓倩（刘弋菡）系同一人（用户口径 2026-XX 对话批次），
+       改由 CKG48 开业名册建卡，本表补挂条目撤销。） */
+    { month: 4,  name: "刘一菲", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },   // 用户口径 2026-XX 补挂（日期按 2026-XX 对话批次更正）
+    { month: 4,  name: "金锣赛", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },   // 同上更正
+    { month: 11, name: "唐霖",   branchTeam: "SHY48", gen: "SHY48三期生", join: "2017-11-11", note: "SHY48三期生" },   // 用户口径 2026-XX 补挂（日期按 2026-XX 对话批次更正）
+    { month: 11, name: "小李娜", branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2017-11-25", note: "BEJ48三期生；报名名李娜（与大李娜区分）" },   // 用户口径 2026-XX 补挂（日期按 2026-XX 对话批次更正）
+    /* 【分团补挂（用户口径 2026-XX，2022 离团批次配套）】GNZ48二期生赖俊亦/谢艾琳（2017-04-29 入）、
+       GNZ48三期生梁婉琳（2017-10-01 入）——GNZ48 年初在册，按月建分团预备生简卡。 */
+    { month: 4,  name: "赖俊亦", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },   // 用户口径 2026-XX 补挂（日期按 2026-XX 对话批次更正）
+    { month: 4,  name: "谢艾琳", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },   // 同上更正
+    { month: 10, name: "梁婉琳", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },   // 同上更正
+    /* 【用户口径 2026-XX 对话批次·全量补挂】2017 入团批次中此前未建卡成员按批次补挂；
+       已有建卡渠道的成员渠道不变，仅按本批口径统一入团日期。批次明细：
+       · BEJ48 二期生 2017-04-20 批（15 人口径，既有李烨/郑心雨/郑依灵/李沐遥/刘一菲/金锣赛 6 人）+ 05-30 沈小爱；
+       · GNZ48 二期生 2017-04-29 批（14 人口径，既有陈乐添/刘小末/张秋怡/陈佳莹/赖俊亦/谢艾琳 6 人）；
+       · SHY48 二期生 2017-04-29 批（12 人口径，既有陈奕君/逯芳竹/张羽涵 3 人）；
+       · GNZ48 三期生 2017-10-01 批（13 人口径，既有梁婉琳）；
+       · SHY48 三期生 2017-10-14 / 11-11 批（既有司珀琳/唐霖）；
+       · GNZ48 四期生 2017-11-23 批（既有徐佳音）；
+       · BEJ48 三期生 2017-11-10 / 11-25 / 11-26 批（既有小李娜；金鑫/李宗颐/何阳青青同批补挂）。
+       八期生贺苏堃（2017-09-06 批）按既有口径不建卡；CKG48 一期生 33 人由开业名册建卡。 */
+    // —— BEJ48 二期生 2017-04-20 批补挂 ——
+    { month: 4, name: "黄子璇", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },   // 用户口径 2026-XX 对话批次补挂
+    { month: 4, name: "徐静",   branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },
+    { month: 4, name: "赵笛儿", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },
+    { month: 4, name: "胡丽芝", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },
+    { month: 4, name: "刘崇恬", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },
+    { month: 4, name: "毛其羽", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },
+    { month: 4, name: "孙晓艳", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },
+    { month: 4, name: "兰昊",   branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },
+    { month: 4, name: "乔钰珂", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-04-20", note: "BEJ48二期生" },
+    { month: 5, name: "沈小爱", branchTeam: "BEJ48", gen: "BEJ48二期生", join: "2017-05-30", note: "BEJ48二期生" },
+    // —— GNZ48 二期生 2017-04-29 批补挂 ——
+    { month: 4, name: "陈俊宏", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    { month: 4, name: "程一心", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    { month: 4, name: "方晓瑜", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    { month: 4, name: "梁可",   branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    { month: 4, name: "朱怡欣", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    { month: 4, name: "高雪逸", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    { month: 4, name: "唐诗怡", branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    { month: 4, name: "郑悦",   branchTeam: "GNZ48", gen: "GNZ48二期生", join: "2017-04-29", note: "GNZ48二期生" },
+    // —— SHY48 二期生 2017-04-29 批补挂 ——
+    { month: 4, name: "菅瑞静", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },
+    { month: 4, name: "叶锦童", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },
+    { month: 4, name: "臧聪",   branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },
+    { month: 4, name: "郑诗琪", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },
+    { month: 4, name: "方诗涵", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },
+    { month: 4, name: "高崇",   branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },
+    { month: 4, name: "龚梦婷", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },
+    { month: 4, name: "王菲妍", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },
+    { month: 4, name: "王睿琦", branchTeam: "SHY48", gen: "SHY48二期生", join: "2017-04-29", note: "SHY48二期生" },
+    // —— GNZ48 三期生 2017-10-01 批补挂 ——
+    { month: 10, name: "毕瑞珊", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "程子钰", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "邓惠恩", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "符冰冰", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "黄楚茵", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "何梦瑶", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "罗可嘉", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "林芝",   branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "汪慕远", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "吴羽霏", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "叶晓梦", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    { month: 10, name: "余芷媛", branchTeam: "GNZ48", gen: "GNZ48三期生", join: "2017-10-01", note: "GNZ48三期生" },
+    // —— SHY48 三期生 2017-10-14 / 11-11 批补挂 ——
+    { month: 10, name: "李彬玉", branchTeam: "SHY48", gen: "SHY48三期生", join: "2017-10-14", note: "SHY48三期生" },
+    { month: 10, name: "周佳怡", branchTeam: "SHY48", gen: "SHY48三期生", join: "2017-10-14", note: "SHY48三期生" },
+    { month: 10, name: "赵天杨", branchTeam: "SHY48", gen: "SHY48三期生", join: "2017-10-14", note: "SHY48三期生" },
+    { month: 11, name: "程戈",   branchTeam: "SHY48", gen: "SHY48三期生", join: "2017-11-11", note: "SHY48三期生" },
+    { month: 11, name: "相望",   branchTeam: "SHY48", gen: "SHY48三期生", join: "2017-11-11", note: "SHY48三期生" },
+    // —— GNZ48 四期生 2017-11-23 批补挂 ——
+    { month: 11, name: "李晨曦", branchTeam: "GNZ48", gen: "GNZ48四期生", join: "2017-11-23", note: "GNZ48四期生" },
+    { month: 11, name: "舒湘",   branchTeam: "GNZ48", gen: "GNZ48四期生", join: "2017-11-23", note: "GNZ48四期生" },
+    { month: 11, name: "王梦媛", branchTeam: "GNZ48", gen: "GNZ48四期生", join: "2017-11-23", note: "GNZ48四期生" },
+    { month: 11, name: "肖文静", branchTeam: "GNZ48", gen: "GNZ48四期生", join: "2017-11-23", note: "GNZ48四期生" },
+    { month: 11, name: "张紫颖", branchTeam: "GNZ48", gen: "GNZ48四期生", join: "2017-11-23", note: "GNZ48四期生" },
+    // —— BEJ48 三期生 2017-11-10 / 11-25 / 11-26 批补挂 ——
+    { month: 11, name: "金鑫", branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2017-11-10", note: "BEJ48三期生" },   // 用户口径 2026-XX 对话批次补挂
+    { month: 11, name: "李宗颐", branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2017-11-25", note: "BEJ48三期生" },
+    { month: 11, name: "何阳青青", branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2017-11-26", note: "BEJ48三期生" },
   ],
 
   /* ---------------- 2017 年内离团 / 移籍 / 兼任变动（2017「本部新章」线用） ----------------
@@ -686,10 +773,15 @@ const DATA = {
      · 分团新期生：BEJ48 三期（2018-01-19，2人）/ SHY48 三期（2018-03-17，7人）/
        CKG48 二期（2018-04-07，8人）/ BEJ48 五期（2018-06，3人）/ CKG48 三期（2018-09-01，7人）/
        GNZ48 六期（2018-10-05，4人）/ SHY48 四期（2018-10-05，12人）/ BEJ48 六期（2018-11-08，2人）/
-        GNZ48 五期（2018-04，1人，章泽婷——按用户口径 2026-XX 补挂，月份精度）。
+       GNZ48 五期（2018-04，章泽婷、谢菲菲——后者按用户口径 2026-XX 补挂，月份精度）/
+       BEJ48 四期（2018-04，高蔚然、付奕萱——按用户口径 2026-XX 补挂，月份精度，
+       2023 离团批次配套）。
      本部新期生 team 挂 PREP；分团新期生带 branchTeam（引擎建分团预备生简卡）。 */
   joining2018: [
     { month: 4,  name: "章泽婷", branchTeam: "GNZ48", gen: "GNZ48五期生", join: "2018-04" },   // 按用户口径 2026-XX 补挂建卡（月份精度；GNZ48 未开业则不入册）
+    { month: 4,  name: "谢菲菲", branchTeam: "GNZ48", gen: "GNZ48五期生", join: "2018-04" },   // 用户口径 2026-XX 补挂建卡（2023 离团批次配套，月份精度）
+    { month: 4,  name: "高蔚然", branchTeam: "BEJ48", gen: "BEJ48四期生", join: "2018-04" },   // 用户口径 2026-XX 补挂建卡（2023 离团批次配套，月份精度）
+    { month: 4,  name: "付奕萱", branchTeam: "BEJ48", gen: "BEJ48四期生", join: "2018-04" },   // 用户口径 2026-XX 补挂建卡（2023 离团批次配套，月份精度）
     { month: 1,  name: "杨鑫",   branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2018-01-19" },
     { month: 1,  name: "周洁艺", branchTeam: "BEJ48", gen: "BEJ48三期生", join: "2018-01-19" },
     { month: 2,  name: "陈盼",     team: "PREP", gen: "九期生", join: "2018-02-03" },
@@ -883,17 +975,26 @@ const DATA = {
      type 口径沿用 leaving2018：SNH48 本部出身（含移籍分团的五期/六期生）=毕业 /
      本部预备生=离团 / 分团自主招募成员=退团。
      【不建卡忽略名单】下列 2019 年史实离团成员游戏内无成员卡，不挂载：
-       何梦瑶、楼澍、刘静晗、陈俊宏、余芷媛、张丹丹、毕瑞珊、胡丽芝、郭铱宁。
+       楼澍、张丹丹、郭铱宁。
+       【注（用户口径 2026-XX 对话批次）】原名单中刘静晗（SHY48 一期生次批）/
+       陈俊宏（GNZ48 二期生）/胡丽芝（BEJ48 二期生）/毕瑞珊/何梦瑶/余芷媛（GNZ48 三期生）经
+       2017 入团口径补挂后已有卡，其 2019 年离团已按用户口径补挂（月份精度，
+       见下；分团自主招募出身 → type 退团）。
      【名字勘误】4月「李瑜旋」按游戏内在册卡名 李瑜璇（CKG48 一期生）挂载。 */
   leaving2019: [
     { month: 1,  name: "潘燕琦", date: "2019-01", type: "毕业", story: false, note: "七期生" },
     { month: 1,  name: "孙亚萍", date: "2019-01", type: "离团", story: false, note: "八期生（预备生）" },
     { month: 1,  name: "刘炅然", date: "2019-01", type: "毕业", story: false, note: "三期生" },
     { month: 2,  name: "杜秋霖", date: "2019-02", type: "退团", story: false, note: "GNZ48一期生" },
+    { month: 2,  name: "毕瑞珊", date: "2019-02", type: "退团", story: false, note: "GNZ48三期生" },   // 用户口径 2026-XX 对话批次补挂（joining2017 建卡，无卡自动跳过）
+    { month: 2,  name: "何梦瑶", date: "2019-02", type: "退团", story: false, note: "GNZ48三期生" },   // 同上
     { month: 2,  name: "李丽满", date: "2019-02", type: "退团", story: false, note: "BEJ48五期生" },
      { month: 3,  name: "章泽婷", date: "2019-03", type: "退团", story: false, note: "GNZ48五期生" },   // 按用户口径 2026-XX（通用离团；joining2018 补挂建卡，无卡自动跳过）
      { month: 3,  name: "任玥霖", date: "2019-03", type: "退团", story: false, note: "BEJ48一期生" },   // 按用户口径 2026-XX（通用离团；BEJ48 开业后建卡，未开业/无卡自动跳过）
+    { month: 4,  name: "刘静晗", date: "2019-04", type: "退团", story: false, note: "SHY48一期生" },   // 用户口径 2026-XX 对话批次补挂（SHY48 开业名册建卡，未开业/无卡自动跳过）
     { month: 4,  name: "李瑜璇", date: "2019-04", type: "退团", story: false, note: "CKG48一期生" },
+    { month: 5,  name: "陈俊宏", date: "2019-05", type: "退团", story: false, note: "GNZ48二期生" },   // 用户口径 2026-XX 对话批次补挂（joining2017 建卡，无卡自动跳过）
+    { month: 5,  name: "余芷媛", date: "2019-05", type: "退团", story: false, note: "GNZ48三期生" },   // 同上
     { month: 6,  name: "李沁洁", date: "2019-06", type: "毕业", story: false, note: "五期生" },
     { month: 6,  name: "栾嘉仪", date: "2019-06", type: "离团", story: false, note: "十期生（预备生）" },
     { month: 6,  name: "杨令仪", date: "2019-06", type: "离团", story: false, note: "九期生（预备生）" },
@@ -901,6 +1002,7 @@ const DATA = {
     { month: 6,  name: "左嘉欣", date: "2019-06", type: "毕业", story: false, note: "六期生" },
     { month: 6,  name: "徐晗",   date: "2019-06", type: "毕业", story: false, note: "三期生" },
     { month: 7,  name: "李美琪", date: "2019-07", type: "离团", story: false, note: "九期生（预备生）" },
+    { month: 7,  name: "胡丽芝", date: "2019-07", type: "退团", story: false, note: "BEJ48二期生" },   // 用户口径 2026-XX 对话批次补挂（joining2017 建卡，无卡自动跳过）
     { month: 8,  name: "陈美君", date: "2019-08", type: "毕业", story: false, note: "五期生" },
     { month: 8,  name: "任心怡", date: "2019-08", type: "退团", story: false, note: "BEJ48一期生" },
     { month: 8,  name: "徐子轩", date: "2019-08", type: "毕业", story: false, note: "二期生" },
@@ -962,9 +1064,9 @@ const DATA = {
        建卡，未招录自动跳过）/武晓迪（SHY48四期生）；2020-08 张睿怡（BEJ48八期生，
        joining2020 建卡）；2020-09 吕蕊（BEJ48七期生，同熊文婕）；
        2020-12 莫昕（GNZ48七期生，joining2020 建卡）/谢慧先（GNZ48八期生，同上）。
-     · 补挂建卡后挂载（用户口径 2026-10-24 二批）：张秋怡（GNZ48二期生，2017-04 入，
-       joining2017 补挂）/司珀琳（SHY48三期生，2017-10 入，joining2017 补挂）/
-       徐佳音（GNZ48四期生，2017-11 入，joining2017 补挂）/熊鑫（BEJ48四期生，2018-04 入，
+     · 补挂建卡后挂载（用户口径 2026-10-24 二批）：张秋怡（GNZ48二期生，2017-04-29 入，
+       joining2017 补挂）/司珀琳（SHY48三期生，2017-10-14 入，joining2017 补挂）/
+       徐佳音（GNZ48四期生，2017-11-23 入，joining2017 补挂）/熊鑫（BEJ48四期生，2018-04 入，
        joining2018 补挂）——离团：2020-03 张秋怡 / 2020-06 司珀琳 / 2020-07 徐佳音 / 2020-09 熊鑫。
      · 本批次条目均不写 branchTeam（无重名冲突；兼容 2019 giveup/2020 解散线
        分团卡移籍 IDFT 后 branchTeam 清空的情形，按名命中）。
@@ -1030,8 +1132,9 @@ const DATA = {
        成员进 layoff21Choice 由玩家拍板是否支付补偿（15 万/人，同 2020 口径），
        未兼任分团成员自动支付。详见 engine.applyLayoff21。
      ②通用离团：type="离团" 直接落地（left）。
-     【无卡跳过】原无卡 6 人已按用户口径补挂建卡（刘一菲/金锣赛/唐霖/小李娜[报名名李娜]/
-     刘弋菡 joining2017 补挂；刘丽千 joining2019 补挂），离团正常落地；
+     【无卡跳过】原无卡 6 人已按用户口径补挂建卡（刘一菲/金锣赛/唐霖/小李娜[报名名李娜]：
+     joining2017 补挂——邓倩（刘弋菡）系同一人（用户口径 2026-XX 对话批次），刘弋菡改由
+     CKG48 一期生开业名册建卡；刘丽千 joining2019 补挂），离团正常落地；
      分团未开业（SHY/CKG 未点开）或旧档未及建卡者仍自动跳过。
      【在籍保障】张冉冉为 2021-04 十五期生（joining2021 建卡），2021-08 随精简离团；
      其余分团/预备生出身的成员由对应年份建卡表承载在籍，无卡自动跳过。 */
@@ -1081,7 +1184,9 @@ const DATA = {
   /* ---------------- 2020 年史实入团表（2020「共渡」线，引擎按月建卡） ----------------
      考据：snh48wiki.top 期生时间线（疫情年：1~3月仅 GNZ48 七期 1 人，云招新从4月起恢复）。
      分团新期生（GNZ48/BEJ48/CKG48）挂 branchTeam：引擎建分团预备生简卡（同 2018 口径）。
-     【名字勘误】BEJ48 八期 王丹妮：报名名王若诗蓝，后更名王丹妮（备注登记）。 */
+     【名字勘误】BEJ48 八期 王丹妮：报名名王若诗蓝，后更名王丹妮（备注登记）。
+     【补挂】CKG48 四期 潘颖（2020-09 入，用户口径 2026-XX 补挂建卡，月份精度；
+     2023-01 通用离团批次配套）。 */
    joining2020: [
      { month: 1,  name: "莫昕",     branchTeam: "GNZ48", gen: "GNZ48 七期生", join: "2020-01-01" },
      { month: 4,  name: "王丹妮",   branchTeam: "BEJ48", gen: "BEJ48 八期生", join: "2020-04-20", note: "曾用名王若诗蓝" },
@@ -1095,6 +1200,7 @@ const DATA = {
      { month: 8,  name: "陈妮亚",   branchTeam: "CKG48", gen: "CKG48 四期生", join: "2020-08-29" },
      { month: 8,  name: "黄歆源",   branchTeam: "CKG48", gen: "CKG48 四期生", join: "2020-08-29" },
      { month: 8,  name: "潘璐",     branchTeam: "CKG48", gen: "CKG48 四期生", join: "2020-08-29" },
+     { month: 9,  name: "潘颖",     branchTeam: "CKG48", gen: "CKG48 四期生", join: "2020-09" },   // 用户口径 2026-XX 补挂建卡（2023 离团批次配套，月份精度）
      { month: 10, name: "吕曼菲",   branchTeam: "GNZ48", gen: "GNZ48 八期生", join: "2020-10-01" },
      { month: 10, name: "谢慧先",   branchTeam: "GNZ48", gen: "GNZ48 八期生", join: "2020-10-01" },
      { month: 10, name: "邓歆玥",   team: "PREP", gen: "十四期生", join: "2020-10-02" },
@@ -1219,8 +1325,8 @@ const DATA = {
      ②通用离团：type="离团" 直接落地（left）。
      【补挂建卡（用户口径 2026-XX 对话批次）】原查无卡 5 人已按口径补挂：
      王炯义（GNZ48一期生 2016-10 入，branchRoster2017 卡名从「烱」改「炯」）、
-     赖俊亦/谢艾琳（GNZ48二期生 2017-04 入，joining2017 补挂）、
-     梁婉琳（GNZ48三期生 2017-10 入，joining2017 补挂）、
+     赖俊亦/谢艾琳（GNZ48二期生 2017-04-29 入，joining2017 补挂）、
+     梁婉琳（GNZ48三期生 2017-10-01 入，joining2017 补挂）、
      张爱静（SHY48一期生 2016-10 入，随 SHY48 开业建卡）——离团正常落地。
      【跳过说明】周倩玉（2016 剧情线解约/留籍察看双口径）若已离团自动跳过；
      江鑫/潘璐瑶（2019 主线③招新拍板池）未招入则无卡自动跳过。 */
@@ -1251,6 +1357,195 @@ const DATA = {
      { month: 9,  name: "张雨鑫", date: "2022-09", type: "离团", story: false, note: "通用离团（三期生）" },
      { month: 10, name: "陈倩楠", date: "2022-10", type: "离团", story: false, note: "通用离团（六期生·BEJ48）" },
      { month: 10, name: "张爱静", date: "2022-10", type: "离团", story: false, note: "通用离团（SHY48一期生）" },
+   ],
+
+  /* ---------------- 2023 年内新加入（2023「交棒」线用） ----------------
+     【按用户口径挂载（2026-XX 对话批次，精确到日）】join 字段按用户提供的日期登记。
+     本部新期生挂 team:"PREP"（预备生）；分团新期生挂 branchTeam：引擎建分团预备生
+     简卡（同 2018/2020/2021/2022 口径，初始人气按分团梯度 branchJoinPop 低于同期本部）。
+     【CGT48 批次特殊处理（用户口径）】CGT48 一/二期生（6月 16 人 + 12月 5 人）不在
+     monthStart ① 常规落地：CGT48 成立后入册——flags.cgt23Open（成都丝芭开幕）后按
+     批次月序追补建 CGT48 分团预备生简卡；全年未成立（1 月拍板 later 或三段未完成）
+     → 12 月末全部转入 GNZ48 建卡，note「CGT48委培（CGT48成立后移籍入册）」；2024 年
+     CGT48 成立后移籍入册（2024 线待建，按 note 识别回收）。统一由 engine.mountCgt23Join
+     在 monthStart ① 末（建卡后、离团表处理前）/fastSim 落地（幂等去重）。
+     【不做分团开关校验】同 2021/2022 线口径：BEJ48 十二/十三期、GNZ48 十四/十五/十六期、
+     CKG48 六/七期均照常入册。
+     【重名核查】本表 86 人与既有名册（data_members.js 本部+2016~2022 入团表）查无重名，
+     本部条目「同名即拦」去重不会误拦。
+     【汇总】全年 86 人：BEJ48 十二期生 7 人（1/3/5 月）+ SNH48 十八期生 8 人（5 月）+
+     GNZ48 十四期生 3 人（5 月）+ CKG48 六期生 15 人（6 月）+ CGT48 一期生 16 人（6 月，特殊处理）+
+     BEJ48 十三期生 11 人（9/12 月）+ SNH48 十九期生 7 人（9/11 月）+ CKG48 七期生 7 人
+     （9/10 月）+ GNZ48 十五期生 5 人（10 月）+ CGT48 二期生 5 人（12 月，特殊处理）+
+     GNZ48 十六期生 2 人（12 月）。 */
+  joining2023: [
+    /* —— 1月：BEJ48 十二期生（2023-01-02，2 人） —— */
+    { month: 1,  name: "马欣宇", branchTeam: "BEJ48", gen: "BEJ48 十二期生", join: "2023-01-02" },
+    { month: 1,  name: "郑照暄", branchTeam: "BEJ48", gen: "BEJ48 十二期生", join: "2023-01-02" },
+    /* —— 3月：BEJ48 十二期生（2023-03-11，3 人） —— */
+    { month: 3,  name: "高梓萌", branchTeam: "BEJ48", gen: "BEJ48 十二期生", join: "2023-03-11" },
+    { month: 3,  name: "聂渝景", branchTeam: "BEJ48", gen: "BEJ48 十二期生", join: "2023-03-11" },
+    { month: 3,  name: "庄雅雯", branchTeam: "BEJ48", gen: "BEJ48 十二期生", join: "2023-03-11" },
+    /* —— 5月：BEJ48 十二期生（2023-05-02，2 人）+ SNH48 十八期生（2023-05-02，8 人）
+            + GNZ48 十四期生（2023-05-07，3 人） —— */
+    { month: 5,  name: "李歆乐",   branchTeam: "BEJ48", gen: "BEJ48 十二期生", join: "2023-05-02" },
+    { month: 5,  name: "朱一柠",   branchTeam: "BEJ48", gen: "BEJ48 十二期生", join: "2023-05-02" },
+    { month: 5,  name: "李虞龙若", team: "PREP", gen: "十八期生", join: "2023-05-02" },
+    { month: 5,  name: "卢晨昕",   team: "PREP", gen: "十八期生", join: "2023-05-02" },
+    { month: 5,  name: "温若其",   team: "PREP", gen: "十八期生", join: "2023-05-02" },
+    { month: 5,  name: "许佳佳",   team: "PREP", gen: "十八期生", join: "2023-05-02" },
+    { month: 5,  name: "杨心渝",   team: "PREP", gen: "十八期生", join: "2023-05-02" },
+    { month: 5,  name: "尤可莹",   team: "PREP", gen: "十八期生", join: "2023-05-02" },
+    { month: 5,  name: "张怡婷",   team: "PREP", gen: "十八期生", join: "2023-05-02" },
+    { month: 5,  name: "周童玥",   team: "PREP", gen: "十八期生", join: "2023-05-02" },
+    { month: 5,  name: "陈珊玲", branchTeam: "GNZ48", gen: "GNZ48 十四期生", join: "2023-05-07" },
+    { month: 5,  name: "陶慧",   branchTeam: "GNZ48", gen: "GNZ48 十四期生", join: "2023-05-07" },
+    { month: 5,  name: "荣子彤", branchTeam: "GNZ48", gen: "GNZ48 十四期生", join: "2023-05-07" },
+    /* —— 6月：CKG48 六期生（2023-06-02，15 人）+ CGT48 一期生（2023-06-02，16 人，特殊处理） —— */
+    { month: 6,  name: "陈韵佳", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "何馨曼", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "胡丹",   branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "姬梦真", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "刘星雨", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "卢美廷", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "马星月", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "彭夕株", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "吴志越", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "杨添淩", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "张莉莉", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "张思妍", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "张伟依", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "张咏烨", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    { month: 6,  name: "张钰叶", branchTeam: "CKG48", gen: "CKG48 六期生", join: "2023-06-02" },
+    /* CGT48 一期生：CGT48 成立后入册；未成立则年末入 GNZ48 委培（见表头注释） */
+    { month: 6,  name: "程妤涵", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "何蔡娴", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "何梦迪", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "何渝欣", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "雷相菊", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "雷薪梦", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "林海盈", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "齐灵泉", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "任烨彦", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "谭勇航", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "王依",   branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "王艺霖", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "徐钰涵", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "袁艺洁", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "吴云",   branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    { month: 6,  name: "程宝玉", branchTeam: "CGT48", gen: "CGT48 一期生", join: "2023-06-02" },
+    /* —— 9月：BEJ48 十三期生（2023-09-17，10 人）+ SNH48 十九期生（2023-09-30，6 人）
+            + CKG48 七期生（2023-09-30，3 人） —— */
+    { month: 9,  name: "阿丽米热", branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-09-17" },
+    { month: 9,  name: "陈枳霏",   branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-09-17" },
+    { month: 9,  name: "刁昕妤",   branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-09-17" },
+    { month: 9,  name: "高予瑾",   branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-09-17" },
+    { month: 9,  name: "孟清渝",   branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-09-17" },
+    { month: 9,  name: "沈祉含",   branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-09-17" },
+    { month: 9,  name: "孙嘉馥",   branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-09-17" },
+    { month: 9,  name: "王祉依",   branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-09-17" },
+    { month: 9,  name: "袁涵",     branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-09-17" },
+    { month: 9,  name: "张歆如",   branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-09-17" },
+    { month: 9,  name: "梁怀方", team: "PREP", gen: "十九期生", join: "2023-09-30" },
+    { month: 9,  name: "唐程成", team: "PREP", gen: "十九期生", join: "2023-09-30" },
+    { month: 9,  name: "王悦垚", team: "PREP", gen: "十九期生", join: "2023-09-30" },
+    { month: 9,  name: "王紫澍", team: "PREP", gen: "十九期生", join: "2023-09-30" },
+    { month: 9,  name: "叶凡",   team: "PREP", gen: "十九期生", join: "2023-09-30" },
+    { month: 9,  name: "张倩",   team: "PREP", gen: "十九期生", join: "2023-09-30" },
+    { month: 9,  name: "石梦湲", branchTeam: "CKG48", gen: "CKG48 七期生", join: "2023-09-30" },
+    { month: 9,  name: "谭景文", branchTeam: "CKG48", gen: "CKG48 七期生", join: "2023-09-30" },
+    { month: 9,  name: "王思予", branchTeam: "CKG48", gen: "CKG48 七期生", join: "2023-09-30" },
+    /* —— 10月：GNZ48 十五期生（2023-10-06，5 人）+ CKG48 七期生（2023-10-29，4 人） —— */
+    { month: 10, name: "丁嘉欣", branchTeam: "GNZ48", gen: "GNZ48 十五期生", join: "2023-10-06" },
+    { month: 10, name: "林家谊", branchTeam: "GNZ48", gen: "GNZ48 十五期生", join: "2023-10-06" },
+    { month: 10, name: "孙毓园", branchTeam: "GNZ48", gen: "GNZ48 十五期生", join: "2023-10-06" },
+    { month: 10, name: "王珺",   branchTeam: "GNZ48", gen: "GNZ48 十五期生", join: "2023-10-06" },
+    { month: 10, name: "谢晓倩", branchTeam: "GNZ48", gen: "GNZ48 十五期生", join: "2023-10-06" },
+    { month: 10, name: "陈萧扬", branchTeam: "CKG48", gen: "CKG48 七期生", join: "2023-10-29" },
+    { month: 10, name: "胡思颖", branchTeam: "CKG48", gen: "CKG48 七期生", join: "2023-10-29" },
+    { month: 10, name: "林丹蕾", branchTeam: "CKG48", gen: "CKG48 七期生", join: "2023-10-29" },
+    { month: 10, name: "申家璐", branchTeam: "CKG48", gen: "CKG48 七期生", join: "2023-10-29" },
+    /* —— 11月：SNH48 十九期生（2023-11-01，1 人） —— */
+    { month: 11, name: "张瀚引", team: "PREP", gen: "十九期生", join: "2023-11-01" },
+    /* —— 12月：CGT48 二期生（2023-12-15，5 人，特殊处理）+ GNZ48 十六期生
+            （2023-12-15，2 人）+ BEJ48 十三期生（2023-12-16，1 人） —— */
+    { month: 12, name: "兰雅心", branchTeam: "CGT48", gen: "CGT48 二期生", join: "2023-12-15" },
+    { month: 12, name: "梅思华", branchTeam: "CGT48", gen: "CGT48 二期生", join: "2023-12-15" },
+    { month: 12, name: "徐钰清", branchTeam: "CGT48", gen: "CGT48 二期生", join: "2023-12-15" },
+    { month: 12, name: "张羽多", branchTeam: "CGT48", gen: "CGT48 二期生", join: "2023-12-15" },
+    { month: 12, name: "张咏琪", branchTeam: "CGT48", gen: "CGT48 二期生", join: "2023-12-15" },
+    { month: 12, name: "焦玥",   branchTeam: "GNZ48", gen: "GNZ48 十六期生", join: "2023-12-15" },
+    { month: 12, name: "李咏薇", branchTeam: "GNZ48", gen: "GNZ48 十六期生", join: "2023-12-15" },
+    { month: 12, name: "丁子钦", branchTeam: "BEJ48", gen: "BEJ48 十三期生", join: "2023-12-16" },
+  ],
+
+  /* ---------------- 2023 年内离团（2023「交棒」线用） ----------------
+     【用户口径】2023 人员变动待用户口径，当前空表占位（宁缺册滥）。
+     口径到位后挂载：通用离团 type="离团" 直接落地；成员精简 note 含「成员精简」
+     走 layoff21 补偿拍板机制（复用 2021/2022 口径）。 */
+  /* ---------------- 2023 年内离团（2023「交棒」线用） ----------------
+     【按用户口径挂载（2026-XX 对话批次，月份精度）】两类：
+     ①通用离团：type="离团" 直接落地（left）。
+     ②名单精简（用户口径用词；同 2021/2022 线 layoff21 机制）：note 含「成员精简」的条目
+       不走通用离团，engine monthStart 登记到 layoff21Names，按卡况动态分配——未兼任分团
+       成员自动支付补偿（15 万/人），本部/玩家兼任分团成员进 layoff21Choice 由玩家拍板
+       （行动区「名单精简补偿拍板」→ UI layoff21Pick，复用既有拍板窗）。
+       名单精简 12 人：本部 PREP 4 人（张文婷/施未希/占迪/李虞龙若）走拍板，
+       分团卡 7 人按兼任情况自动/拍板；何渝欣为 CGT48 一期生双路径卡——成立线按 CGT48 卡
+       命中（未兼任 CGT48 自动补偿），未成立线未入册自然跳过（见 mountCgt23Join）。
+     【SHY48 条目不带 branchTeam】王菲妍/高崇/王秋茹若 2017 未点亮沈阳剧场则未建卡、
+       或 2019 组阁 IDFT 化后 branchTeam 已清，不带 branchTeam 按姓名命中避免永不命中。
+     【原查无卡 8 人已按用户口径落实（2026-XX 对话批次）】
+       · 潘颖（CKG48 四期生 2020-09）/高蔚然、付奕萱（BEJ48 四期生 2018-04）/
+         谢菲菲（GNZ48 五期生 2018-04）——joining2020/2018 补挂建卡（月份精度）；
+       · 吴学雨、冉蔚（CKG48 一期生 2017-10）——已在 CKG48 开业名册
+         （branchFoundingRoster.CKG48），随开业建卡，无需补挂；
+       · 王若诗蓝=王丹妮（BEJ48 八期生，joining2020 既有卡，note 曾用名）——
+         离团按卡册名王丹妮命中；
+       · 陈颒琳=陈颖琳（CKG48 五期生，joining2021 既有卡，note 亦作陈颒琳）——
+         离团按卡册名陈颖琳命中；
+       · 吴学雨/冉蔚不带 branchTeam：2019 组阁后 CKG 一期生可能 IDFT 化（branchTeam
+         清空）或保旗在册，按姓名命中兼容两口径；已随 2019 下放离团者自然跳过。
+     【汇总】已挂载 36 人：通用离团 24 人 + 名单精简 12 人。 */
+  leaving2023: [
+     /* —— 名单精简（同 2021/2022 线裁撤设计，动态分配 + 补偿拍板） —— */
+     { month: 3,  name: "张文婷",   date: "2023-03", type: "离团", story: false, note: "成员精简（本部十七期生）" },
+     { month: 3,  name: "施未希",   date: "2023-03", type: "离团", story: false, note: "成员精简（本部十七期生）" },
+     { month: 3,  name: "占迪",     date: "2023-03", type: "离团", story: false, note: "成员精简（本部十七期生）" },
+     { month: 4,  name: "韩雪",     date: "2023-04", type: "离团", story: false, note: "成员精简（BEJ48 十期生）", branchTeam: "BEJ48" },
+     { month: 6,  name: "彭含灵",   date: "2023-06", type: "离团", story: false, note: "成员精简（CKG48 五期生）", branchTeam: "CKG48" },
+     { month: 6,  name: "谢金男",   date: "2023-06", type: "离团", story: false, note: "成员精简（CKG48 五期生）", branchTeam: "CKG48" },
+     { month: 7,  name: "黄艺暄",   date: "2023-07", type: "离团", story: false, note: "成员精简（GNZ48 十三期生）", branchTeam: "GNZ48" },
+     { month: 8,  name: "陶慧",     date: "2023-08", type: "离团", story: false, note: "成员精简（GNZ48 十四期生·本年5月卡）", branchTeam: "GNZ48" },
+     { month: 9,  name: "高梓萌",   date: "2023-09", type: "离团", story: false, note: "成员精简（BEJ48 十二期生·本年3月卡）", branchTeam: "BEJ48" },
+     { month: 9,  name: "李虞龙若", date: "2023-09", type: "离团", story: false, note: "成员精简（本部十八期生·本年5月卡）" },
+     { month: 9,  name: "荣子彤",   date: "2023-09", type: "离团", story: false, note: "成员精简（GNZ48 十四期生·本年5月卡）", branchTeam: "GNZ48" },
+     { month: 11, name: "何渝欣",   date: "2023-11", type: "离团", story: false, note: "成员精简（CGT48 一期生·本年6月卡；成立线按卡命中，未成立线未入册自然跳过）" },
+     /* —— 通用离团 —— */
+     { month: 1,  name: "任蔓琳", date: "2023-01", type: "离团", story: false, note: "通用离团（BEJ48五期生）", branchTeam: "BEJ48" },
+     { month: 1,  name: "周培溪", date: "2023-01", type: "离团", story: false, note: "通用离团（GNZ48 十期生）", branchTeam: "GNZ48" },
+     { month: 1,  name: "雷淑怡", date: "2023-01", type: "离团", story: false, note: "通用离团（GNZ48 十一期生）", branchTeam: "GNZ48" },
+     { month: 1,  name: "潘颖",   date: "2023-01", type: "离团", story: false, note: "通用离团（CKG48 四期生）", branchTeam: "CKG48" },
+     { month: 1,  name: "吴学雨", date: "2023-01", type: "离团", story: false, note: "通用离团（CKG48 一期生；不带 branchTeam，见装头注释）" },
+     { month: 2,  name: "唐晨葳", date: "2023-02", type: "离团", story: false, note: "通用离团（BEJ48 九期生）", branchTeam: "BEJ48" },
+     { month: 3,  name: "高蔚然", date: "2023-03", type: "离团", story: false, note: "通用离团（BEJ48 四期生）", branchTeam: "BEJ48" },
+     { month: 3,  name: "贝楚涵", date: "2023-03", type: "离团", story: false, note: "通用离团（十六期生·本部预备生）" },
+     { month: 3,  name: "王秋茹", date: "2023-03", type: "离团", story: false, note: "通用离团（SHY48四期生）" },
+     { month: 4,  name: "王菲妍", date: "2023-04", type: "离团", story: false, note: "通用离团（SHY48二期生）" },
+     { month: 4,  name: "王丹妮", date: "2023-04", type: "离团", story: false, note: "通用离团（BEJ48 八期生；报名名王若诗蓝，按卡册名命中）", branchTeam: "BEJ48" },
+     { month: 5,  name: "王偲越", date: "2023-05", type: "离团", story: false, note: "通用离团（GNZ48一期生）", branchTeam: "GNZ48" },
+     { month: 5,  name: "陈桂君", date: "2023-05", type: "离团", story: false, note: "通用离团（GNZ48一期生）", branchTeam: "GNZ48" },
+     { month: 5,  name: "谢菲菲", date: "2023-05", type: "离团", story: false, note: "通用离团（GNZ48 五期生）", branchTeam: "GNZ48" },
+     { month: 6,  name: "刘胜男", date: "2023-06", type: "离团", story: false, note: "通用离团（六期生·BEJ48 Team E）", branchTeam: "BEJ48" },
+     { month: 6,  name: "吕一",   date: "2023-06", type: "离团", story: false, note: "通用离团（七期生·本部）" },
+     { month: 8,  name: "惠煜轩", date: "2023-08", type: "离团", story: false, note: "通用离团（GNZ48 十一期生）", branchTeam: "GNZ48" },
+     { month: 8,  name: "冉蔚",   date: "2023-08", type: "离团", story: false, note: "通用离团（CKG48 一期生；不带 branchTeam，见装头注释）" },
+     { month: 8,  name: "高崇",   date: "2023-08", type: "离团", story: false, note: "通用离团（SHY48二期生）" },
+     { month: 8,  name: "李思奥", date: "2023-08", type: "离团", story: false, note: "通用离团（BEJ48 十期生）", branchTeam: "BEJ48" },
+     { month: 9,  name: "张帆",   date: "2023-09", type: "离团", story: false, note: "通用离团（CKG48 五期生）", branchTeam: "CKG48" },
+     { month: 9,  name: "陈颖琳", date: "2023-09", type: "离团", story: false, note: "通用离团（CKG48 五期生；用户口径陈颒琳，按卡册名陈颖琳命中）", branchTeam: "CKG48" },
+     { month: 10, name: "张茜",   date: "2023-10", type: "离团", story: false, note: "通用离团（九期生·本部预备生）" },
+     { month: 12, name: "付奕萱", date: "2023-12", type: "离团", story: false, note: "通用离团（BEJ48 四期生）", branchTeam: "BEJ48" },
    ],
 
   /* ---------------- 2019 年史实节点（新线锚点） ---------------- */
@@ -1310,6 +1605,13 @@ const DATA = {
        前三锁史实名单；4~10 名仅歌名与人数口径，参演成员按人气生成（原名单未提供
        具体姓名，待用户补充后可改 fixed 挂载）；线下停办，12月线上直播收费，
        收益减半（引擎 resolveRT 口径）。
+     · 2023 按用户口径挂载（2026-XX 批次）：荣耀队歌《远方的海》SNH48 Team NII；
+       前三锁史实名单（《失忆（UNAWARE）》周诗雨、王奕 / 《辛德瑞拉（CINDERELLA）》
+       王晓佳 / 《HATE 2 LOVE（曼陀罗）》陈珂、郑丹妮）；4~10 名仅歌名与人数口径
+       （4~7 名各 2 人、8~9 名各 7 人、10 名 2 人），参演成员按人气生成。
+       本年起规则更新（用户口径）：当年离团成员可参加当年金曲大赏（不参加下一年
+       金曲）——引擎以 carryTo 上年末快照 roster<era-1> 在籍为基准判定，
+       详见 resolveGoldSongs。
      字段：fixed=锁史实名单；names=参演成员（史实）；team/teamKey=史实为队伍参演；
      gen=生成名次的参演人数（数字）或 "team"（队伍参演）。 */
   goldSongs: {
@@ -1412,6 +1714,23 @@ const DATA = {
         { rank: 3,  song: "SWEET TRAP（影）",       from: "", fixed: true, names: ["姜杉", "费沁源"] },
         { rank: 2,  song: "未接来电",               from: "", fixed: true, names: ["张昕", "许杨玉琢"] },
         { rank: 1,  song: "渊（DEEP DOWN）",        from: "", fixed: true, names: ["蒋芸", "王晓佳"], tag: "年度金曲" },
+      ],
+    },
+    "2023": {   // 按用户口径挂载（2026-XX 批次）：荣耀队歌《远方的海》SNH48 Team NII；
+                // 前三锁史实；4~7名 2 人、8~9名 7 人、10名 2 人为人数口径，
+                // 参演成员按人气生成（姓名待补充后可改 fixed 挂载）
+      list: [
+        { rank: 10, song: "低烧",                   from: "", gen: 2 },
+        { rank: 9,  song: "触电",                   from: "", gen: 7 },
+        { rank: 8,  song: "BEE WITH U",             from: "", gen: 7 },
+        { rank: 7,  song: "笔下之城（DREAM）",      from: "", gen: 2 },
+        { rank: 6,  song: "叹云兮",                 from: "", gen: 2 },
+        { rank: 5,  song: "那好吧",                 from: "", gen: 2 },
+        { rank: 4,  song: "黑与白",                 from: "", gen: 2 },
+        { rank: 3,  song: "HATE 2 LOVE（曼陀罗）",  from: "", fixed: true, names: ["陈珂", "郑丹妮"] },
+        { rank: 2,  song: "辛德瑞拉（CINDERELLA）", from: "", fixed: true, names: ["王晓佳"] },
+        { rank: 1,  song: "失忆（UNAWARE）",        from: "", fixed: true, names: ["周诗雨", "王奕"], tag: "年度金曲" },
+        { rank: 11, song: "远方的海",               from: "", fixed: true, team: "SNH48 Team NII", teamKey: "NII", tag: "年度荣耀队歌", last: true },
       ],
     },
   },

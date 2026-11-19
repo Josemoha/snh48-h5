@@ -433,7 +433,7 @@ STORY.monthly18 = {
             st.morale = Math.max(0, st.morale - 2);
             return "处理公告当晚发出：熊素君即日封禁直播权限，停发三个月工资，向当亊粉丝及剧场工作人员赔礼道歉。公函措辞很硬，评论区分成了两派吵到后半夜——但至少，主动权回到了公司手里。\n\n工资册上，她的名字后面被财务标了三个灰色的「0」——连续三个月，一分不少地停发。\n\n（决策已登记：xsj18=ban。封禁直播；停薪 3 个月；热度+4 士气-2。）" + (hitTail ? "\n\n" + hitTail : "");
           } },
-        { label: "「下放为预备生，封禁直播，暂停工资发放三个月。」", hint: "下放预备生+封禁直播+停薪 3 月；热度+4 士气-3 羻绊-4",
+        { label: "「下放为预备生，封禁直播，暂停工资发放三个月。」", hint: "下放预备生+封禁直播+停薪 3 月+当年内不得升格；热度+4 士气-3 羻绊-4",
           tag: "xsj18", value: "demote",
           effect: st => {
             const hitTail = Game.violationDqHit(st, "熊素君");   // 违规事件·同队失格值连带
@@ -441,13 +441,14 @@ STORY.monthly18 = {
             if (m) {
               if (m.status === "branch") { m.branchLabel = "预备生"; m.captain = false; m.vice = false; }
               else { m.team = "PREP"; }
-              m.note = (m.note ? m.note + "；" : "") + "2018-02 剧场冲突与直播诋毁粉丝：下放预备生、封禁直播、停薪 3 个月（" + st.era + " 年 " + st.month + "~" + (st.month + 2) + " 月）";
+              m.promoBanUntil = st.era + "-12";   // 处罚类下放：当年内不得参与升格评定（汇报公演 promoBanActive 过滤；同组阁降格 isPrepDownThisYear 年度口径）
+              m.note = (m.note ? m.note + "；" : "") + "2018-02 剧场冲突与直播诋毁粉丝：下放预备生、封禁直播、停薪 3 个月（" + st.era + " 年 " + st.month + "~" + (st.month + 2) + " 月）；当年内不得参与升格评定";
             }
             st.flags.wageWaiveList = (st.flags.wageWaiveList || []).concat([{ name: "熊素君", era: st.era, start: st.month, months: 3 }]);
             st.heat = Math.min(100, st.heat + 4);
             st.morale = Math.max(0, st.morale - 3);
             if (m) m.bond = Math.max(0, (m.bond || 0) - 4);
-            return "双份处罚同天下达：下放预备生、封禁直播、停薪三个月。公告下面有人替她说话，也有人贴出冲突视频的截图——处罚重不重，每个人心里都有一杆秤。\n\n训练师把她的名字从正式阵容的白板上擦掉，写到了最下面一行。工资册上同样多了三个灰色的「0」。\n\n（决策已登记：xsj18=demote。下放预备生；封禁直播；停薪 3 个月；热度+4 士气-3 羻绊-4。）" + (hitTail ? "\n\n" + hitTail : "");
+            return "双份处罚同天下达：下放预备生、封禁直播、停薪三个月。公告下面有人替她说话，也有人贴出冲突视频的截图——处罚重不重，每个人心里都有一杆秤。\n\n训练师把她的名字从正式阵容的白板上擦掉，写到了最下面一行。工资册上同样多了三个灰色的「0」。按章程，她的升格评定资格同步冻结——今年之内，汇报公演的名单上不会有她的名字。\n\n（决策已登记：xsj18=demote。下放预备生；封禁直播；停薪 3 个月；当年内不得升格；热度+4 士气-3 羻绊-4。）" + (hitTail ? "\n\n" + hitTail : "");
           } },
         { label: "「解除合约——这个口子不能留。」", hint: "解除合约离团（不追缴/不支付费用，口径待定）；热度+5 士气-3；原队伍 2 个月失格值免涨窗",
           tag: "xsj18", value: "fire",
