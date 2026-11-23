@@ -334,6 +334,21 @@ const UI = {
               this.showGnzReorg23Picker(finish); // GNZ48 组阁窗（2023·恢复旗号次月来电，必须完成）
               return;
             }
+            if (ch.pickMode === "zjr23reorg") {
+              this.closeModal();
+              this.showZjrReorg23Picker(finish); // 赵佳蕊挽留承诺·所在团体组阁窗（2023·10月，必须完成）
+              return;
+            }
+            if (ch.pickMode === "cgt23squad") {
+              this.closeModal();
+              this.showCgt23SquadPicker(finish); // CGT48 自主招募成员分队窗（2023·总监兼任，必须完成）
+              return;
+            }
+            if (ch.pickMode === "cgt23draft") {
+              this.closeModal();
+              this.showCgt23DraftPicker(finish); // CGT48 引援窗（本部与各分团各一人，必须完成）
+              return;
+            }
             if (ch.pickMode === "ge20branch1") {
               this.closeModal();
               this.showGe20Branch1Picker(finish); // 2020总选新机制：分团TOP1兼任本部安排窗
@@ -2330,6 +2345,7 @@ const UI = {
     /* 【2021·原创公演】XII 保留时路线选择窗（全套原创 / 原创×复刻拼盘）；落地在 Game.applyOrig21 */
     if (res.tone === "orig21xii") { this.showOrig21XiiPicker(); return; }
     /* 【2021 延续】分团 TOP1 兼任 / IDFT 升格：复用 2020 拍板窗 */
+    if (res.tone === "gehost") { this.showGeHostPicker(); return; }   // 【总选主持人】点将窗（用户口径 2026-XX）
     if (res.tone === "ge20branch1") { this.showGe20Branch1Picker(() => { this.renderGame(); }); return; }
     if (res.tone === "ge20idft") { this.showGe20IdftPicker(() => { this.renderGame(); }); return; }
     /* 【全线通用·战略重组】选队窗 → 补员点将窗；落地在 Game.applyStrategicReorg */
@@ -2419,11 +2435,13 @@ const UI = {
      ① 项目邁选窗：列出剩余可投项目（点击即选，资金不足置灰）；
      ② 逐部点将：女主角（人气+3 演技+2 羁绊+2），设女二号的项目再点一位女二（+2/+1/+1），
         有女配名额的项目再点女配（人气+1 演技+1，多选一次点齐）；
-        赦免条款：各槽位均可空置（女主/女二可不点、女配可不足额），价格不变、投资照常落地，
-        空置槽位无演出收益；
+        赦免条款：各槽位均可空置（女主/女二可不满额、女配可不足额），价格不变、投资照常落地，
+        空置槽位无演出收益；2018 慕南枝/小夜曲多女二口径：女二一次多选点齐（至多槽数）；
         荣誉殿堂/影视部（HALL）成员可点将；女主限影视部/殿堂的项目（2017《芸汐传》）
         女主槽仅限 film/hall/HALL 成员；
      ③ 落地 Game.doAction('filmInvest',{pid,lead,second,supports})：每部耗 1 行动点，无上限。
+     【延后立项规则（用户口径 2026-XX）】往年未立项的项目在延后窗口内同窗可选：卡面标注
+     延后年数/原价/剩余窗口（非主打至多延后 1 年、主打至多 2 年，过期不再出现）。
      低点击量：投 1 部 = 1 次项目点选 + 女主/女二各 1 次 + 女配 1 次多选，无逐人循环。 */
   showFilmProjectPicker() {
     const st = Game.st;
@@ -2432,7 +2450,12 @@ const UI = {
     const grid = this.el("div", "pick-grid");
     for (const p of rem) {
       const b = this.el("button", "pick-btn", "");
-      b.innerHTML = "《" + p.title + "》" + '<span class="pb-team">' + p.type + (p.flagship ? "·年度主打" : "") + " · 投资 " + p.cost + " 万 · " + Game.filmSlotDesc(p) + (p.flagship ? " · 主演限影视部/总选前三" : "") + (p.leadHallOnly ? " · 女主限影视部/殿堂偶像" : "") + "</span>";
+      /* 【延后立项规则】往年项目标注：延后年数/原价/折扣、回款缩水与热度士气惩罚、剩余窗口 */
+      const carryNote = p.delay
+        ? " · " + p.srcEra + "年度项目·延后" + p.delay + "年（原价 " + (p.baseCost || p.cost) + " 万）·回款缩水·热度/士气-" + 3 * p.delay
+          + (p.delay >= (p.flagship ? 2 : 1) ? " · 本年为最后立项窗口" : " · 至多还可延后 " + ((p.flagship ? 2 : 1) - p.delay) + " 年")
+        : "";
+      b.innerHTML = "《" + p.title + "》" + '<span class="pb-team">' + p.type + (p.flagship ? "·年度主打" : "") + carryNote + " · 投资 " + p.cost + " 万 · " + Game.filmSlotDesc(p) + (p.flagship ? " · 主演限影视部/总选前三" : "") + (p.leadHallOnly ? " · 女主限影视部/殿堂偶像" : "") + "</span>";
       if (st.money < p.cost) { b.disabled = true; b.title = "资金不足"; }
       b.onclick = () => { this.closeModal(); this.castFilmProjects([p], 0, [], null); };
       grid.appendChild(b);
@@ -2500,18 +2523,21 @@ const UI = {
         },
       });
     };
+    /* 女二槽位（2018 慕南枝/小夜曲多女二口径）：secondRoles 数组为主，兼容旧单值 secondRole；
+       role2 但无角色名时给 1 个无名槽 */
+    const secSlots = p.role2 ? (p.secondRoles && p.secondRoles.length ? p.secondRoles : [p.secondRole || null]) : [];
     /* 女主槽：仅女二号项目（noLead）不点女主（女主由公司外演员出演） */
     const pickLead = next => {
       if (p.noLead) { next(null); return; }
       pickRole("lead", "女主角" + (p.leadRole ? "（" + p.leadRole + "）" : ""), "人气+3 演技+2 羁绊+2", null, next);
     };
     /* 女配点将（2017 专属项目书口径）：一次性多选点齐（低点击量），
-       赦免条款：可不足额/不点（空置），0~名额 任意；女二/女配互不重复；
+       赦免条款：可不足额/不点（空置），0~名额 任意；女主/女二/女配互不重复；
        收益 人气+1 演技+1（结算在 filmApplyInvest） */
-    const pickSupports = (leadName, secondName) => {
+    const pickSupports = (leadName, secNames) => {
       if (!p.support) { this.castFilmProjects(projects, i + 1, acc, onDone); return; }
       const roles = p.supportRoles && p.supportRoles.length ? "（" + p.supportRoles.join("、") + "）" : "";
-      const takenNames = [leadName, secondName].filter(Boolean);
+      const takenNames = [leadName].concat(secNames || []).filter(Boolean);
       this.showMultiPick({
         title: "《" + p.title + "》 · 女配点将（投资 " + p.cost + " 万）",
         sub: "女配至多 " + p.support + " 人" + roles + "——被选中者 人气+1 演技+1（荣誉殿堂/影视部成员亦可出演；可不满额——空置角色不影响落地）",
@@ -2527,11 +2553,26 @@ const UI = {
       });
     };
     pickLead(leadName => {
-      acc.push({ pid: p.pid, lead: leadName, second: null, supports: null });
-      if (!p.role2) { pickSupports(leadName, null); return; }
-      pickRole("second", "女二号" + (p.secondRole ? "（" + p.secondRole + "）" : ""), "人气+2 演技+1 羁绊+1", leadName, secondName => {
-        acc[acc.length - 1].second = secondName;
-        pickSupports(leadName, secondName);
+      acc.push({ pid: p.pid, lead: leadName, second: null, seconds: [], supports: null });
+      /* 女二点将（多女二口径）：一次多选点齐（至多 secSlots.length 名，低点击量），
+         赦免条款：可不满额/不点（角色空置，不影响落地）；payload.seconds 全量回传 */
+      if (!secSlots.length) { pickSupports(leadName, []); return; }
+      const secRoleNames = secSlots.filter(Boolean).length ? "（" + secSlots.filter(Boolean).join("、") + "）" : "";
+      this.showMultiPick({
+        title: "《" + p.title + "》 · 女二点将（投资 " + p.cost + " 万）",
+        sub: "女二 " + secSlots.length + " 名" + secRoleNames + "——被选中者 人气+2 演技+1 羁绊+1（荣誉殿堂/影视部成员亦可出演；可不满额/不点——空置角色不影响落地）"
+          + (p.flagship ? "；年度主打——主演限影视部成员或总选前三" : ""),
+        pool: poolFor("second").filter(m => m.name !== leadName),
+        max: secSlots.length,
+        confirmLabel: "女二名单敲定 →",
+        cardInfo: m => teamLabel(m) + " · 人气" + m.pop + " 羁绊" + m.bond + (m.skills ? " 演技" + m.skills.ac : ""),
+        onConfirm: ids => {
+          /* showMultiPick 回传成员 id——归一为姓名存档（engine 按姓名比对） */
+          const secNames = ids.map(id => { const m = st.members.find(x => x.id === id); return m ? m.name : id; });
+          acc[acc.length - 1].seconds = secNames;
+          acc[acc.length - 1].second = secNames[0] || null;
+          pickSupports(leadName, secNames);
+        },
       });
     });
   },
@@ -2779,9 +2820,15 @@ const UI = {
     const confirmBtn = this.el("button", "btn btn-primary modal-close", cfg.confirmLabel);
     confirmBtn.disabled = true;
     const refresh = () => {
+      /* 【forbidPairs（2023·10 赵佳蕊组阁窗口径）】指定对成员不得同队：命中即警示并禁确认 */
+      const badPair = (cfg.forbidPairs || []).find(p => {
+        const ma = targets.find(x => x.name === p.a), mb = targets.find(x => x.name === p.b);
+        return ma && mb && dst[ma.id] && dst[ma.id] === dst[mb.id];
+      });
       counter.textContent = TEAMS.map(t => t.key + " " + count(t.key)).join(" · ") +
-        "（共 " + targets.length + " 人）";
-      confirmBtn.disabled = Object.keys(dst).length !== targets.length;
+        "（共 " + targets.length + " 人）" +
+        (badPair ? "　⚠ " + badPair.a + " 与 " + badPair.b + " 不能指定在同一队伍" : "");
+      confirmBtn.disabled = Object.keys(dst).length !== targets.length || !!badPair;
     };
     for (const m of targets) {
       const b = this.el("button", "pick-btn", "");
@@ -2944,6 +2991,32 @@ const UI = {
       c.appendChild(counter); c.appendChild(grid); c.appendChild(btn);
       this.modal(c);   // 不给关闭按钮——必须完成安置
     } else stageHead(new Set());
+  },
+
+  /* 【通用·总选主持人（用户口径 2026-XX）】点将窗：必到池（续约毕业 siba / 转岗工作人员 /
+     荣誉殿堂 hallIdol / 影视部签约艺人 film）+ 荣誉毕业生（honorGrad，五成把握）。
+     仅一人、可不选；落地 Game.applyGeHost（含 50% 掷签，失败视为未设主持人）。 */
+  showGeHostPicker() {
+    const st = Game.st;
+    const roleLabel = m => m.hallIdol ? "荣誉殿堂偶像" : m.film ? "影视部签约艺人" : m.status === "staff" ? "转岗工作人员" : "续约毕业成员";
+    const must = st.members.filter(m => m.siba || m.hallIdol || m.film);
+    const half = st.members.filter(m => m.honorGrad && !m.siba);
+    const c = this.card("总选主持人 · 点将", "仅一人、可不选——主持人人气将略微提升总选收益");
+    const grid = this.el("div", "pick-grid");
+    const mk = (m, tag) => {
+      const b = this.el("button", "pick-btn", "");
+      b.innerHTML = m.name + '<span class="pb-team">' + roleLabel(m) + " · " + tag + " · 人气 " + (m.pop || 0) + "</span>";
+      b.onclick = () => { this.closeModal(); const r = Game.applyGeHost(m.name); this.renderGame(); this.toast(r.text); };
+      grid.appendChild(b);
+    };
+    for (const m of must) mk(m, "必到");
+    for (const m of half) mk(m, "五成把握");
+    if (!must.length && !half.length) grid.appendChild(this.el("div", "", "（当前没有可担任主持人的人选——可直接选「今年不设主持人」）"));
+    const skip = this.el("button", "btn modal-close", "今年不设主持人");
+    skip.onclick = () => { this.closeModal(); const r = Game.applyGeHost(null); this.renderGame(); this.toast(r.text); };
+    c.appendChild(grid);
+    c.appendChild(skip);
+    this.modal(c);
   },
 
   /* 2020总选新机制·分团TOP1兼任本部安排窗（用户口径）：每个分团 TOP1 都可安排，
@@ -3204,6 +3277,136 @@ const UI = {
         });
       },
     });
+  },
+
+  /* 【2023·10月赵佳蕊挽留线（用户口径）】所在团体组阁窗：pickMode zjr23reorg → 本函数。
+     团体配置在 Game.ZJR23_GROUPS（本部 SNH48：SII/NII/HII/X〔+XII/FT〕+PREP；
+     GNZ48：G/NIII/Z；BEJ48：B/E/J；CKG48：K/C；SHY48：SIII/HIII）。
+     约束：forbidPairs——刘闲与赵佳蕊不能指定在同一队伍（showTeamAssignPicker 硬拦截）；
+     现编队预填（低点击量规范）；落地在 engine.applyZjr23Reorg。 */
+  showZjrReorg23Picker(onDone) {
+    const st = Game.st;
+    const group = st.flags.zjr23ReorgGroup;
+    const cfg = Game.ZJR23_GROUPS[group];
+    if (!cfg) return;
+    const teams = [];
+    if (cfg.branch) {
+      for (const k of cfg.teams) teams.push({ key: k, label: "编入 " + cfg.labels[k], cls: "" });
+      teams.push({ key: cfg.prepKey, label: "转入 " + group + " 预备生", cls: "" });
+    } else {
+      for (const k of Game.headTeams(st)) teams.push({ key: k, label: "编入 Team " + k, cls: "on-" + k.toLowerCase() });
+      if (st.flags.ftFormed && st.members.some(m => m.status === "active" && m.team === "FT"))
+        teams.push({ key: "FT", label: "编入 Team FT", cls: "on-ft" });
+      teams.push({ key: "PREP", label: "转入预备生", cls: "" });
+    }
+    const pool = Game.zjr23Pool(st, group);
+    const tkeys = teams.map(t => t.key);
+    const curKey = m => {
+      if (cfg.branch) {
+        const k = (m.branchLabel || "").replace("Team ", "");
+        return cfg.teams.indexOf(k) >= 0 ? k : cfg.prepKey;
+      }
+      return tkeys.indexOf(m.team) >= 0 ? m.team : "PREP";
+    };
+    const initial = {};
+    for (const m of pool) initial[m.id] = curKey(m);   // 预填现编队
+    this.showTeamAssignPicker({
+      title: group + " 组阁 · 逐人定队",
+      sub: "赵佳蕊留队承诺兑现——为" + (cfg.branch ? group : "本部") + "成员重新编定队伍（点击卡片循环切换；每队 13~20 人，人手不足放开下限）。⚠ 刘闲与赵佳蕊不能指定在同一队伍。",
+      pool: pool,
+      teams: teams,
+      initial: initial,
+      forbidPairs: [{ a: "刘闲", b: "赵佳蕊" }],
+      confirmLabel: "组阁名单敲定 →",
+      cardInfo: m => (cfg.branch ? (m.branchLabel || group) : "Team " + m.team) + " · 人气" + (m.pop || 0) + (m.captain ? " · 队长" : m.vice ? " · 副队长" : ""),
+      onConfirm: dst => {
+        const res = Game.applyZjr23Reorg(dst);
+        this.renderGame();
+        if (res.tone === "blocked") { this.toast(res.text); return; }   // 校验未过：下月月末注入重开（同 gnzReorg23 兜底口径）
+        this.toast(res.text);
+        if (onDone) onDone();
+      },
+    });
+  },
+
+  /* 【2023·CGT48 建制运营（用户口径）】①分队窗（玩家兼任）：自主招募成员分队至
+     Team CⅡ/GⅡ/预备生——预填参照 2026 成员卡口径（Game.cgt23SquadAutoAssign），
+     可调；落地 engine.applyCgt23Squad */
+  showCgt23SquadPicker(onDone) {
+    const st = Game.st;
+    const pool = Game.cgt23Recruits(st);
+    const initial = Game.cgt23SquadAutoAssign(st);
+    const teams = [
+      { key: "CⅡ", label: "编入 Team CⅡ", cls: "" },
+      { key: "GⅡ", label: "编入 Team GⅡ", cls: "" },
+      { key: "prep", label: "转入 CGT48 预备生", cls: "" },
+    ];
+    this.showTeamAssignPicker({
+      title: "CGT48 分队 · 逐人定队",
+      sub: "自主招募成员分队（Team CⅡ / Team GⅡ / 预备生；预填按成都筹备组预案，点击卡片可调；每队至多 20 人）",
+      pool: pool,
+      teams: teams,
+      initial: initial,
+      confirmLabel: "分队名单敲定 →",
+      cardInfo: m => (m.branchLabel || "CGT48") + " · 人气" + (m.pop || 0),
+      onConfirm: dst => {
+        const res = Game.applyCgt23Squad(dst);
+        this.renderGame();
+        if (res.tone === "blocked") { this.toast(res.text); return; }
+        this.toast(res.text);
+        if (onDone) onDone();
+      },
+    });
+  },
+
+  /* 【2023·CGT48 建制运营（用户口径）】②引援窗：本部与各分团各调取一人入 CGT48
+     （羁绊不减）。玩家兼任=自主调取；非玩家兼任=向对应总监（朱瑞龙/周马）推荐。
+     每团点选一人即可确认（低点击量）；落地 engine.applyCgt23Draft */
+  showCgt23DraftPicker(onDone) {
+    const st = Game.st;
+    const groups = Game.cgt23DraftGroups(st);
+    const sel = {};   // group key → 人选名
+    const dirTxt = st.decisions.cgt23Dir === "player" ? "您兼任 CGT48 总监——自主调取"
+      : st.decisions.cgt23Dir === "zrl" ? "向总监朱瑞龙推荐"
+      : "向总监周马推荐";
+    const c = this.card("CGT48 引援 · " + (st.decisions.cgt23Dir === "player" ? "调取名单" : "推荐名单"),
+      dirTxt + "——从本部与各分团各调取一人入成都（点击选择，再点取消；羁绊不减）；每团须各定一人。");
+    const body = this.el("div", "");
+    const confirmBtn = this.el("button", "btn btn-primary modal-close", "引援名单敲定 →");
+    confirmBtn.disabled = true;
+    const refresh = () => { confirmBtn.disabled = !groups.every(g => sel[g.key]); };
+    for (const g of groups) {
+      const row = this.el("div", "ft-group");
+      row.style.marginBottom = "10px";
+      const head = this.el("p", "modal-text", "【" + g.label + "】（" + g.pool.length + " 人，选 1）");
+      row.appendChild(head);
+      const grid = this.el("div", "pick-grid");
+      for (const m of g.pool) {
+        const b = this.el("button", "pick-btn", m.name + '<span class="pb-team">' + (m.branchLabel || m.team || "") + " · 人气" + (m.pop || 0) + "</span>");
+        b.onclick = () => {
+          if (sel[g.key] === m.name) delete sel[g.key];   // 再点取消
+          else sel[g.key] = m.name;                        // 单选：同组重选自动覆盖
+          Array.from(grid.children).forEach(x => { x.classList.remove("on-sii"); });
+          if (sel[g.key]) b.classList.add("on-sii");
+          refresh();
+        };
+        grid.appendChild(b);
+      }
+      row.appendChild(grid);
+      body.appendChild(row);
+    }
+    body.appendChild(confirmBtn);
+    refresh();
+    c.appendChild(body);
+    confirmBtn.onclick = () => {
+      this.closeModal();
+      const res = Game.applyCgt23Draft(sel);
+      this.renderGame();
+      if (res.tone === "blocked") { this.toast(res.text); return; }
+      this.toast(res.text);
+      if (onDone) onDone();
+    };
+    this.modal(c);   // 不给关闭按钮——必须完成引援名单
   },
 
   /* 电商女团浪彩少女AW9 预备役点将窗（2020·9月事件①）：全团在册（本部/分团）、
@@ -5185,8 +5388,10 @@ const UI = {
          委培卡挂在 GNZ48 页签）有 CGT48 卡在册时入列 */
       if (st.era === "2023" && st.members.some(m => m.branchTeam === "CGT48")) teams.splice(teams.findIndex(([k]) => k === "HALL"), 0, ["CGT48", "CGT48"]);
     } else {
+      /* 2016：本部四队+XII+两分团；【影视部签约艺人（用户口径 2026-XX）】开档即带 →
+         补挂 荣誉殿堂/影视部 两个标签页（film=true 归影视部分类） */
       teams = [["all", "全部"], ["SII", "SII"], ["NII", "NII"], ["HII", "HII"], ["X", "X"], ["XII", "XII"],
-               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["rest", "暂休"], ["left", "已离团"]];
+               ["BEJ48", "BEJ48"], ["GNZ48", "GNZ48"], ["HALL", "荣誉殿堂"], ["film", "影视部"], ["rest", "暂休"], ["left", "已离团"]];
     }
     for (const [k, label] of teams) {
       const chip = this.el("button", "tf-chip" + (this._memberFilter === k ? " on" : ""), label);
